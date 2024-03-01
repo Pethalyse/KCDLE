@@ -110,20 +110,27 @@ async function multiGuess(s, dle)
 ///////////////////////////////FUNCTIONS////////////////////////////////////
 function createOption(dle)
 {
-    let sub = document.querySelector(".sub").value;
+    const itemSub = document.querySelector(".sub");
+    let sub = itemSub.value;
+    // document.querySelector("#search").innerHTML = "";
 
     if(sub.length > 0)
     {
-        document.querySelector("#search").innerHTML = "";
         let histo = activitesEnregistreesDle(dle);
 
         search(sub, dle).then((l) => {
+            document.querySelector("#search").innerHTML = "";
             for(const post of l)
             {
                 let ver = true;
                 for(const j of histo)
                 {
-                    if(j === post.Nom)
+                    if(dle !== "kc" && j === post.Nom)
+                    {
+                        ver = false;
+                        break;
+                    }
+                    else if(dle === "kc" && j === post.Pseudo)
                     {
                         ver = false;
                         break;
@@ -484,7 +491,10 @@ function appelVerification(resultat, info, dle){
         if(sub){sub.disabled = true;}
     }
     else{
-        if(sub)sub.disabled = false;
+        if(sub){
+            sub.disabled = false;
+            sub.focus()
+        }
     }
 }
 
@@ -585,6 +595,16 @@ function setup(dle){
     }
 
     if(document.querySelector(".sub")){ document.querySelector(".sub").addEventListener("input", function(){ createOption(dle) } )}
+    if(document.querySelector(".sub")){ document.querySelector(".sub").addEventListener("keypress", function(event) {
+        // If the user presses the "Enter" key on the keyboard
+        if (event.key === "Enter") {
+            const search = document.querySelector("#search");
+            if(search && search.children.length > 0){
+                search.children.item(0).click();
+            }
+
+        }
+    })}
 }
 
 function finJeu(dle) {

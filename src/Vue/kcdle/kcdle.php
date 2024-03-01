@@ -16,7 +16,7 @@ use TheFeed\Modele\DataObject\Kcdle;
   </div>
   <div class="containt-name">
     <div class="search-bar-kc">
-      <input class="sub" type="text" placeholder="Entrez le nom d'un membre qui est/a été à la KarmineCorp">
+      <input class="sub" type="text" placeholder="Entrez le nom d'un membre qui est/a été à la KarmineCorp" autofocus>
     </div>
     <div id="search"></div>
   </div>
