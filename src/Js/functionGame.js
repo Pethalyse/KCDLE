@@ -1,5 +1,0 @@
-
-//////FUNCTION MOFICATRICES//////
-class Functions{
-
-}
