@@ -1,0 +1,14 @@
+{
+  "autoload": {
+    "psr-4": {
+      "TheFeed\\": "src"
+    }
+  },
+  "require": {
+    "symfony/http-foundation": "^6.4.3",
+    "symfony/routing": "^6.4",
+    "ext-pdo": "*",
+    "symfony/http-kernel": "^6.4",
+    "ext-json": "*"
+  }
+}
