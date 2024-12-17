@@ -18,14 +18,14 @@
     </main>
 </body>
 
-<div class="sponso">
-    <p>Sponsor officiel de la K2Squad en LKL</p>
-    <img src="../ressources/images/k2.png"  onclick="goK2()">
-</div>
-
-<div class="annonce-match" onclick="goTwitch()">
-   <img src="../ressources/images/annonce-match.jpg">
-</div>
+<!--<div class="sponso">-->
+<!--    <p>Sponsor officiel de la K2Squad en LKL</p>-->
+<!--    <img src="../ressources/images/k2.png"  onclick="goK2()">-->
+<!--</div>-->
+<!---->
+<!--<div class="annonce-match" onclick="goTwitch()">-->
+<!--   <img src="../ressources/images/annonce-match.jpg">-->
+<!--</div>-->
 
 
 <script src="../src/Js/changementPage.js"></script>

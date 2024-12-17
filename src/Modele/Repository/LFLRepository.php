@@ -41,7 +41,7 @@ class LFLRepository extends RepositoryMere
 
     public static function applySearch(string $like)
     {
-        $sql = "SELECT * from joueurs WHERE nom LIKE :l AND dle = 'LFL' ORDER BY nom; ";
+        $sql = "SELECT * from joueurs WHERE nom LIKE :l AND dle = 'LFL' AND active = 1 ORDER BY nom; ";
 
         $pdo = ConnexionBDD::getPdo()->prepare($sql);
         $pdo->execute(array("l" => $like ."%"));

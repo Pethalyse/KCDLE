@@ -35,7 +35,7 @@
 <div class="credit">
     <div class="containt-containt-credit">
         <div class="containt-credit">
-            <a href="https://twitter.com/YMezence" target="_blank"> <img src="../ressources/images/credits/yanhis-rond.png"> Yanhis (dev)</a>
+            <a href="https://twitter.com/Pethalyse" target="_blank"> <img src="../ressources/images/credits/yanhis-rond.png"> Yanhis (dev)</a>
         </div>
         <br>
         <div class="containt-credit">
