@@ -593,8 +593,15 @@ function setup(dle){
     if(verifierFinJeu(dle)){
         finJeu(dle);
     }
-
-    if(document.querySelector(".sub")){ document.querySelector(".sub").addEventListener("input", function(){ createOption(dle) } )}
+    let inputTimeout;
+    if(document.querySelector(".sub")){ document.querySelector(".sub").addEventListener("input", function(){
+        clearTimeout(inputTimeout);
+        inputTimeout = setTimeout(function () {
+            // Appeler la fonction après 1 seconde sans nouvelle saisie
+            createOption(dle);
+        }, 1000); // 1000 ms = 1 seconde
+    }
+    )}
     if(document.querySelector(".sub")){ document.querySelector(".sub").addEventListener("keypress", function(event) {
         // If the user presses the "Enter" key on the keyboard
         if (event.key === "Enter") {
