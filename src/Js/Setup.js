@@ -605,6 +605,7 @@ function setup(dle){
     if(document.querySelector(".sub")){ document.querySelector(".sub").addEventListener("keypress", function(event) {
         // If the user presses the "Enter" key on the keyboard
         if (event.key === "Enter") {
+            clearTimeout(inputTimeout);
             const search = document.querySelector("#search");
             if(search && search.children.length > 0){
                 search.children.item(0).click();
