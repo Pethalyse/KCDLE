@@ -47,7 +47,7 @@
         </div>
       	<br>
       	<div class="containt-credit">
-            <a href="https://twitter.com/benthoo" target="_blank"> <img src="../ressources/images/credits/bentho-rond.png"> Bentho</a>
+            <a href="https://twitter.com/ben_thoo" target="_blank"> <img src="../ressources/images/credits/bentho-rond.png"> Bentho</a>
         </div>
         <br>
 		<div class="containt-credit">
