@@ -4,13 +4,16 @@ namespace TheFeed\Configuration;
 class Configuration
 {
     static private array $databaseConfiguration = array(
-        'hostname' => 'db5015045884.hosting-data.io',
+        'hostname' => '172.17.0.1',
         'database' => 'dbs12498527',
         'port' => '3306',
-        'login' => 'dbu4126087',
-        'password' => '8mpRwAY!y2W$QAD'
+        'login' => 'root',
+        'password' => 'rootpassword'
     );
 
+    static public function getPath() : string{
+        return "http://localhost/kcdle/";
+    }
     static public function getLogin() : string {
         return Configuration::$databaseConfiguration['login'];
     }

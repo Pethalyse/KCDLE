@@ -69,7 +69,16 @@
     height: 100%;
 }
 
+body, body>div{
+    overflow-x: hidden;
+}
+
 body{
+    height: 100vh;
+    margin: 0;
+}
+
+body>div{
     display: flex;
     flex-direction: column;
     text-align: center;
@@ -77,7 +86,7 @@ body{
     /* Assurez-vous que le corps occupe tout l'écran pour que l'image de fond soit visible partout */
     margin: 0;
     padding: 0;
-    height: auto;
+    height: 100%;
 
 
     /* Définir l'image de fond et ses propriétés */
@@ -103,24 +112,24 @@ header{
     background-size: cover;
 }
 
-.header_lfl{
-    background-image: url('../images/LFLDle_header.png');
+.header_LFLDLE{
+    background-image: url('../images/LFLDLE_header.png');
 }
-.lfl{
+.LFLDLE{
     background-color: rgb(216, 174, 162);
 }
 
-.header_lec{
-    background-image: url('../images/LECDle_header.png');
+.header_LECDLE{
+    background-image: url('../images/LECDLE_header.png');
 }
-.lec{
+.LECDLE{
     background-color: rgb(198, 183, 211);
 }
 
-.header_kc{
-    background-image: url('../images/KCDle_header.png');
+.header_KCDLE{
+    background-image: url('../images/KCDLE_header.png');
 }
-.kc{
+.KCDLE{
     background-color: rgb(134, 166, 212);
 }
 
@@ -271,7 +280,11 @@ footer a
     font-family: Arial, sans-serif;
 }
 
-.search-bar-lfl, .search-bar-lec, .search-bar-kc
+.dle_body{
+    height: 100%;
+}
+
+.search-bar
 {
 
     background-size: 100% 70px!important;
@@ -282,16 +295,16 @@ footer a
     justify-content: center;
 }
 
-.search-bar-lfl{
-    background-image: url("../images/LFLDle_texte.png");
-}
-.search-bar-lec{
-    background-image: url("../images/LECDle_texte.png");
-}
+/*.search-bar-lfl{*/
+/*    background-image: url("../images/LFLDle_texte.png");*/
+/*}*/
+/*.search-bar-lec{*/
+/*    background-image: url("../images/LECDle_texte.png");*/
+/*}*/
 
-.search-bar-kc{
-  background-image: url("../images/KCDle_barre_de_texte.png");
-}
+/*.search-bar-kc{*/
+/*  background-image: url("../images/KCDle_barre_de_texte.png");*/
+/*}*/
 
 .btn-home .logo{
     width: 50vw;
@@ -462,4 +475,25 @@ header{
 .annonce-match img{
     width: 100%;
     height: auto;
+}
+
+.KCDLE_guess_true{
+    background-color: rgb(183, 255, 250);
+}
+.KCDLE_guess_false{
+    background-color: rgb(0, 59, 148);
+}
+
+.LECDLE_guess_true{
+    background-color: rgb(183, 255, 250);
+}
+.LECDLE_guess_false{
+    background-color: rgb(88 34 174);
+}
+
+.LFLDLE_guess_true{
+    background-color: rgb(183, 255, 250);
+}
+.LFLDLE_guess_false{
+    background-color: #F47857;
 }

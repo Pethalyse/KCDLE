@@ -1,0 +1,7 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+  TheFeed\EventListener\SiteRequestListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.request }

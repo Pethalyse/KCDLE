@@ -1,31 +1,52 @@
-<body class="home">
-    <main>
-        <div class="theBody">
-            <div class="btn-container">
+<?php
+/** @var UrlGenerator $generateurUrl */
+use Symfony\Component\Routing\Generator\UrlGenerator;
 
-              	<div class="btn-game" onclick="goKC()">
-                    <img src='../ressources/images/KCDLE_Barre.png'>
-                </div>
-                <div class="btn-game" onclick="goLEC()">
-                    <img src='../ressources/images/LECDLE_Barre.png'>
-                </div>
-
-                <div class="btn-game" onclick="goLFL()">
-                    <img src='../ressources/images/LFLDLE_Barre.png'>
-                </div>
-            </div>
+$kcUrl = $generateurUrl->generate("afficherKcdle");
+$lecUrl = $generateurUrl->generate("afficherLecdle");
+$lflUrl = $generateurUrl->generate("afficherLfldle");
+?>
+<div id="app">
+    <header class="header_HOME">
+        <simpleimg :img="'HOMEDLE_Header.png'">
+    </header>
+    <div class="dle_body HOME">
+        <div class="btn-container">
+            <btngame v-for="val in data" :key="data.dle" :data="val"></btngame>
         </div>
-    </main>
-</body>
+    </div>
 
-<!--<div class="sponso">-->
-<!--    <p>Sponsor officiel de la K2Squad en LKL</p>-->
-<!--    <img src="../ressources/images/k2.png"  onclick="goK2()">-->
-<!--</div>-->
-<!---->
-<!--<div class="annonce-match" onclick="goTwitch()">-->
-<!--   <img src="../ressources/images/annonce-match.jpg">-->
-<!--</div>-->
+    <credit></credit>
+</div>
 
-
-<script src="../src/Js/changementPage.js"></script>
+<script type="module">
+    new Vue({
+        el : "#app",
+        components: {
+            simpleimg: () => import((`${window.global.JS_COMPONENT}simpleImg.js`)),
+            btngame: () => import((`${window.global.JS_COMPONENT}btnGame.js`)),
+            credit : () => import((`${window.global.JS_COMPONENT}credit.js`)),
+        },
+        data(){
+            return{
+                data : [
+                    {
+                        dle: "KCDLE",
+                        url: <?= json_encode($kcUrl) ?>,
+                        active : true,
+                    },
+                    {
+                        dle: "LECDLE",
+                        url: <?= json_encode($lecUrl) ?>,
+                        active : true,
+                    },
+                    {
+                        dle: "LFLDLE",
+                        url: <?= json_encode($lflUrl) ?>,
+                        active : true,
+                    }
+                ]
+            }
+        }
+    })
+</script>

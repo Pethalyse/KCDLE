@@ -7,8 +7,13 @@
   "require": {
     "symfony/http-foundation": "^6.4.3",
     "symfony/routing": "^6.4",
-    "ext-pdo": "*",
     "symfony/http-kernel": "^6.4",
-    "ext-json": "*"
+    "ext-pdo": "*",
+    "ext-json": "*",
+    "symfony/config": "^6.4",
+    "symfony/console": "^7.2"
+  },
+  "require-dev": {
+    "symfony/framework-bundle": "^7.1"
   }
 }
