@@ -71,6 +71,7 @@ export default {
     },
     mounted() {
         this.$el.scrollIntoView({ behavior: 'smooth' });
+
         if(this.animation < 0) return;
         setTimeout(() => {
             this.$el.classList.add("fade-in")

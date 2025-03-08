@@ -19,7 +19,7 @@ $lecUrl = $generateurUrl->generate("afficherLecdle");
 $lflUrl = $generateurUrl->generate("afficherLfldle");
 ?>
 
-<div id="app">
+<div id="app" :class="dle">
     <header :class="'header_' + dle">
         <div class="btn-home">
             <simpleimg class="logo" :alt="dle" :img="dle + '_page_Logo.png'" @onclick="goHome()"></simpleimg>

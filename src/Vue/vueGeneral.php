@@ -30,8 +30,10 @@ define("JS_COMPONENT", Configuration::getPath() . "src/Js/components/"); // Chan
     <meta name="description" content="Essayez de deviner le joueur de la lfl et de la lec parmis tout les joueurs League of legends de la ligue actuelle, ou devinez un joueur de la Karmine Corp parmi tout les joueurs. " />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   	<link rel="icon" type="image/x-icon" href="<?= $assistantUrl->getAbsoluteUrl("../ressources/images/LogoEquipe/KarmineCorp.png") ?>">
-  	<link rel="stylesheet" type="text/css" media="screen and (min-width: 1281px)" href="<?= $assistantUrl->getAbsoluteUrl("../ressources/css/style.css") ?>"
-  	<link rel="stylesheet" media="screen and (max-width: 1280px)" href="<?= $assistantUrl->getAbsoluteUrl("../ressources/css/petite_resolution.css") ?>" />
+    <link rel="stylesheet" type="text/css" href="<?= $assistantUrl->getAbsoluteUrl("../ressources/css/style.css") ?>">
+
+<!--  	<link rel="stylesheet" type="text/css" media="screen and (min-width: 1281px)" href="--><?php //= $assistantUrl->getAbsoluteUrl("../ressources/css/style.css") ?><!--"-->
+<!--  	<link rel="stylesheet" media="screen and (max-width: 1280px)" href="--><?php //= $assistantUrl->getAbsoluteUrl("../ressources/css/petite_resolution.css") ?><!--" />-->
 
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1185166602985441" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
