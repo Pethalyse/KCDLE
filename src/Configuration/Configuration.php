@@ -12,7 +12,7 @@ class Configuration
     );
 
     static public function getPath() : string{
-        return "https://kcdle.fr/site/web/";
+        return "https://kcdle.fr/site/";
     }
     static public function getLogin() : string {
         return Configuration::$databaseConfiguration['login'];
