@@ -583,6 +583,54 @@ p{
     margin: 0;
 }
 
+#admin_header{
+    display: flex;
+    flex-direction: column;
+    padding-block: 30px;
+    gap: 10px;
+    background-color: dimgray;
+}
+
+#admin_header>div{
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+#admin_header button {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    transition: all 0.3s ease-in-out;
+}
+
+#admin_body{
+    background-color: lightslategray;
+    flex-grow: 1;
+
+}
+
+#admin_body .clickable_elements{
+    display: grid;
+    grid-template-columns: repeat(5, 1fr); /* 5 éléments par ligne */
+    gap: 10px; /* Espacement entre les éléments */
+    margin-top: 20px;
+}
+
+#admin_body .clickable_elements div{
+    cursor: pointer;
+}
+
+#admin_body img{
+    width: 100px;
+    height: 100px;
+}
 
 
 @media screen and (max-width: 1280px) {
