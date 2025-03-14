@@ -1,4 +1,4 @@
 .idea
 /vendor
 /node_modules
-src/Configuration/Configuration.php
+src/Configuration
