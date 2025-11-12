@@ -3,17 +3,12 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.html",
+  "private": true,
   "scripts": {
-    "dev": "node_modules/.bin/vite",
-    "build": "node_modules/.bin/vite build",
-    "preview": "node_modules/.bin/vite preview",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Pethalyse/KCDLE.git"
-  },
-  "private": false,
   "dependencies": {
     "vue": "^3.5.4"
   },
