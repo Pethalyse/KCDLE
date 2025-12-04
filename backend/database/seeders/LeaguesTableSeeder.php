@@ -15,7 +15,7 @@ class LeaguesTableSeeder extends Seeder
     {
         $lolId = DB::table('games')->where('code', 'LOL')->value('id');
 
-        DB::table('leagues')->insert([
+        DB::table('leagues')->insertOrIgnore([
             [
                 'code' => 'LEC',
                 'name' => 'League of Legends EMEA Championship',

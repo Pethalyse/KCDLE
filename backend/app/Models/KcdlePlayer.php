@@ -31,6 +31,10 @@ class KcdlePlayer extends Model
         'previousTeam',
     ];
 
+    protected $appends = [
+        'team_default_url'
+    ];
+
     public function player(): BelongsTo
     {
         return $this->belongsTo(Player::class);
@@ -49,6 +53,11 @@ class KcdlePlayer extends Model
     public function previousTeam(): BelongsTo
     {
         return $this->belongsTo(Team::class, 'previous_team_before_kc_id');
+    }
+
+    public function getTeamDefaultUrlAttribute(): string
+    {
+        return asset('storage/teams/none.png');
     }
 
     public function incrementTrophiesCount(): void {

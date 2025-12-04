@@ -29,11 +29,17 @@ class Player extends Model
 
     protected $appends = [
         'image_url',
+        'country_default_url'
     ];
 
     public function country(): BelongsTo
     {
         return $this->belongsTo(Country::class, 'country_code', 'code');
+    }
+
+    public function getCountryDefaultUrlAttribute(): string
+    {
+        return asset('storage/countries/default.png');
     }
 
     public function role(): BelongsTo

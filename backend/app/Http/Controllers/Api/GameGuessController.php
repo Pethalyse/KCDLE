@@ -137,15 +137,15 @@ class GameGuessController extends Controller
         return [
             'correct' => $correct,
             'fields'  => [
-                'slug'               => $slug,
                 'country'            => $country,
                 'birthday'           => $birthday,
-                'role'               => $role,
                 'game'               => $gameField,
-                'current_team'       => $currentTeam,
-                'previous_team'      => $previousTeam,
                 'first_official_year'=> $firstOfficialYear,
                 'trophies'           => $trophies,
+                'previous_team'      => $previousTeam,
+                'current_team'       => $currentTeam,
+                'role'               => $role,
+                'slug'               => $slug,
             ],
         ];
     }
@@ -179,11 +179,11 @@ class GameGuessController extends Controller
         return [
             'correct' => $correct,
             'fields'  => [
-                'slug'     => $slug,
                 'country'  => $country,
                 'birthday' => $birthday,
                 'team'     => $team,
                 'lol_role' => $lolRole,
+                'slug'     => $slug,
             ],
         ];
     }

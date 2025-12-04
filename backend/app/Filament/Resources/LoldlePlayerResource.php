@@ -36,7 +36,7 @@ class LoldlePlayerResource extends Resource
                                     if ($operation === 'edit') {
                                         return $query;
                                     }
-                                    $alreadyUsed = LoldlePlayer::all('player_id');
+                                    $alreadyUsed = LoldlePlayer::query()->pluck('player_id')->all();
                                     return $query->whereNotIn('id', $alreadyUsed);
                                 })
                             ->searchable()

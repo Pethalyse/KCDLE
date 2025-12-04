@@ -58,7 +58,7 @@ class TeamsTableSeeder extends Seeder
         ];
 
         foreach ($teams as $team) {
-            DB::table('teams')->insert([
+            DB::table('teams')->insertOrIgnore([
                 ...$team,
                 'created_at' => $now,
                 'updated_at' => $now,

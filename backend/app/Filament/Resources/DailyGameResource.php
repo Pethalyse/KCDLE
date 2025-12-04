@@ -130,6 +130,7 @@ class DailyGameResource extends Resource
                             : $query;
                     }),
             ])
+            ->defaultSort('selected_for_date', 'desc')
             ->actions([
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn (DailyGame $record) => $record->getAttribute('selected_for_date')->isFuture()),

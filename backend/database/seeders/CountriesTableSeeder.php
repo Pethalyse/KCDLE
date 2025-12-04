@@ -207,7 +207,7 @@ class CountriesTableSeeder extends Seeder
         ];
 
         foreach ($countries as $country) {
-            DB::table('countries')->insert([
+            DB::table('countries')->insertOrIgnore([
                 'code' => $country['code'],
                 'name' => $country['name'],
                 'created_at' => now(),

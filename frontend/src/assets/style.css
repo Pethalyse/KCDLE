@@ -1,0 +1,1088 @@
+
+
+.infoJoueur
+{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.logo{
+	max-width: 900px;
+}
+
+.decalage{
+	display: none
+}
+
+.hide{
+    display: none;
+}
+
+body, body>div{
+  overflow-x: hidden;
+}
+
+.credittxt{
+    padding-top: 10px;
+    cursor: pointer;
+}
+
+.credit{
+    position: fixed;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    border-radius: 15px;
+    flex-direction: column;
+    text-align: center;
+    background-color: lightpink;
+    border: solid 5px white;
+    width: 10%;
+    max-width: 10%;
+    min-width: 10%;
+    left: 95.5%;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: auto;
+    margin-right: auto;
+  	padding-block: 10px;
+    transition: all 0.5s ease
+}
+
+.credit:hover {
+    transform: translate(-50%, -50%)
+}
+
+@keyframes move_credit {
+    from {
+        left: 95.5%;
+    }
+    to {
+        left: 89.5%;
+    }
+}
+
+@keyframes un_move_credit {
+    from {
+        left: 89.5%;
+    }
+    to {
+        left: 95.5%;
+    }
+}
+
+.credit a{
+    font-size: 125%;
+    text-decoration: none;
+    color: black;
+    display: flex;
+    flex-direction: column;
+	justify-content: center;
+    align-items: center;
+}
+
+.credit img{
+    max-width: 70px;
+    padding-bottom: 10px;
+}
+
+.containt-credit{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  	cursor: pointer;
+    margin: 10px;
+}
+
+.close{
+    position: absolute;
+    bottom: 95%;
+    left: 85%;
+    cursor: pointer;
+}
+
+.imgInfoJoueur
+{
+    width: 70%;
+    height: 70%;
+}
+
+.teteImg
+{
+    width: 100%;
+    height: 100%;
+}
+
+.arrow{
+    scale: 0.07;
+}
+
+body{
+    height: 100vh;
+    margin: 0;
+}
+
+body>div{
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+
+    /* Assurez-vous que le corps occupe tout l'écran pour que l'image de fond soit visible partout */
+    margin: 0;
+    padding: 0;
+    /*height: 100%;*/
+
+
+    /* Définir l'image de fond et ses propriétés */
+
+    background-repeat: no-repeat;
+    background-position: center;
+    /*background-position: center; /* Centrer l'image de fond */
+    background-attachment: fixed; /* Fixer l'image de fond, elle ne bougera pas lors du défilement */
+
+    color: white;
+
+    font-family: 'Syne', sans-serif;
+}
+/* Hide scrollbar for Chrome, Safari and Opera */
+*::-webkit-scrollbar {
+    display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+* {
+    -ms-overflow-style: none; /* for Internet Explorer, Edge */
+    scrollbar-width: none; /* for Firefox */
+}
+
+.btn-container img{
+    width: 100%;
+    max-width: 1600px;
+    max-height: 210px;
+}
+
+header{
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.header_LFLDLE{
+    background-image: url('../../public/images/LFLDLE_header.png');
+}
+.LFLDLE{
+    background-color: rgb(216, 174, 162);
+}
+
+.header_LECDLE{
+    background-image: url('../../public/images/LECDLE_header.png');
+}
+.LECDLE{
+    background-color: rgb(198, 183, 211);
+}
+
+.header_KCDLE{
+    background-image: url('../../public/images/KCDLE_header.png');
+}
+.KCDLE{
+    background-color: rgb(134, 166, 212);
+}
+
+html,
+body,
+#app,
+#app-wrapper {
+  height: 100%;
+  margin: 0;
+}
+
+.dle-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dle_body {
+  flex: 1;
+}
+
+
+.header_HOME img{
+    width: 100%;
+    /*background-image: url('../../public/images/HOMEDLE_Header.png');*/
+}
+.HOME{
+    background-image: url('../../public/images/HOMEDLE_Body.png');
+    background-repeat: repeat;
+}
+
+.infoNom{
+    display: flex;
+    justify-content: center;
+  	padding-top: 15px;
+}
+
+.divInfo
+{
+    margin-inline: 2px;
+    margin-top: 15px;
+    margin-bottom: 2px;
+    width: 102px;
+}
+
+#search
+{
+    margin-top: 5px;
+    position: absolute;
+    width: 30vw;
+    background-color: #243144;
+    z-index: 1;
+}
+
+#search div.containt:nth-child(2n)
+{
+    background-color: #2d4465;
+}
+
+#search div.containt:nth-child(2n+1)
+{
+    background-color: #3162a8;
+}
+
+#search div
+{
+    cursor: pointer;
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    margin-bottom: 4px;
+
+}
+
+#search div div{
+    margin-left: 30px;
+}
+
+#search img
+{
+    height: 50px;
+    width: 50px;
+}
+
+
+.theBody
+{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+footer{
+    text-align: start;
+    position: fixed;
+}
+
+.headerBody{
+    display: flex;
+}
+
+.x_logo{
+    width: 50px;
+    height: 50px;
+}
+
+footer a
+{
+    text-decoration: none;
+    color: black;
+}
+
+.divInfoJoueur
+{
+    max-height: 100px;
+    max-width: 100px;
+    width: 100px;
+    height: 100px;
+
+    border: 1px solid black;
+    box-shadow: inset 0 0 6px #000;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+
+    margin: 2px;
+
+    /*opacity: 0;*/
+    /*transform: translateY(-20px);*/
+    /*transition: opacity 1s, transform 1s;*/
+}
+
+.ageText, .rejointText, .nbTitreText
+{
+    color: white;
+    font-size: 200%;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+}
+
+.dle_body{
+    flex-grow: 1;
+    padding-top: 2vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+}
+
+.search-bar
+{
+
+    background-size: 100% 70px!important;
+    height: 68px;
+    width: 30vw;
+    box-shadow: none!important;
+    display: flex;
+    justify-content: center;
+}
+
+
+.search-bar-kcdle .sub{
+  margin-top : 3px;
+}
+
+.sub:focus
+{
+   outline: none;
+    border: none;
+}
+
+.sub
+{
+    margin-inline: 15px;
+    width: 100%;
+    background-color: transparent;
+    border-style: none;
+    text-align: center;
+  	margin-top: 7px;
+}
+
+#reponse
+{
+    display: flex;
+    flex-direction: column-reverse;
+    margin-block: 2px;
+}
+
+.paysImg
+{
+    width: 70%;
+    height: 50%;
+    box-shadow: 2px 2px 20px 0 black;
+}
+
+
+.roleImg
+{
+    width: 50%;
+    height: 50%;
+}
+
+.btn-game, .btn-home .logo, .x_logo
+{
+    cursor: pointer;
+}
+
+.btn-game:hover {
+    transform: scale(1.03); /* Échelle de 1.2 (20% d'agrandissement) au survol */
+}
+
+.btn-home .logo:hover, .x_logo:hover{
+    transform: scale(1.01);
+}
+
+main{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-top: 2vh;
+}
+
+.popup-gg{
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 1s, transform 1s;
+
+    margin-top: 25%;
+    width: 600px;
+    max-width: 600px;
+    margin-bottom: 35%;
+}
+
+.containt:hover{
+    scale : 1.03
+}
+
+.x_logo{
+    padding-top: 10px;
+}
+
+.btn-container{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+}
+
+.btn-description{
+    position: relative;
+    right: 7px
+}
+
+.btn-txt
+{
+    text-align: left;
+    position: absolute;
+}
+
+.logo:hover{
+	animation : none;
+}
+
+.logo{
+    /*animation: 1.5s infinite alternate logoAnimation;*/
+}
+
+@keyframes logoAnimation {
+
+    from{
+        scale: 0.9;
+    }
+    to{
+        scale: 1.05;
+    }
+
+}
+
+
+.fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  25% {
+    opacity: 0.25;
+    transform: translateY(-15px);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateY(-10px);
+  }
+  75% {
+    opacity: 0.75;
+    transform: translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+.no-animation{
+	animation : none;
+}
+
+.btn-container img{
+    width: 100%;
+    scale: 0.9;
+}
+
+.btn-home{
+  top: 50px;
+  left: 0;
+  right: 0;
+}
+
+.containt-name{
+    position: relative;
+    top: 32px;
+}
+
+.infoNom{
+	padding-top: 5vh;
+}
+
+header{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.btn-home{
+  padding-top: 30px;
+}
+
+body, body>div{
+    background-size : cover;
+}
+
+.btn-home .logo{
+    width: 50vw;
+}
+
+.sponso img{
+    height: auto;
+    width: 10vh;
+    cursor: pointer;
+    transition: all 0.5s ease;
+}
+
+.sponso img:hover{
+    scale: 1.15;
+}
+
+.sponso{
+    align-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column-reverse;
+    font-family: Arial, serif;
+
+}
+
+.annonce-match{
+    position: fixed;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    border-radius: 15px;
+    flex-direction: column;
+    text-align: center;
+    width: 13%;
+    max-width: 13%;
+    min-width: 10%;
+    right: 95.5%;
+    left: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: auto;
+    margin-right: auto;
+    padding-block: 10px;
+    transition: all 0.5s ease;
+    cursor: pointer;
+}
+
+.annonce-match img{
+    width: 100%;
+}
+
+.annonce-match:hover{
+    width: 20%;
+    max-width: 20%;
+}
+
+#app{
+    height: 100%;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.KCDLE_guess_true{
+    background-color: rgb(183, 255, 250);
+}
+.KCDLE_guess_false{
+    background-color: rgb(0, 59, 148);
+}
+
+.LECDLE_guess_true{
+    background-color: rgb(183, 255, 250);
+}
+.LECDLE_guess_false{
+    background-color: rgb(88 34 174);
+}
+
+.LFLDLE_guess_true{
+    background-color: rgb(183, 255, 250);
+}
+.LFLDLE_guess_false{
+    background-color: #F47857;
+}
+
+p{
+    margin: 0;
+}
+
+#admin_header{
+    display: flex;
+    flex-direction: column;
+    padding-block: 30px;
+    gap: 10px;
+    background-color: dimgray;
+}
+
+#admin_header>div{
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+#admin_header button {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    transition: all 0.3s ease-in-out;
+}
+
+#admin_body{
+    background-color: lightslategray;
+    flex-grow: 1;
+
+}
+
+#admin_body .clickable_elements{
+    display: grid;
+    grid-template-columns: repeat(5, 1fr); /* 5 éléments par ligne */
+    gap: 10px; /* Espacement entre les éléments */
+    margin-top: 20px;
+}
+
+#admin_body .clickable_elements div{
+    cursor: pointer;
+}
+
+#admin_body img{
+    width: 100px;
+    height: 100px;
+}
+
+.ageContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ageContainer .ageText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+
+@media screen and (max-width: 1280px) {
+
+
+    .infoJoueur
+    {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+    }
+
+    .divText{
+        font-size: 70%;
+    }
+
+    .credit img{
+        width: 20px;
+        padding-right: 3px;
+    }
+
+    .credit{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        position: fixed;
+        top: 97vh;
+        left: 0;
+        right: 0;
+        background-color: unset;
+        border: unset;
+        font-size: smaller;
+    }
+
+    .credit .containt-containt-credit{
+        display: flex;
+        flex-direction: row;
+    }
+
+    .containt-credit{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding-inline: 5px;
+    }
+
+    .containt-credit a{
+        display: flex;
+        justify-content: center;
+        text-decoration: none;
+        color: black;
+    }
+
+    .dle_body .theBody{
+        width: 100%;
+    }
+
+    .rejointText, .nbTitreText, .ageText{
+        scale : 60%;
+    }
+
+    .imgInfoJoueur
+    {
+        width: 70%;
+        height: 70%;
+    }
+
+    .teteImg
+    {
+        width: 100%;
+        height: 100%;
+    }
+
+    body, body>div{
+        overflow-x: hidden;
+    }
+
+    body{
+        height: 100vh;
+        margin: 0;
+    }
+
+    body>div{
+        display: flex;
+        flex-direction: column;
+        text-align: center;
+
+        /* Assurez-vous que le corps occupe tout l'écran pour que l'image de fond soit visible partout */
+        margin: 0;
+        padding: 0;
+        /*height: 100%;*/
+
+
+        /* Définir l'image de fond et ses propriétés */
+
+        background-size: cover; /* Ajuster la taille de l'image pour couvrir l'ensemble de l'arrière-plan */
+        background-repeat: no-repeat;
+        background-position: center;
+        /*background-position: center; /* Centrer l'image de fond */
+        background-attachment: fixed; /* Fixer l'image de fond, elle ne bougera pas lors du défilement */
+
+        color: white;
+
+        font-family: 'Syne', sans-serif;
+    }
+
+    .btn-container img{
+        width: 100%;
+    }
+
+    .infoNom{
+        display: flex;
+        justify-content: center;
+    }
+
+    .dle_body.KCDLE .infoNom{
+        width: 1%;
+        overflow-x: auto;
+        white-space: nowrap;
+        margin-left: -2.5vw;
+        padding-left: 95vw;
+    }
+
+    .dle_body .infoNom{
+        width: 80%;
+        overflow-x: auto;
+        white-space: nowrap;
+        margin-left: -8.5vw;
+        padding-left: 30vw;
+    }
+
+    .divInfo
+    {
+        margin-inline: 2px;
+        margin-top: 15px;
+        margin-bottom: 2px;
+        flex: 1;
+    }
+
+    .divText{
+        font-size: 70%;
+    }
+
+    #search
+    {
+        margin-top: 5px;
+        position: absolute;
+        width: 90vw;
+        background-color: #243144;
+        z-index: 1;
+    }
+
+    #search div
+    {
+        cursor: pointer;
+        display: flex;
+        justify-content: left;
+        align-items: center;
+        margin-bottom: 4px;
+
+    }
+
+    #search div div{
+        margin-left: 30px;
+    }
+
+    #search img
+    {
+        height: 50px;
+        width: 50px;
+    }
+
+
+    .theBody
+    {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    footer{
+        text-align: start;
+        position: fixed;
+    }
+
+    .headerBody{
+        display: flex;
+    }
+
+    .x_logo{
+        width: 50px;
+        height: 50px;
+    }
+
+    footer a
+    {
+        text-decoration: none;
+        color: black;
+    }
+
+    .nationalite, .age, .role, .equipe, .joueur, .jeu, .arrivee, .titres, .avantkc, .maintenant
+    {
+        display: flex;
+        flex-direction: column;
+        width: 20vw;
+        height: 100%;
+        align-items: center;
+    }
+
+    .divInfoJoueur
+    {
+        max-height: 80px;
+        max-width: 80px;
+
+        border: 1px solid black;
+        box-shadow: inset 0 0 6px #000;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+
+        margin-top: 4px;
+
+        opacity: 0;
+        transform: translateY(-20px);
+        transition: opacity 1s, transform 1s;
+        flex: 1;
+
+        width: 100%;
+        height: 100%;
+    }
+
+    .arrow{
+        scale: 0.05;
+    }
+
+    .ageText, .rejointText, .nbTitreText
+    {
+        color: white;
+        font-size: 200%;
+        font-weight: bold;
+        font-family: Arial, sans-serif;
+    }
+
+    .search-bar
+    {
+
+        background-size: 100% 70px!important;
+        height: 68px;
+        width: 90vw;
+        box-shadow: none!important;
+        display: flex;
+        justify-content: center;
+    }
+
+
+    .btn-home .logo{
+        width: 50vw;
+    }
+
+    .sub:focus
+    {
+        outline: none;
+        border: none;
+    }
+
+    .sub
+    {
+        margin-inline: 15px;
+        width: 100%;
+        background-color: transparent;
+        border-style: none;
+        text-align: center;
+        margin-top: 7px;
+    }
+    #reponse
+    {
+        display: flex;
+        flex-direction: column-reverse;
+        margin-block: 2px;
+        width: 60%;
+    }
+
+    .paysImg
+    {
+        width: 70%;
+        height: 50%;
+        box-shadow: 2px 2px 20px 0 black;
+    }
+
+
+    .roleImg
+    {
+        width: 50%;
+        height: 50%;
+    }
+
+    main{
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+
+    }
+
+    .popup-gg{
+        opacity: 0;
+        transform: translateY(-20px);
+        transition: opacity 1s, transform 1s;
+
+        width: 90vw;
+        max-width: 600px;
+        margin-top: 25%;
+        margin-bottom: 100%;
+    }
+
+    .containt:hover{
+        scale : 1.03
+    }
+
+    .x_logo{
+        padding-top: 10px;
+    }
+
+    .btn-description{
+        position: relative;
+        right: 7px
+    }
+
+    .btn-txt
+    {
+        text-align: left;
+        position: absolute;
+    }
+
+    .logo{
+        /*animation: 1.5s infinite alternate logoAnimation;*/
+    }
+
+    .fade-in {
+      animation: fade-in 0.5s ease-out forwards;
+      opacity: 0;
+    }
+
+    .no-animation{
+        animation : none;
+    }
+
+    header{
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+
+    .containt-name{
+        position: relative;
+        top: 32px;
+    }
+
+    .btn-home{
+        height: 10vh;
+        padding-top: 30px;
+    }
+
+    .sponso img{
+        height: 15vw;
+        width: 15vw;
+    }
+
+    .sponso{
+        align-self: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column-reverse;
+        font-family: Arial, serif;
+    }
+
+    .annonce-match{
+        width: 30vw;
+        align-self: center;
+    }
+
+    .annonce-match img{
+        width: 100%;
+        height: auto;
+    }
+
+}

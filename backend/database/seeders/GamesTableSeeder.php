@@ -15,7 +15,7 @@ class GamesTableSeeder extends Seeder
     {
         $now = now();
 
-        DB::table('games')->insert([
+        DB::table('games')->insertOrIgnore([
             [
                 'code'       => 'CEO',
                 'name'       => 'CEO',

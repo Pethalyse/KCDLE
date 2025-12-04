@@ -54,6 +54,7 @@ class PlayerResource extends Resource
             Forms\Components\DatePicker::make('birthdate')
                 ->label('Date de naissance')
                 ->displayFormat('d/m/Y')
+                ->required()
                 ->closeOnDateSelection(),
 
             FileUpload::make('avatar')

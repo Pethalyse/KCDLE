@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import api from './api';
+import FooterKcdle from '@/components/FooterKcdle.vue'
 </script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <div id="app-wrapper">
+    <RouterView />
+    <FooterKcdle />
+  </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+</style>

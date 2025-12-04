@@ -28,6 +28,10 @@ class LoldlePlayer extends Model
         'active' => 'boolean',
     ];
 
+    protected $appends = [
+        'lol_role_url'
+    ];
+
     public function league() : BelongsTo
     {
         return $this->belongsTo(League::class);
@@ -50,6 +54,15 @@ class LoldlePlayer extends Model
             ->where('player_id', $this->getAttribute("id"))
             ->whereDate('selected_for_date', '>=', today())
             ->exists();
+    }
+
+    public function getLolRoleUrlAttribute(): ?string
+    {
+        $path = "storage/roles/{$this->getAttribute('lol_role')}.png";
+        if (! file_exists(public_path($path))) {
+            return null;
+        }
+        return asset($path);
     }
 
     public function cannotDeactivate(): bool

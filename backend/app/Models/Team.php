@@ -35,8 +35,6 @@ class Team extends Model
         return $this->belongsTo(Country::class, 'country_code', 'code');
     }
 
-    // App\Models\Team.php
-
     public function getLogoUrlAttribute(): ?string
     {
         $path = "storage/teams/{$this->getAttribute('slug')}.png";

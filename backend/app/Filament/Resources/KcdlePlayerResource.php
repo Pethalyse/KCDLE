@@ -37,7 +37,7 @@ class KcdlePlayerResource extends Resource
                                     if ($operation === 'edit') {
                                         return $query;
                                     }
-                                    $alreadyUsed = KcdlePlayer::all('player_id');
+                                    $alreadyUsed = KcdlePlayer::query()->pluck('player_id')->all();
                                     return $query->whereNotIn('id', $alreadyUsed);
                                 })
                             ->searchable()
