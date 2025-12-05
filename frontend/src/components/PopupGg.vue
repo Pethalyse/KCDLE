@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import SimpleImg from '@/components/SimpleImg.vue'
+import GameButton from "@/components/GameButton.vue";
+
+interface dle {
+  dle : string,
+  active : boolean
+}
 
 const props = defineProps<{
   dleCode: string
@@ -42,6 +48,26 @@ const shareBody = computed(() => {
 const fullText = computed(
   () => headerText.value + shareBody.value + hashtagText,
 )
+
+function getOthersDle() : dle[] {
+  if(props.dleCode === 'KCDLE')
+    return [
+      { dle: 'LECDLE', active: true },
+      { dle: 'LFLDLE', active: true },
+    ]
+  else if (props.dleCode === 'LECDLE')
+    return [
+      { dle: 'KCDLE', active: true },
+      { dle: 'LFLDLE', active: true },
+    ]
+  else if (props.dleCode === 'LFLDLE')
+    return [
+      { dle: 'KCDLE', active: true },
+      { dle: 'LECDLE', active: true },
+    ]
+  else
+    return []
+}
 
 function shareOnX() {
   const url =
@@ -123,11 +149,28 @@ onMounted(() => {
         />
       </button>
     </div>
+
+    <div class="gg-other-dles">
+      <GameButton
+        v-for="val in getOthersDle()"
+        :key="val.dle"
+        :data="val"
+      ></GameButton>
+    </div>
   </div>
 </template>
 
 <style>
-.popup-gg {
+.gg-other-dles {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  flex-direction: column;
+}
+
+.gg-other-dles .btn-game img{
+  width: 100%;
 }
 
 .historique-visuel {

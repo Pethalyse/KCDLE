@@ -234,7 +234,7 @@ function textClass(col: InfoCol): string | null {
         <div :class="info.className">
           <div
             v-for="(guess, guessIndex) in guesses"
-            :key="(guess.player?.id ?? '') + '-' + info.className"
+            :key="(guess.player?.id ?? '') + '-' + info.className + '-' + props.game"
             :class="[
               'divInfoJoueur',
               verificationClass(guess.comparison?.fields?.[info.cmpField]),
