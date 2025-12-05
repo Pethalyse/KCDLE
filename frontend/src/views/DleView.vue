@@ -7,6 +7,7 @@ import SearchBar from '@/components/SearchBar.vue'
 import PlayerTab from '@/components/PlayerTab.vue'
 import Credit from '@/components/Credit.vue'
 import PopupGg from '@/components/PopupGg.vue'
+import {trackEvent} from "@/analytics.ts";
 
 type GameCode = 'kcdle' | 'lecdle' | 'lfldle'
 
@@ -151,6 +152,11 @@ async function makeGuess(joueurWrapper: any) {
   if (data.correct === true) {
     try {
       localStorage.setItem(winKey.value, 'true')
+      trackEvent('dle_win', {
+        game: dleCode.value,
+        tries: guess.stats.solvers_count,
+        date: new Date(),
+      })
     } catch (e) {
       console.error('Erreur lors de la sauvegarde du flag de victoire :', e)
     }

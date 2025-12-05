@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import SimpleImg from '@/components/SimpleImg.vue'
 import GameButton from "@/components/GameButton.vue";
+import {trackEvent} from "@/analytics.ts";
 
 interface dle {
   dle : string,
@@ -92,6 +93,13 @@ onMounted(() => {
     }, 500)
   }
 })
+
+function handleGameButton(targetGame: string) {
+  trackEvent('dle_switch_from_gg_popup', {
+    from: props.dleCode,
+    to: targetGame,
+  })
+}
 </script>
 
 <template>
@@ -155,6 +163,7 @@ onMounted(() => {
         v-for="val in getOthersDle()"
         :key="val.dle"
         :data="val"
+        @click="handleGameButton(val.dle)"
       ></GameButton>
     </div>
   </div>
