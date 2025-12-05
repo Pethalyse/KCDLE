@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { loadPlausible } from '@/analytics'
+import { loadAds } from '@/ads'
 
 interface Consent {
   essential: true
@@ -35,6 +36,10 @@ function initIfNeeded() {
     if (consent.analytics) {
       loadPlausible()
     }
+
+    if (consent.ads) {
+      loadAds()
+    }
   } catch (e) {
     console.error('Erreur de lecture du consentement cookies :', e)
     visible.value = true
@@ -53,6 +58,10 @@ function saveConsent(partial: { analytics: boolean; ads: boolean }) {
 
   if (consent.analytics) {
     loadPlausible()
+  }
+
+  if (consent.ads) {
+    loadAds()
   }
 
   visible.value = false
