@@ -16,7 +16,6 @@ const headerText = computed(
 const hashtagText = '#KCORP'
 
 const resultLines = computed(() => {
-  console.log(props.guesses)
   return props.guesses.map(g => {
     const comparison = g.comparison.fields || {}
     const keys = Object.keys(comparison)
