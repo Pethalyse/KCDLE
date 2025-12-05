@@ -3,10 +3,11 @@ set -e
 
 cd /var/www/html
 
-mkdir -p storage/framework/sessions
-mkdir -p storage/framework/views
-mkdir -p storage/framework/cache
-mkdir -p bootstrap/cache
+mkdir -p storage/logs \
+         storage/framework/sessions \
+         storage/framework/views \
+         storage/framework/cache \
+         bootstrap/cache
 
 chown -R www-data:www-data storage bootstrap/cache
 chmod -R ug+rwx storage bootstrap/cache
