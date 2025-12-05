@@ -4,6 +4,7 @@ import DleView from '@/views/DleView.vue'
 import CreditsView from "@/views/CreditsView.vue";
 import PrivacyPolicyView from "@/views/PrivacyPolicyView.vue";
 import LegalView from "@/views/LegalView.vue";
+import NotFoundView from "@/views/NotFoundView.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -33,6 +34,11 @@ const routes: RouteRecordRaw[] = [
   { path: '/credits', name: 'credits', component: CreditsView },
   { path: '/confidentialite', name: 'privacy', component: PrivacyPolicyView },
   { path: '/mentions-legales', name: 'legal', component: LegalView },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: NotFoundView,
+  },
 ]
 
 const router = createRouter({
