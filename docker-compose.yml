@@ -26,7 +26,7 @@ services:
     working_dir: /var/www/html
     command: sh -c "php artisan schedule:work"
     volumes:
-      - .:/var/www/html
+      - ./backend:/var/www/html
     depends_on:
       - app
 
