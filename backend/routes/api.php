@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\GameGuessController;
 use App\Http\Controllers\Api\GamePlayerController;
 use App\Http\Controllers\Api\LegalController;
 use App\Http\Controllers\Api\PrivacyPolicyController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('daily')->group(function () {
@@ -21,3 +22,16 @@ Route::post('/games/{game}/guess', [GameGuessController::class, 'store'])
 Route::get('/credits', [CreditController::class, 'index']);
 Route::get('/privacy-policy', [PrivacyPolicyController::class, 'show']);
 Route::get('/legal', [LegalController::class, 'show']);
+Route::get('/health', function () {
+    try {
+        DB::connection()->getPdo();
+        $db = true;
+    } catch (Throwable) {
+        $db = false;
+    }
+
+    return response()->json([
+        'app' => true,
+        'db' => $db,
+    ], $db ? 200 : 500);
+});
