@@ -711,7 +711,7 @@ p{
     }
 
     .credit{
-        display: flex;
+        display: none;
         justify-content: center;
         align-items: center;
         text-align: center;
@@ -1080,6 +1080,10 @@ p{
     .annonce-match img{
         width: 100%;
         height: auto;
+    }
+
+    .footer-content, .footer-content .footer-link{
+      font-size: xx-small;
     }
 
 }
