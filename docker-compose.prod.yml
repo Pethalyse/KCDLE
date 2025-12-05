@@ -36,7 +36,7 @@ services:
     image: nginx:1.27
     container_name: kcdle_nginx
     ports:
-      - "80:80"
+      - "80"
     volumes:
       - app_code:/var/www/html:ro
       - ./docker/nginx/default.prod.conf:/etc/nginx/conf.d/default.conf:ro
@@ -55,6 +55,22 @@ services:
       - db_data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  proxy:
+    image: caddy:2
+    container_name: kcdle_proxy
+    depends_on:
+      - nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
 volumes:
   db_data:
   app_code:
+  caddy_data:
+  caddy_config:
