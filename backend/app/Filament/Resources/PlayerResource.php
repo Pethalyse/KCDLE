@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\PersonResource\Pages;
+use App\Filament\Resources\PlayerResource\Pages;
 use App\Models\Player;
 use Exception;
 use Filament\Forms;

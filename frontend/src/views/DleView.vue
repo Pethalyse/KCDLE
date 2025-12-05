@@ -139,7 +139,7 @@ async function makeGuess(joueurWrapper: any) {
     player_id: joueurWrapper.id,
     guesses: currentGuessCount,
   })
-  
+
   const guess = {
     correct: data.correct,
     comparison: data.comparison,

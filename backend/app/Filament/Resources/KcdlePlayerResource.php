@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\KcProfileResource\Pages;
+use App\Filament\Resources\KcdlePlayerResource\Pages;
 use App\Models\KcdlePlayer;
 use Exception;
 use Filament\Forms;

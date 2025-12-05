@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\LeagueMembershipResource\Pages;
+namespace App\Filament\Resources\LoldlePlayerResource\Pages;
 
 use App\Filament\Resources\LoldlePlayerResource;
 use Filament\Actions;

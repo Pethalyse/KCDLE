@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\LeagueMembershipResource\Pages;
+use App\Filament\Resources\LoldlePlayerResource\Pages;
 use App\Models\LoldlePlayer;
 use Exception;
 use Filament\Forms;

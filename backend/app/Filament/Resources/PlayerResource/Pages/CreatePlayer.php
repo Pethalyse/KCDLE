@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\PersonResource\Pages;
+namespace App\Filament\Resources\PlayerResource\Pages;
 
 use App\Filament\Resources\BaseCreateRecord;
 use App\Filament\Resources\PlayerResource;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\KcProfileResource\Pages;
+namespace App\Filament\Resources\KcdlePlayerResource\Pages;
 
 use App\Filament\Resources\BaseCreateRecord;
 use App\Filament\Resources\KcdlePlayerResource;
