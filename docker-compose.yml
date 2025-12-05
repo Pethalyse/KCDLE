@@ -1,9 +1,14 @@
 services:
   app:
     build:
-      context: ./backend
-      dockerfile: ../docker/php/Dockerfile
+      context: .
+      dockerfile: docker/php/Dockerfile
     container_name: kcdle_app
+    env_file:
+      - backend/.env
+    environment:
+      RUN_MIGRATIONS: "true"
+    working_dir: /var/www/html
     volumes:
       - ./backend:/var/www/html
     depends_on:
@@ -11,14 +16,15 @@ services:
 
   scheduler:
     build:
-      context: ./backend
-      dockerfile: ../docker/php/Dockerfile
+      context: .
+      dockerfile: docker/php/Dockerfile
     container_name: kcdle_scheduler
-    command: >
-      sh -c "while true; do
-        php backend/artisan schedule:run;
-        sleep 60;
-      done"
+    env_file:
+      - backend/.env
+    environment:
+      RUN_MIGRATIONS: "false"
+    working_dir: /var/www/html
+    command: sh -c "php artisan schedule:work"
     volumes:
       - .:/var/www/html
     depends_on:

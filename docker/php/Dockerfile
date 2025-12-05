@@ -4,9 +4,15 @@ RUN apt-get update && apt-get install -y \
     git \
     unzip \
     libpq-dev \
+    libicu-dev \
+    zlib1g-dev \
+    libzip-dev \
+    pkg-config \
     && docker-php-ext-install pdo pdo_pgsql \
     && docker-php-ext-configure intl \
     && docker-php-ext-install intl \
+    && docker-php-ext-configure zip \
+    && docker-php-ext-install zip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -15,7 +21,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 COPY backend/composer.json backend/composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
 
 COPY backend ./
 
