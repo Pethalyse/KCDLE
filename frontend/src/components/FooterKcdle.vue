@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import {useCookieConsent} from "@/composables/useCookieConsent.ts";
 
 const router = useRouter()
+const { openCookieManager } = useCookieConsent()
 
 function goCredits() {
   router.push({ name: 'credits' })
@@ -14,6 +16,7 @@ function goPrivacy() {
 function goLegal() {
   router.push({ name: 'legal' })
 }
+
 </script>
 
 <template>
@@ -42,6 +45,13 @@ function goLegal() {
         @click="goLegal"
       >
         Mentions légales
+      </button>
+
+      <button
+        class="footer-link"
+        @click="openCookieManager"
+      >
+        Paramètres des cookies
       </button>
     </div>
   </footer>
