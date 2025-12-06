@@ -24,6 +24,10 @@ return new class extends Migration
             $table->unique(['game', 'selected_for_date']);
         });
 
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
         DB::unprepared("
             CREATE OR REPLACE FUNCTION check_daily_game_player()
             RETURNS trigger AS $$
@@ -41,7 +45,6 @@ return new class extends Migration
                     END IF;
                 END IF;
 
-                -- LFLDLE : joueur doit être dans loldle_players avec league LFL ET actif
                 IF NEW.game = 'lfldle' THEN
                     IF NOT EXISTS (
                         SELECT 1
@@ -56,7 +59,6 @@ return new class extends Migration
                     END IF;
                 END IF;
 
-                -- LECDLE : joueur doit être dans loldle_players avec league LEC ET actif
                 IF NEW.game = 'lecdle' THEN
                     IF NOT EXISTS (
                         SELECT 1
@@ -86,10 +88,13 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('daily_games');
-        DB::unprepared("
+        if (DB::getDriverName() === 'pgsql') {
+            DB::unprepared("
             DROP TRIGGER IF EXISTS trg_check_daily_game_player ON daily_games;
             DROP FUNCTION IF EXISTS check_daily_game_player();
         ");
+        }
+
+        Schema::dropIfExists('daily_games');
     }
 };

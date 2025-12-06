@@ -91,7 +91,7 @@ class KcdlePlayerResource extends Resource
                             ->label('Année du premier match KC')
                             ->numeric()
                             ->required()
-                            ->minValue(2020)
+                            ->minValue(2019)
                             ->maxValue(now()->year + 1)
                             ->helperText('Uniquement l’année (ex : 2021).'),
 

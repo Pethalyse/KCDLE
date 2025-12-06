@@ -9,6 +9,12 @@ class Country extends Model
 {
     use HasFactory;
 
+    protected $table = 'countries';
+    protected $primaryKey = 'code';
+    public $incrementing = false;
+    protected $keyType = 'string';
+    public $timestamps = true;
+
     protected $fillable = [
         'code',
         'name',

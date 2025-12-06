@@ -7,8 +7,9 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     zlib1g-dev \
     libzip-dev \
+    libsqlite3-dev \
     pkg-config \
-    && docker-php-ext-install pdo pdo_pgsql \
+    && docker-php-ext-install pdo pdo_pgsql pdo_sqlite \
     && docker-php-ext-configure intl \
     && docker-php-ext-install intl \
     && docker-php-ext-configure zip \

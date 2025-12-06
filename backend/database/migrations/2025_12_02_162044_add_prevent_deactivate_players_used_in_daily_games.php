@@ -7,12 +7,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
         DB::unprepared("
-            -- Empêcher de désactiver un kcdle_player utilisé dans daily_games (game = 'kcdle')
             CREATE OR REPLACE FUNCTION prevent_deactivate_kcdle_player()
             RETURNS trigger AS $$
             BEGIN
-                -- On ne check que si on passe de true à false
                 IF OLD.active = true AND NEW.active = false THEN
                     IF EXISTS (
                         SELECT 1
@@ -38,7 +40,6 @@ return new class extends Migration
         ");
 
         DB::unprepared("
-            -- Empêcher de désactiver un loldle_player utilisé dans daily_games (LFLDLE / LECDLE)
             CREATE OR REPLACE FUNCTION prevent_deactivate_loldle_player()
             RETURNS trigger AS $$
             BEGIN

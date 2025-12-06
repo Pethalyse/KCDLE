@@ -228,9 +228,9 @@ class GameGuessController extends Controller
      * @param string|DateTimeInterface|null $guess
      * @return int|null
      *
-     * Compare des dates (birthday) comme des valeurs numériques (timestamp).
-     * -1 : secret plus tard (plus jeune)
-     *  0 : secret plus tôt (plus âgé)
+     * Compare l'age selon les dates données.
+     * -1 : secret est plus jeune
+     *  0 : secret est plus âgé
      *  1 : même date
      */
     protected function cmpDate(null|string|DateTimeInterface $secret, null|string|DateTimeInterface $guess): ?int
@@ -239,14 +239,14 @@ class GameGuessController extends Controller
             return null;
         }
 
-        $s = $secret instanceof Carbon ? $secret : Carbon::parse($secret);
-        $g = $guess instanceof Carbon ? $guess : Carbon::parse($guess);
+        $s = $secret instanceof Carbon ? $secret->age : Carbon::parse($secret)->age;
+        $g = $guess instanceof Carbon ? $guess->age : Carbon::parse($guess)->age;
 
-        if ($s->equalTo($g)) {
+        if ($s === $g) {
             return 1;
         }
 
-        return $s->lessThan($g) ? 0 : -1;
+        return $s < $g ? -1 : 0;
     }
 
 }
