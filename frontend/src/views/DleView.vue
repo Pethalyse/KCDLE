@@ -8,6 +8,7 @@ import PlayerTab from '@/components/PlayerTab.vue'
 import Credit from '@/components/Credit.vue'
 import PopupGg from '@/components/PopupGg.vue'
 import {trackEvent} from "@/analytics.ts";
+import AdSlot from "@/components/AdSlot.vue";
 
 type GameCode = 'kcdle' | 'lecdle' | 'lfldle'
 
@@ -221,6 +222,10 @@ const guessedIds = computed<number[]>(() =>
           :guesses="guesses"
         />
 
+        <section class="dle-ad-under-grid">
+          <AdSlot id="dle-under-grid-1" kind="inline" />
+        </section>
+
         <PopupGg
           v-if="hasWon"
           :dle-code="dleCode"
@@ -232,4 +237,23 @@ const guessedIds = computed<number[]>(() =>
     <Credit />
   </div>
 </template>
+
+<style scoped>
+.dle-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dle_body {
+  flex: 1;
+  width: 100%;
+  margin: 0 auto;
+  padding: 12px 8px 24px;
+}
+
+.dle-ad-under-grid {
+  margin: 12px 0 8px;
+}
+</style>
 

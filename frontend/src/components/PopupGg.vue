@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import SimpleImg from '@/components/SimpleImg.vue'
 import GameButton from "@/components/GameButton.vue";
 import {trackEvent} from "@/analytics.ts";
+import AdSlot from "@/components/AdSlot.vue";
 
 interface dle {
   dle : string,
@@ -166,6 +167,10 @@ function handleGameButton(targetGame: string) {
         @click="handleGameButton(val.dle)"
       ></GameButton>
     </div>
+
+    <div class="popup-ad">
+      <AdSlot id="gg-popup-bottom" kind="inline" />
+    </div>
   </div>
 </template>
 
@@ -200,5 +205,9 @@ function handleGameButton(targetGame: string) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.popup-ad {
+  margin-top: 4px;
 }
 </style>

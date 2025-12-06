@@ -2,6 +2,7 @@
 import SimpleImg from '@/components/SimpleImg.vue'
 import GameButton from '@/components/GameButton.vue'
 import Credit from '@/components/Credit.vue'
+import AdSlot from "@/components/AdSlot.vue";
 
 const data = [
   { dle: 'KCDLE', active: true },
@@ -24,8 +25,9 @@ const data = [
           :data="val"
         />
       </div>
-    </div>
 
+      <AdSlot id="dle-bottom-1" kind="banner" />
+    </div>
     <Credit />
   </div>
 </template>
