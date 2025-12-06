@@ -18,6 +18,12 @@ const {
   adsChecked,
 } = useCookieConsent()
 
+function adsExists() : boolean {
+  if(REAL_ADS_ENABLED)
+    return publisherId || adSenseId;
+  return true;
+}
+
 onMounted(() => {
   if (REAL_ADS_ENABLED) {
     renderSlot(slotId.value)
@@ -32,7 +38,7 @@ watch(slotId, (newVal) => {
 </script>
 
 <template>
-  <div v-if="adsChecked"
+  <div v-if="adsChecked && adsExists()"
     class="ad-slot"
     :data-kind="kind || 'inline'"
   >
