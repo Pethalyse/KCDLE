@@ -1,8 +1,6 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile.prod
+    image: ghcr.io/pethalyse/kcdle-app:latest
     container_name: kcdle_app
     env_file:
       - backend/.env
@@ -16,9 +14,7 @@ services:
     restart: unless-stopped
 
   scheduler:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile.prod
+    image: ghcr.io/pethalyse/kcdle-app:latest
     container_name: kcdle_scheduler
     env_file:
       - backend/.env
