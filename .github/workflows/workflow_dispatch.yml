@@ -1,0 +1,26 @@
+name: Rollback deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Tag de l'image à déployer (ex: commit SHA)"
+        required: true
+        default: "latest"
+
+jobs:
+  rollback:
+    name: Rollback deploy on VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy previous version over SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd ${{ secrets.VPS_PROJECT_PATH }}
+            IMAGE_TAG=${{ github.event.inputs.image_tag }} docker compose -f docker-compose.prod.yml pull app
+            IMAGE_TAG=${{ github.event.inputs.image_tag }} docker compose -f docker-compose.prod.yml up -d app

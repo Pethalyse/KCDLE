@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/pethalyse/kcdle-app:latest
+    image: ghcr.io/pethalyse/kcdle-app:${IMAGE_TAG:-latest}
     container_name: kcdle_app
     env_file:
       - backend/.env
@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
 
   scheduler:
-    image: ghcr.io/pethalyse/kcdle-app:latest
+    image: ghcr.io/pethalyse/kcdle-app:${IMAGE_TAG:-latest}
     container_name: kcdle_scheduler
     env_file:
       - backend/.env
