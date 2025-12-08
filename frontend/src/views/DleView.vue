@@ -80,12 +80,12 @@ function restoreGuessesFromStorage() {
 }
 
 async function loadDaily() {
-  const { data } = await api.get(`/daily/${props.game}`)
+  const { data } = await api.get(`/games/${props.game}/daily`)
   daily.value = data
 }
 
 async function loadPlayers() {
-  const { data } = await api.get(`/players/${props.game}`, {
+  const { data } = await api.get(`/games/${props.game}/players`, {
     params: { active: 1 },
   })
   joueurs.value = data.players ?? []
