@@ -35,7 +35,7 @@ class GamePlayerApiTest extends TestCase
 
     public function test_index_returns_404_for_unknown_game(): void
     {
-        $response = $this->getJson('/api/players/unknown');
+        $response = $this->getJson('/api/unknown/players');
         $response->assertStatus(404);
     }
 
@@ -79,7 +79,7 @@ class GamePlayerApiTest extends TestCase
             'active'                    => false,
         ]);
 
-        $response = $this->getJson('/api/players/kcdle');
+        $response = $this->getJson('/api/kcdle/players');
 
         $response->assertOk()
             ->assertJson([
@@ -112,7 +112,7 @@ class GamePlayerApiTest extends TestCase
             'active'                    => false,
         ]);
 
-        $response = $this->getJson('/api/players/kcdle?active=0');
+        $response = $this->getJson('/api/kcdle/players?active=0');
 
         $response->assertOk();
         $this->assertCount(1, $response->json('players'));
@@ -145,7 +145,7 @@ class GamePlayerApiTest extends TestCase
             'active'    => true,
         ]);
 
-        $response = $this->getJson('/api/players/lfldle');
+        $response = $this->getJson('/api/lfldle/players');
 
         $response->assertOk();
         $this->assertCount(1, $response->json('players'));
@@ -179,7 +179,7 @@ class GamePlayerApiTest extends TestCase
             'active'    => true,
         ]);
 
-        $response = $this->getJson('/api/players/lecdle');
+        $response = $this->getJson('/api/lecdle/players');
 
         $response->assertOk();
         $this->assertCount(1, $response->json('players'));

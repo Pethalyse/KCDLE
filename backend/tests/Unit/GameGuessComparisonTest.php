@@ -3,7 +3,8 @@
 namespace Tests\Unit;
 
 use App\Http\Controllers\Api\GameGuessController;
-use Carbon\Carbon;
+use App\Services\AchievementService;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use ReflectionException;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -12,10 +13,13 @@ class GameGuessComparisonTest extends TestCase
 {
     protected GameGuessController $controller;
 
+    /**
+     * @throws BindingResolutionException
+     */
     protected function setUp(): void
     {
         parent::setUp();
-        $this->controller = new GameGuessController();
+        $this->controller = new GameGuessController($this->app->make(AchievementService::class));
     }
 
     /**

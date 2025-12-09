@@ -43,14 +43,14 @@ class DailyGameApiTest extends TestCase
 
     public function test_show_returns_404_for_unknown_game(): void
     {
-        $response = $this->getJson('/api/daily/unknown');
+        $response = $this->getJson('/api/unknown/daily');
 
         $response->assertStatus(404);
     }
 
     public function test_show_returns_404_when_no_daily_for_today(): void
     {
-        $response = $this->getJson('/api/daily/kcdle');
+        $response = $this->getJson('/api/kcdle/daily');
 
         $response->assertStatus(404)
             ->assertJson([
