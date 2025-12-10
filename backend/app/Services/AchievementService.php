@@ -164,7 +164,7 @@ class AchievementService
         if ($key === 'first_win_any') {
             return UserGameResult::where('user_id', $userId)
                     ->whereNotNull('won_at')
-                    ->count() === 1;
+                    ->count() >= 1;
         }
 
         if ($key === 'first_win_game_3') {
@@ -187,6 +187,7 @@ class AchievementService
 
         if ($key === 'ten_wins_game') {
             return UserGameResult::where('user_id', $userId)
+                    ->where('game', $game)
                     ->whereNotNull('won_at')
                     ->count() >= 10;
         }
@@ -267,7 +268,7 @@ class AchievementService
 
             $endOfDay = $date->copy()->endOfDay();
 
-            return $endOfDay->diffInSeconds($wonAt, false) <= 60;
+            return $wonAt->diffInSeconds($endOfDay) <= 60;
         }
 
         if ($key === 'back_to_back_magic') {
@@ -302,7 +303,7 @@ class AchievementService
             return $prev && (int) $prev->guesses_count === 1;
         }
 
-        if ($key === '5_times_under_3_guesses') {
+        if ($key === '5_times_under_2_guesses') {
             $wins = UserGameResult::where('user_id', $userId)
                 ->where('game', $game)
                 ->whereNotNull('won_at')
