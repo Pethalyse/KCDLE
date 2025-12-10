@@ -135,7 +135,7 @@ class AchievementService
             ],
             '5_times_under_2_guesses' => [
                 'name' => 'Smurf queue',
-                'description' => 'Enchaîner 5 victoires consécutives en 2 tentatives ou moins.',
+                'description' => 'Enchaîner 5 victoires consécutives en 2 tentatives ou moins pour un même dle.',
                 'game' => null,
             ],
             'mois_de_folie' => [
