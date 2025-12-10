@@ -54,7 +54,8 @@ function clearLocalStorageDaily(): boolean {
   )
 
   if (lastClearLocal < todayLocal) {
-    localStorage.clear()
+    localStorage.removeItem(storageKey.value)
+    localStorage.removeItem(winKey.value)
     localStorage.setItem(lastClearKey, todayLocal.toString())
     return true
   }

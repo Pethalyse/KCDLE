@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '@/api'
+import {computed} from "vue";
 
 export interface AuthUser {
   id: number
@@ -15,6 +16,12 @@ interface AuthState {
 
 const TOKEN_STORAGE_KEY = 'kcdle_auth_token'
 const USER_STORAGE_KEY = 'kcdle_auth_user'
+
+const dleCode = [
+  'KCDLE',
+  'LECDLE',
+  'LFLDLE',
+]
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
@@ -43,6 +50,10 @@ export const useAuthStore = defineStore('auth', {
       try {
         const { data } = await api.post('/auth/login', payload)
         this.setAuth(data.user, data.token)
+        for (const string of dleCode) {
+          localStorage.removeItem(string)
+          localStorage.removeItem(string + '_win')
+        }
       } finally {
         this.loading = false
       }
