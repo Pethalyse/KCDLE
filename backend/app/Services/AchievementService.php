@@ -339,6 +339,10 @@ class AchievementService
                 return false;
             }
 
+            if($days->count() < $start->diffInDays($end)) {
+                return false;
+            }
+
             $wins = UserGameResult::where('user_id', $userId)
                 ->whereIn('daily_game_id', $days)
                 ->whereNotNull('won_at')
