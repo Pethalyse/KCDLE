@@ -61,8 +61,8 @@ class AchievementServiceTest extends TestCase
     protected function createKcdlePlayer(Game $game, Player $player): KcdlePlayer
     {
         return KcdlePlayer::firstOrCreate([
-            'player_id' => $player->id,
-            'game_id' => $game->id,
+            'player_id' => $player->getAttribute('id'),
+            'game_id' => $game->getAttribute('id'),
             'current_team_id' => null,
             'previous_team_before_kc_id' => null,
             'first_official_year' => 2020,
@@ -88,8 +88,8 @@ class AchievementServiceTest extends TestCase
             ? DailyGame::findOrFail($dailyGameId)
             : $this->createDailyGame($game, $date);
         return UserGameResult::create([
-            'user_id' => $user->id,
-            'daily_game_id' => $daily->id,
+            'user_id' => $user->getAttribute('id'),
+            'daily_game_id' => $daily->getAttribute('id'),
             'game' => $game,
             'guesses_count' => $guessesCount,
             'won_at' => ($wonAt ?? $date->copy()->setTime(12, 0, 0)),
@@ -279,8 +279,8 @@ class AchievementServiceTest extends TestCase
         $date = Carbon::create(2025, 4, 1);
         $daily = $this->createDailyGame('kcdle', $date, $players[0]->id);
         $result = UserGameResult::create([
-            'user_id' => $user->id,
-            'daily_game_id' => $daily->id,
+            'user_id' => $user->getAttribute('id'),
+            'daily_game_id' => $daily->getAttribute('id'),
             'game' => 'kcdle',
             'guesses_count' => 4,
             'won_at' => $date->copy()->setTime(13, 0, 0),
@@ -366,8 +366,8 @@ class AchievementServiceTest extends TestCase
         $daily = $this->createDailyGame('kcdle', $date);
         $wonAt = $date->copy()->endOfDay()->subSeconds(30);
         $result = UserGameResult::create([
-            'user_id' => $user->id,
-            'daily_game_id' => $daily->id,
+            'user_id' => $user->getAttribute('id'),
+            'daily_game_id' => $daily->getAttribute('id'),
             'game' => 'kcdle',
             'guesses_count' => 3,
             'won_at' => $wonAt,
@@ -383,8 +383,8 @@ class AchievementServiceTest extends TestCase
         $daily = $this->createDailyGame('kcdle', $date);
         $wonAt = $date->copy()->endOfDay()->subSeconds(61);
         $result = UserGameResult::create([
-            'user_id' => $user->id,
-            'daily_game_id' => $daily->id,
+            'user_id' => $user->getAttribute('id'),
+            'daily_game_id' => $daily->getAttribute('id'),
             'game' => 'kcdle',
             'guesses_count' => 3,
             'won_at' => $wonAt,
@@ -400,8 +400,8 @@ class AchievementServiceTest extends TestCase
         $day2 = $day1->copy()->addDay();
         $daily1 = $this->createDailyGame('kcdle', $day1);
         $result1 = UserGameResult::create([
-            'user_id' => $user->id,
-            'daily_game_id' => $daily1->id,
+            'user_id' => $user->getAttribute('id'),
+            'daily_game_id' => $daily1->getAttribute('id'),
             'game' => 'kcdle',
             'guesses_count' => 1,
             'won_at' => $day1->copy()->setTime(12, 0, 0),
@@ -409,8 +409,8 @@ class AchievementServiceTest extends TestCase
         $this->service->handleGameWin($user, $result1);
         $daily2 = $this->createDailyGame('kcdle', $day2);
         $result2 = UserGameResult::create([
-            'user_id' => $user->id,
-            'daily_game_id' => $daily2->id,
+            'user_id' => $user->getAttribute('id'),
+            'daily_game_id' => $daily2->getAttribute('id'),
             'game' => 'kcdle',
             'guesses_count' => 1,
             'won_at' => $day2->copy()->setTime(12, 0, 0),
@@ -426,8 +426,8 @@ class AchievementServiceTest extends TestCase
         $day2 = $day1->copy()->addDays(2);
         $daily1 = $this->createDailyGame('kcdle', $day1);
         $result1 = UserGameResult::create([
-            'user_id' => $user->id,
-            'daily_game_id' => $daily1->id,
+            'user_id' => $user->getAttribute('id'),
+            'daily_game_id' => $daily1->getAttribute('id'),
             'game' => 'kcdle',
             'guesses_count' => 1,
             'won_at' => $day1->copy()->setTime(12, 0, 0),
@@ -435,8 +435,8 @@ class AchievementServiceTest extends TestCase
         $this->service->handleGameWin($user, $result1);
         $daily2 = $this->createDailyGame('kcdle', $day2);
         $result2 = UserGameResult::create([
-            'user_id' => $user->id,
-            'daily_game_id' => $daily2->id,
+            'user_id' => $user->getAttribute('id'),
+            'daily_game_id' => $daily2->getAttribute('id'),
             'game' => 'kcdle',
             'guesses_count' => 1,
             'won_at' => $day2->copy()->setTime(12, 0, 0),
