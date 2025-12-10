@@ -12,6 +12,8 @@ use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
@@ -82,9 +84,24 @@ class GameGuessController extends Controller
             'guesses'   => $data['guesses'],
         ]);
 
-        $user = $request->user();
+        $user = null;
+        $unlockedAchievements = collect();
+
+        $plainToken = $request->bearerToken();
+        if ($plainToken !== null) {
+            $accessToken = PersonalAccessToken::findToken($plainToken);
+            if ($accessToken !== null && $accessToken->getAttribute("tokenable") instanceof User) {
+                $user = $accessToken->getAttribute("tokenable");
+            }
+        }
         if ($user instanceof User) {
-            $this->persistUserGuess($user, $daily, (int) $data['player_id'], (int) $data['guesses'], $correct);
+            $unlockedAchievements = $this->persistUserGuess(
+                $user,
+                $daily,
+                (int) $data['player_id'],
+                (int) $data['guesses'],
+                $correct
+            );
         }
 
         if ($correct) {
@@ -108,6 +125,7 @@ class GameGuessController extends Controller
                 'total_guesses'   => $daily->getAttribute('total_guesses'),
                 'average_guesses' => $daily->getAttribute('average_guesses'),
             ],
+            'unlocked_achievements' => $unlockedAchievements,
         ]);
     }
 
@@ -119,9 +137,9 @@ class GameGuessController extends Controller
      * @param int $playerId
      * @param int $guessesCount
      * @param bool $correct
-     * @return void
+     * @return Collection
      */
-    protected function persistUserGuess(User $user, DailyGame $daily, int $playerId, int $guessesCount, bool $correct): void
+    protected function persistUserGuess(User $user, DailyGame $daily, int $playerId, int $guessesCount, bool $correct): Collection
     {
         $result = UserGameResult::firstOrCreate(
             [
@@ -156,9 +174,13 @@ class GameGuessController extends Controller
             ]
         );
 
+        $unlocked = collect();
+
         if ($correct && !$wasWonBefore && $result->getAttribute('won_at') !== null) {
-            $this->achievements->handleGameWin($user, $result);
+            $unlocked = $this->achievements->handleGameWin($user, $result);
         }
+
+        return $unlocked;
     }
 
 

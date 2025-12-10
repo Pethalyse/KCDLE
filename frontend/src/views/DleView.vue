@@ -7,20 +7,24 @@ import SearchBar from '@/components/SearchBar.vue'
 import PlayerTab from '@/components/PlayerTab.vue'
 import Credit from '@/components/Credit.vue'
 import PopupGg from '@/components/PopupGg.vue'
-import {trackEvent} from "@/analytics.ts";
-import AdSlot from "@/components/AdSlot.vue";
+import { trackEvent } from '@/analytics.ts'
+import AdSlot from '@/components/AdSlot.vue'
 
-type GameCode = 'kcdle' | 'lecdle' | 'lfldle'
+import { useAuthStore } from '@/stores/auth'
+import { sendGuess, fetchTodayGuessState } from '@/api/gameGuessApi'
+import type { GameCode, StoredGuess, TodayGuessResult } from '@/types/gameGuess'
+import {useFlashStore} from "@/stores/flash.ts";
 
 const props = defineProps<{
   game: GameCode
 }>()
 
 const router = useRouter()
+const flash = useFlashStore()
 
 const daily = ref<any | null>(null)
 const joueurs = ref<any[]>([])
-const guesses = ref<any[]>([])
+const guesses = ref<StoredGuess[]>([])
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -34,6 +38,7 @@ const winKey = computed(() => `${dleCode.value}_win`)
 const lastClearKey = 'lastClearTime'
 
 const hasWon = computed(() => guesses.value.some(g => g.correct === true))
+
 
 function clearLocalStorageDaily(): boolean {
   const now = new Date()
@@ -99,6 +104,35 @@ onMounted(async () => {
 
     await Promise.all([loadDaily(), loadPlayers()])
 
+    const auth = useAuthStore()
+    if (auth.isAuthenticated) {
+      try {
+        const today: TodayGuessResult = await fetchTodayGuessState(props.game)
+
+        if (today.has_result) {
+          const playersById = new Map<number, any>(
+            joueurs.value.map((p: any) => [p.id, p]),
+          )
+
+          guesses.value = today.guesses.map(entry => ({
+            player_id: entry.player_id,
+            correct: entry.correct,
+            comparison: entry.comparison,
+            stats: entry.stats,
+            player: playersById.get(entry.player_id) ?? { id: entry.player_id },
+          }))
+
+          saveGuessesToStorage()
+          return
+        }
+      } catch (e) {
+        console.error(
+          'Erreur lors du chargement des guesses depuis l’API :',
+          e,
+        )
+      }
+    }
+
     restoreGuessesFromStorage()
   } catch (e: any) {
     console.error(e)
@@ -107,6 +141,7 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
 
 function goHome() {
   router.push({ name: 'home' })
@@ -137,12 +172,10 @@ async function makeGuess(joueurWrapper: any) {
 
   const currentGuessCount = guesses.value.length + 1
 
-  const { data } = await api.post(`/games/${props.game}/guess`, {
-    player_id: joueurWrapper.id,
-    guesses: currentGuessCount,
-  })
+  const data = await sendGuess(props.game, joueurWrapper.id, currentGuessCount)
 
-  const guess = {
+  const guess: StoredGuess = {
+    player_id: joueurWrapper.id,
     correct: data.correct,
     comparison: data.comparison,
     stats: data.stats,
@@ -150,7 +183,20 @@ async function makeGuess(joueurWrapper: any) {
   }
 
   guesses.value.unshift(guess)
+
   if (data.correct === true) {
+    if (Array.isArray(data.unlocked_achievements) && data.unlocked_achievements.length > 0) {
+      data.unlocked_achievements.forEach((achievement: any) => {
+        if (!achievement || !achievement.name) return
+
+        flash.push(
+          'success',
+          achievement.name,
+          'Succès débloqué',
+        )
+      })
+    }
+
     try {
       localStorage.setItem(winKey.value, 'true')
       trackEvent('dle_win', {
@@ -171,6 +217,7 @@ async function makeGuess(joueurWrapper: any) {
 
   saveGuessesToStorage()
 }
+
 
 const guessedIds = computed<number[]>(() =>
   guesses.value

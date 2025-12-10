@@ -6,122 +6,100 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
 {
     /**
-     * Register a new user and log them in.
-     *
-     * @param Request $request
-     * @return JsonResponse
+     * Inscription + émission d'un token Sanctum.
      */
     public function register(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
         ]);
 
         $user = User::query()->create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $data['password'],
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'password' => Hash::make($data['password']),
         ]);
 
-        Auth::guard('web')->login($user);
-        $request->session()->regenerate();
+        $token = $user->createToken('kcdle-app')->plainTextToken;
 
         return response()->json([
-            'user' => $this->formatUser($user),
+            'user'  => $this->formatUser($user),
+            'token' => $token,
         ], Response::HTTP_CREATED);
     }
 
     /**
-     * Log in an existing user with email and password.
-     *
-     * @param Request $request
-     * @return JsonResponse
+     * Connexion email / mot de passe + nouveau token Sanctum.
      */
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'string', 'email'],
+            'email'    => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::guard('web')->attempt($credentials, true)) {
+        /** @var User|null $user */
+        $user = User::query()
+            ->where('email', $credentials['email'])
+            ->first();
+
+        if (! $user || ! Hash::check($credentials['password'], $user->getAttribute('password'))) {
             return response()->json([
-                'message' => 'Invalid credentials.',
+                'message' => 'Identifiants invalides.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $request->session()->regenerate();
+        $user->tokens()->delete();
 
-        $user = $request->user();
-
-        if (! $user instanceof User) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], Response::HTTP_UNAUTHORIZED);
-        }
+        $token = $user->createToken('kcdle-app')->plainTextToken;
 
         return response()->json([
-            'user' => $this->formatUser($user),
+            'user'  => $this->formatUser($user),
+            'token' => $token,
         ]);
     }
 
     /**
-     * Log out the current authenticated user.
-     *
-     * @param Request $request
-     * @return JsonResponse
+     * Déconnexion : on invalide le token actuel.
      */
     public function logout(Request $request): JsonResponse
     {
-        Auth::guard('web')->logout();
+        $user = $request->user();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if ($user) {
+            $user->currentAccessToken()?->delete();
+        }
 
-        return response()->json([], Response::HTTP_NO_CONTENT);
+        return response()->json(status: Response::HTTP_NO_CONTENT);
     }
 
     /**
-     * Get the current authenticated user.
-     *
-     * @param Request $request
-     * @return JsonResponse
+     * Récupère l'utilisateur courant à partir du token.
      */
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
 
-        if (! $user instanceof User) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], Response::HTTP_UNAUTHORIZED);
-        }
-
         return response()->json([
-            'user' => $this->formatUser($user),
+            'user' => $user ? $this->formatUser($user) : null,
         ]);
     }
 
-    /**
-     * Format user data for API responses.
-     *
-     * @param User $user
-     * @return array<string, mixed>
-     */
     protected function formatUser(User $user): array
     {
         return [
-            'id' => $user->getAttribute('id'),
-            'name' => $user->getAttribute('name'),
-            'email' => $user->getAttribute('email'),
+            'id'    => $user->getAttribute("id"),
+            'name'  => $user->getAttribute("name"),
+            'email' => $user->getAttribute("email"),
         ];
     }
 }

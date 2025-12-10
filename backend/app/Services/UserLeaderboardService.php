@@ -21,7 +21,7 @@ class UserLeaderboardService
     public function getGlobalLeaderboard(string $game, int $perPage = 50, int $page = 1): LengthAwarePaginator
     {
         $query = UserGameResult::query()
-            ->where('game', $game)
+            ->where('user_game_results.game', $game)
             ->whereNotNull('won_at')
             ->join('daily_games', 'user_game_results.daily_game_id', '=', 'daily_games.id');
 
@@ -76,8 +76,10 @@ class UserLeaderboardService
         $rows = $query->get([
             'user_game_results.user_id as user_id',
             'user_game_results.guesses_count as guesses_count',
-            'daily_games.average_guesses as day_avg',
+            'daily_games.solvers_count as solvers_count',
+            'daily_games.total_guesses as total_guesses',
         ]);
+
 
         if ($rows->isEmpty()) {
             return new LengthAwarePaginator(
@@ -110,14 +112,20 @@ class UserLeaderboardService
                     return $carry;
                 }
 
-                $dayAvg = $entry->day_avg !== null && (float) $entry->day_avg > 0.0
-                    ? (float) $entry->day_avg
-                    : 4.0;
+                $solversCount = (int) ($entry->solvers_count ?? 0);
+                $totalGuesses = (int) ($entry->total_guesses ?? 0);
+
+                if ($solversCount > 0 && $totalGuesses > 0) {
+                    $dayAvg = $totalGuesses / $solversCount;
+                } else {
+                    $dayAvg = 4.0;
+                }
 
                 $dailyScore = $dayAvg / $guesses;
 
                 return $carry + $dailyScore;
             }, 0.0);
+
 
             $weight = 1.0 - exp(-$wins / 10.0);
 

@@ -5,6 +5,11 @@ import CreditsView from "@/views/CreditsView.vue";
 import PrivacyPolicyView from "@/views/PrivacyPolicyView.vue";
 import LegalView from "@/views/LegalView.vue";
 import NotFoundView from "@/views/NotFoundView.vue";
+import LoginView from "@/views/LoginView.vue";
+import RegisterView from "@/views/RegisterView.vue";
+import ProfileView from "@/views/ProfileView.vue";
+import LeaderboardView from "@/views/LeaderboardView.vue";
+import AchievementsView from "@/views/AchievementsView.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -39,6 +44,36 @@ const routes: RouteRecordRaw[] = [
     name: 'not-found',
     component: NotFoundView,
   },
+
+  {
+    path: '/connexion',
+    name: 'login',
+    component: LoginView,
+  },
+  {
+    path: '/inscription',
+    name: 'register',
+    component: RegisterView,
+  },
+
+  {
+    path: '/profil',
+    name: 'profile',
+    component: ProfileView,
+  },
+
+  {
+    path: '/leaderboard',
+    name: 'leaderboard',
+    component: LeaderboardView,
+  },
+
+  {
+    path: '/achievements',
+    name: 'achievements',
+    component: AchievementsView,
+  },
+
 ]
 
 const router = createRouter({

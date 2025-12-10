@@ -16,6 +16,7 @@ class LoldlePlayer extends Model
         'team_id',
         'lol_role',
         'active',
+        'season',
     ];
 
     protected $with = [

@@ -73,24 +73,24 @@ class AchievementService
                 'description' => 'Remporter votre toute première victoire, tous DLE confondus.',
                 'game' => null,
             ],
-            'first_win_game' => [
+            'first_win_game_3' => [
                 'name' => 'First draft',
-                'description' => 'Remporter votre première victoire sur ce DLE.',
+                'description' => 'Remporter votre première victoire sur chacun des DLE disponibles.',
                 'game' => null,
             ],
             'ten_wins_game' => [
                 'name' => 'Habitué du lobby',
-                'description' => 'Cumuler 10 victoires sur ce DLE.',
+                'description' => 'Cumuler 10 victoires sur un DLE.',
                 'game' => null,
             ],
             'streak_5_game' => [
                 'name' => 'La manita',
-                'description' => 'Gagner 5 jours d’affilée sur ce DLE.',
+                'description' => 'Avoir une streak de 5 sur un DLE.',
                 'game' => null,
             ],
-            'streak_7_game' => [
+            'streak_14_game' => [
                 'name' => 'Mur imprenable',
-                'description' => 'Gagner 7 jours d’affilée sur ce DLE.',
+                'description' => 'Avoir une streak de 14 sur un DLE.',
                 'game' => null,
             ],
             'perfect_day' => [
@@ -100,7 +100,7 @@ class AchievementService
             ],
             'panic_clicker' => [
                 'name' => 'Un effort',
-                'description' => 'Remporter une partie en quinze tentatives ou plus.',
+                'description' => 'Remporter une partie en 15 tentatives ou plus.',
                 'game' => null,
             ],
             'full_roster_tour' => [
@@ -110,7 +110,7 @@ class AchievementService
             ],
             'blue_chants' => [
                 'name' => 'Chants éternels',
-                'description' => 'Cumuler 30 victoires sur ce DLE.',
+                'description' => 'Cumuler 30 victoires sur un DLE.',
                 'game' => null,
             ],
             'graphique_vert' => [
@@ -120,7 +120,7 @@ class AchievementService
             ],
             'tacticien_galactique' => [
                 'name' => 'Galaxies World Champion',
-                'description' => 'Cumuler 50 victoires sur ce DLE avec une moyenne de guesses inférieure ou égale à 3.',
+                'description' => 'Cumuler 50 victoires sur un DLE avec une moyenne de guesses inférieure ou égale à 3.',
                 'game' => null,
             ],
             'buzzer_beater' => [
@@ -130,17 +130,17 @@ class AchievementService
             ],
             'back_to_back_magic' => [
                 'name' => 'Back-to-back',
-                'description' => 'Enchaîner deux victoires consécutives en un seul guess.',
+                'description' => 'Enchaîner 2 victoires consécutives en un 1 guess.',
                 'game' => null,
             ],
-            '5_times_under_3_guesses' => [
+            '5_times_under_2_guesses' => [
                 'name' => 'Smurf queue',
-                'description' => 'Enchaîner cinq victoires consécutives en trois tentatives ou moins.',
+                'description' => 'Enchaîner 5 victoires consécutives en 2 tentatives ou moins.',
                 'game' => null,
             ],
             'mois_de_folie' => [
                 'name' => 'Soir de grande scène',
-                'description' => 'Gagner tous les DLE d’un même mois sur ce mode.',
+                'description' => 'Gagner tous les DLE d’un même mois.',
                 'game' => null,
             ],
             'pluie_de_perticoins' => [
@@ -167,21 +167,31 @@ class AchievementService
                     ->count() === 1;
         }
 
-        if ($key === 'first_win_game') {
-            return UserGameResult::where('user_id', $userId)
-                    ->where('game', $game)
+        if ($key === 'first_win_game_3') {
+            return
+                UserGameResult::where('user_id', $userId)
                     ->whereNotNull('won_at')
-                    ->count() === 1;
+                    ->where('game', "kcdle")
+                    ->count() >= 1
+                &&
+                UserGameResult::where('user_id', $userId)
+                    ->whereNotNull('won_at')
+                    ->where('game', "lecdle")
+                    ->count() >= 1
+                &&
+                UserGameResult::where('user_id', $userId)
+                    ->whereNotNull('won_at')
+                    ->where('game', "lfldle")
+                    ->count() >= 1;
         }
 
         if ($key === 'ten_wins_game') {
             return UserGameResult::where('user_id', $userId)
-                    ->where('game', $game)
                     ->whereNotNull('won_at')
                     ->count() >= 10;
         }
 
-        if ($key === 'streak_5_game' || $key === 'streak_7_game') {
+        if ($key === 'streak_5_game' || $key === 'streak_14_game') {
             $stats = $this->stats->getStatsForUserAndGame($user, $game);
             $streak = (int) ($stats['current_streak'] ?? 0);
 
@@ -189,7 +199,7 @@ class AchievementService
                 return $streak >= 5;
             }
 
-            return $streak >= 7;
+            return $streak >= 14;
         }
 
         if ($key === 'perfect_day') {
@@ -304,7 +314,7 @@ class AchievementService
                 return false;
             }
 
-            return $wins->every(fn($w) => (int) $w->guesses_count <= 3);
+            return $wins->every(fn($w) => (int) $w->guesses_count <= 2);
         }
 
         if ($key === 'mois_de_folie') {
@@ -396,12 +406,6 @@ class AchievementService
         return false;
     }
 
-    /**
-     * List all achievements with user unlock status.
-     *
-     * @param User|null $user
-     * @return Collection<int, array<string, mixed>>
-     */
     public function listAllForUser(?User $user): Collection
     {
         $definitions = $this->definitions();
@@ -418,6 +422,17 @@ class AchievementService
 
         $unlocked = collect();
 
+        $totalUsers = User::query()->count();
+        $unlockedCounts = collect();
+
+        if ($totalUsers > 0 && $achievements->isNotEmpty()) {
+            $unlockedCounts = UserAchievement::query()
+                ->selectRaw('achievement_id, COUNT(*) as unlocked_count')
+                ->whereIn('achievement_id', $achievements->keys()->all())
+                ->groupBy('achievement_id')
+                ->pluck('unlocked_count', 'achievement_id');
+        }
+
         if ($user) {
             $unlocked = UserAchievement::where('user_id', $user->getAttribute('id'))
                 ->whereIn('achievement_id', $achievements->keys()->all())
@@ -425,20 +440,26 @@ class AchievementService
                 ->keyBy('achievement_id');
         }
 
-        return $achievements->map(function (Achievement $achievement) use ($unlocked) {
-            $pivot = $unlocked->get($achievement->getAttribute('id'));
+        return $achievements->map(function (Achievement $achievement) use ($unlocked, $unlockedCounts, $totalUsers) {
+            $id = $achievement->getAttribute('id');
+            $pivot = $unlocked->get($id);
+
+            $count = (int) ($unlockedCounts[$id] ?? 0);
+            $percentage = $totalUsers > 0 ? round($count * 100 / $totalUsers, 2) : 0.0;
 
             return [
-                'id' => $achievement->getAttribute('id'),
+                'id' => $id,
                 'key' => $achievement->getAttribute('key'),
                 'name' => $achievement->getAttribute('name'),
                 'description' => $achievement->getAttribute('description'),
                 'game' => $achievement->getAttribute('game'),
                 'unlocked' => $pivot !== null,
                 'unlocked_at' => $pivot ? $pivot->getAttribute('unlocked_at')?->toIso8601String() : null,
+                'unlocked_percentage' => $percentage,
             ];
         })->values();
     }
+
 
     /**
      * Ensure an achievement row exists in database for a given key.

@@ -20,7 +20,7 @@ class UserGameStatsService
     {
         $rows = UserGameResult::query()
             ->where('user_id', $user->getAttribute('id'))
-            ->where('game', $game)
+            ->where('user_game_results.game', $game)
             ->whereNotNull('won_at')
             ->join('daily_games', 'user_game_results.daily_game_id', '=', 'daily_games.id')
             ->orderBy('daily_games.selected_for_date')

@@ -101,8 +101,8 @@ class UserProfileController extends Controller
             'global_stats' => [
                 'total_wins' => $totalWins,
                 'global_average_guesses' => $globalAvg !== null ? round($globalAvg, 2) : null,
-                'first_win_at' => $firstWinAt ? $firstWinAt->toIso8601String() : null,
-                'last_win_at' => $lastWinAt ? $lastWinAt->toIso8601String() : null,
+                'first_win_at' => $firstWinAt ?: null,
+                'last_win_at' => $lastWinAt ?: null,
                 'distinct_days_played' => $daysPlayed,
             ],
             'games' => $gamesData,

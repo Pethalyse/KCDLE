@@ -67,6 +67,7 @@ class FriendGroupController extends Controller
      *
      * @param Request $request
      * @return JsonResponse
+     * @throws \Throwable
      */
     public function store(Request $request): JsonResponse
     {

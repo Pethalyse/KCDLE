@@ -7,7 +7,7 @@ use Illuminate\Http\JsonResponse;
 
 class CreditController extends Controller
 {
-    public function index(): JsonResponse
+    public function show(): JsonResponse
     {
         return response()->json([
             'contributors' => [

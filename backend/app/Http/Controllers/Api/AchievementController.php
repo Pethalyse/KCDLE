@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\AchievementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AchievementController extends Controller
 {
@@ -28,9 +29,13 @@ class AchievementController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
-        if (! $user instanceof User) {
-            $user = null;
+        $user = null;
+        $plainToken = $request->bearerToken();
+        if ($plainToken !== null) {
+            $accessToken = PersonalAccessToken::findToken($plainToken);
+            if ($accessToken !== null && $accessToken->getAttribute("tokenable") instanceof User) {
+                $user = $accessToken->getAttribute("tokenable");
+            }
         }
 
         $data = $this->achievements->listAllForUser($user);

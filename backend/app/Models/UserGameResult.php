@@ -36,7 +36,7 @@ class UserGameResult extends Model
     public function guesses(): HasMany
     {
         return $this->hasMany(UserGuess::class)
-            ->orderBy('guess_order');
+            ->orderBy('guess_order', 'desc');
     }
 
     /**
