@@ -130,7 +130,7 @@ class AchievementService
             ],
             'back_to_back_magic' => [
                 'name' => 'Back-to-back',
-                'description' => 'Enchaîner 2 victoires consécutives en un 1 guess.',
+                'description' => 'Enchaîner 2 victoires consécutives en un 1 guess pour un même dle.',
                 'game' => null,
             ],
             '5_times_under_2_guesses' => [
