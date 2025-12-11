@@ -166,8 +166,8 @@ async function handleDeleteGroup(group: FriendGroupSummary) {
 
 function goToGroupLeaderboard(group: FriendGroupSummary) {
   router.push({
-    name: 'leaderboard',
-    query: { game: 'kcdle', group: group.slug },
+    name: 'leaderboard_kcdle',
+    query: { group: group.slug },
   })
 }
 

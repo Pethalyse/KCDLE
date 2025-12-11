@@ -521,8 +521,6 @@ watch(
   text-decoration: underline;
 }
 
-/* États */
-
 .leaderboard-state {
   text-align: center;
   padding: 16px 10px;
@@ -552,7 +550,7 @@ watch(
 
 .leaderboard-table th {
   font-weight: 500;
-  color: #b9c7ff;
+  color: white;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
