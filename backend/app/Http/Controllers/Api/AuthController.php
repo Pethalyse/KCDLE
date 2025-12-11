@@ -203,7 +203,7 @@ class AuthController extends Controller
                 ];
 
                 if ($entry->getAttribute('correct') && $firstCorrectIndex === null) {
-                    $firstCorrectIndex = count($sequence); // 1-based
+                    $firstCorrectIndex = count($sequence);
                     $firstCorrectDate  = $entry->getAttribute('created_at');
                 }
             }
