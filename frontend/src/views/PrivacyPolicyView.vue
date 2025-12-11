@@ -45,13 +45,6 @@ function goHome() {
           Dernière mise à jour : {{ lastUpdated }}
         </p>
       </div>
-      <button
-        type="button"
-        class="privacy-back"
-        @click="goHome"
-      >
-        ⟵ Retour au KCDLE
-      </button>
     </header>
 
     <main class="privacy-content">

@@ -73,8 +73,27 @@ const routes: RouteRecordRaw[] = [
     component: ProfileView,
   },
   {
-    path: '/leaderboard',
-    name: 'leaderboard',
+    path: '/leaderboard/kcdle',
+    name: 'leaderboard_kcdle',
+    props: {
+      game: 'kcdle',
+    },
+    component: LeaderboardView,
+  },
+  {
+    path: '/leaderboard/lecdle',
+    name: 'leaderboard_lecdle',
+    props: {
+      game: 'lecdle',
+    },
+    component: LeaderboardView,
+  },
+  {
+    path: '/leaderboard/lfldle',
+    name: 'leaderboard_lfldle',
+    props: {
+      game: 'lfldle',
+    },
     component: LeaderboardView,
   },
   {

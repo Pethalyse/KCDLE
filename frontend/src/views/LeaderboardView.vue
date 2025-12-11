@@ -12,6 +12,10 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
+const props = defineProps<{
+  game: GameCode
+}>()
+
 const loading = ref(false)
 const error = ref<string | null>(null)
 const leaderboard = ref<LeaderboardResponse | null>(null)
@@ -30,7 +34,7 @@ const selectedGroupSlug = ref<string | null>(null)
 const groupContext = ref<FriendGroupLeaderboardGroup | null>(null)
 
 const currentGame = computed<GameCode>(() => {
-  const raw = (route.query.game as string | undefined)?.toLowerCase()
+  const raw = props.game?.toLowerCase()
   if (availableGames.includes(raw as GameCode)) {
     return raw as GameCode
   }
@@ -121,9 +125,8 @@ function changeGame(game: GameCode) {
   if (game === currentGame.value) return
 
   router.push({
-    name: 'leaderboard',
+    name: `leaderboard_${game}`,
     query: {
-      game,
       page: 1,
       ...(selectedGroupSlug.value ? { group: selectedGroupSlug.value } : {}),
     },
@@ -137,9 +140,7 @@ function goToPage(page: number) {
   if (p === currentPage.value) return
 
   router.push({
-    name: 'leaderboard',
     query: {
-      game: currentGame.value,
       page: p,
       ...(selectedGroupSlug.value ? { group: selectedGroupSlug.value } : {}),
     },
@@ -152,9 +153,7 @@ function onGroupChange(event: Event) {
   const slug = value.length > 0 ? value : null
 
   router.push({
-    name: 'leaderboard',
     query: {
-      game: currentGame.value,
       page: 1,
       ...(slug ? { group: slug } : {}),
     },
@@ -402,6 +401,7 @@ watch(
 
 .leaderboard-header {
   width: 100%;
+  gap: 10px;
   max-width: 900px;
   display: flex;
   justify-content: space-between;

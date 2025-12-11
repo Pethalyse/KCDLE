@@ -50,13 +50,6 @@ function goHome() {
   <div class="credits-page">
     <header class="credits-header">
       <h1>Crédits & Remerciements</h1>
-      <button
-        type="button"
-        class="credits-back"
-        @click="goHome"
-      >
-        ⟵ Retour au KCDLE
-      </button>
     </header>
 
     <main class="credits-content">

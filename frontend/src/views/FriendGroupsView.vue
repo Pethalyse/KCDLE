@@ -188,7 +188,6 @@ onMounted(loadGroups)
     <header class="friends-header">
       <h1>Groupes d’amis</h1>
       <p>Crée un groupe, rejoins tes amis et comparez vos scores ensemble.</p>
-      <button class="friends-back" @click="router.push('/')">Retour au jeu</button>
     </header>
 
     <main class="friends-main">

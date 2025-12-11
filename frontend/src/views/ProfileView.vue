@@ -64,20 +64,7 @@ onMounted(async () => {
     <header class="profile-header">
       <div>
         <h1>Mon profil</h1>
-        <p v-if="auth.user">
-          Connecté en tant que
-          <strong>{{ auth.user.name }}</strong>
-          <span class="profile-email">({{ auth.user.email }})</span>
-        </p>
       </div>
-
-      <button
-        type="button"
-        class="profile-back"
-        @click="goHome"
-      >
-        Retour au jeu
-      </button>
     </header>
 
     <main class="profile-main">

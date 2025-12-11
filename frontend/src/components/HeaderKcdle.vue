@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import {ref, computed, onMounted} from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/api'
@@ -47,6 +47,10 @@ async function logout() {
   flash.info('Tu as été déconnecté.')
   closeMenus()
 }
+
+onMounted(() => {
+  console.log(currentRouteName)
+})
 </script>
 
 <template>
@@ -120,24 +124,28 @@ async function logout() {
             <div class="group-items">
               <button
                 class="nav-item"
-                @click="go('leaderboard', { game: 'kcdle' })"
+                :class="{ active: currentRouteName === 'leaderboard_kcdle' }"
+                @click="go('leaderboard_kcdle')"
               >
                 KCDLE
               </button>
               <button
                 class="nav-item"
-                @click="go('leaderboard', { game: 'lecdle' })"
+                :class="{ active: currentRouteName === 'leaderboard_lecdle' }"
+                @click="go('leaderboard_lecdle')"
               >
                 LECDLE
               </button>
               <button
                 class="nav-item"
-                @click="go('leaderboard', { game: 'lfldle' })"
+                :class="{ active: currentRouteName === 'leaderboard_lfldle' }"
+                @click="go('leaderboard_lfldle')"
               >
                 LFLDLE
               </button>
               <button
                 class="nav-item"
+                :class="{ active: currentRouteName === 'friends' }"
                 @click="go('friends')"
               >
                 Groupes d’amis
