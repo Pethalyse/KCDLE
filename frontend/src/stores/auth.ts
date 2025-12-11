@@ -54,6 +54,7 @@ export const useAuthStore = defineStore('auth', {
           localStorage.removeItem(string)
           localStorage.removeItem(string + '_win')
         }
+        return data
       } finally {
         this.loading = false
       }
@@ -64,6 +65,11 @@ export const useAuthStore = defineStore('auth', {
       try {
         const { data } = await api.post('/auth/register', payload)
         this.setAuth(data.user, data.token)
+        for (const string of dleCode) {
+          localStorage.removeItem(string)
+          localStorage.removeItem(string + '_win')
+        }
+        return data
       } finally {
         this.loading = false
       }

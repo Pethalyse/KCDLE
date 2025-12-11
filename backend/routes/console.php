@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 Schedule::command('kcdle:generate-daily-games')
     ->dailyAt('00:00');
+
+Schedule::command('kcdle:purge-pending-guesses')
+    ->dailyAt('00:00');

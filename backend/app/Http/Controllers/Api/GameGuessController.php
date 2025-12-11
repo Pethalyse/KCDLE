@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DailyGame;
 use App\Models\KcdlePlayer;
 use App\Models\LoldlePlayer;
+use App\Models\PendingGuess;
 use App\Models\Player;
 use App\Services\AchievementService;
 use Carbon\Carbon;
@@ -74,7 +75,7 @@ class GameGuessController extends Controller
         }
 
         $comparison = $this->comparePlayers($secretWrapper, $guessWrapper, $game);
-        $correct = $comparison['correct'] ?? false;
+        $correct    = $comparison['correct'] ?? false;
 
         Log::channel('guess')->info('Guess attempt', [
             'ip'        => $request->ip(),
@@ -94,6 +95,7 @@ class GameGuessController extends Controller
                 $user = $accessToken->getAttribute("tokenable");
             }
         }
+
         if ($user instanceof User) {
             $unlockedAchievements = $this->persistUserGuess(
                 $user,
@@ -101,6 +103,20 @@ class GameGuessController extends Controller
                 (int) $data['player_id'],
                 (int) $data['guesses'],
                 $correct
+            );
+        } else {
+            $anonKey = $this->makeAnonKey($request);
+            PendingGuess::updateOrCreate(
+                [
+                    'anon_key'      => $anonKey,
+                    'daily_game_id' => $daily->getAttribute('id'),
+                    'guess_order'   => (int) $data['guesses'],
+                ],
+                [
+                    'game'      => $game,
+                    'player_id' => (int) $data['player_id'],
+                    'correct'   => $correct,
+                ]
             );
         }
 
@@ -128,6 +144,7 @@ class GameGuessController extends Controller
             'unlocked_achievements' => $unlockedAchievements,
         ]);
     }
+
 
     /**
      * Persist the guess for an authenticated user.
@@ -561,4 +578,9 @@ class GameGuessController extends Controller
         return $s < $g ? -1 : 0;
     }
 
+    protected function makeAnonKey(Request $request): string
+    {
+        $ip = (string) $request->ip();
+        return hash_hmac('sha256', $ip, config('app.key'));
+    }
 }

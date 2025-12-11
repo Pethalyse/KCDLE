@@ -29,7 +29,7 @@ const generalError = ref<string | null>(null)
 const submitting = ref(false)
 
 const redirectTo =
-  (route.query.redirect as string | undefined) || '/kcdle'
+  (route.query.redirect as string | undefined) || '/'
 
 function resetErrors() {
   fieldErrors.name = undefined
@@ -52,11 +52,23 @@ async function handleSubmit() {
   submitting.value = true
 
   try {
-    await auth.register({
+    const data = await auth.register({
       name: form.name,
       email: form.email,
       password: form.password,
     })
+
+    if (data && Array.isArray(data.unlocked_achievements) && data.unlocked_achievements.length > 0) {
+      data.unlocked_achievements.forEach((achievement: any) => {
+        if (!achievement || !achievement.name) return
+
+        flash.push(
+          'success',
+          achievement.name,
+          'Succès débloqué',
+        )
+      })
+    }
 
     flash.success('Compte créé avec succès.', 'Bienvenue sur KCDLE')
     await router.push(redirectTo)

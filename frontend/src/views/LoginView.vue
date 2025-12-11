@@ -40,10 +40,22 @@ async function handleSubmit() {
   submitting.value = true
 
   try {
-    await auth.login({
+    const data = await auth.login({
       email: form.email,
       password: form.password,
     })
+
+    if (data && Array.isArray(data.unlocked_achievements) && data.unlocked_achievements.length > 0) {
+      data.unlocked_achievements.forEach((achievement: any) => {
+        if (!achievement || !achievement.name) return
+
+        flash.push(
+          'success',
+          achievement.name,
+          'Succès débloqué',
+        )
+      })
+    }
 
     flash.success('Connexion réussie.', 'Bienvenue sur KCDLE')
     await router.push(redirectTo)
