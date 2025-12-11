@@ -48,14 +48,14 @@ class UserLeaderboardService
                 $perPage,
                 $page,
                 [
-                    'path' => request()->url(),
-                    'query' => request()->query(),
+                    'path'   => request()->url(),
+                    'query'  => request()->query(),
                 ]
             );
         }
 
         $query = UserGameResult::query()
-            ->where('game', $game)
+            ->where('user_game_results.game', $game)
             ->whereNotNull('won_at')
             ->whereIn('user_game_results.user_id', $memberIds)
             ->join('daily_games', 'user_game_results.daily_game_id', '=', 'daily_games.id');
@@ -80,7 +80,6 @@ class UserLeaderboardService
             'daily_games.total_guesses as total_guesses',
         ]);
 
-
         if ($rows->isEmpty()) {
             return new LengthAwarePaginator(
                 collect(),
@@ -88,7 +87,7 @@ class UserLeaderboardService
                 $perPage,
                 $page,
                 [
-                    'path' => request()->url(),
+                    'path'  => request()->url(),
                     'query' => request()->query(),
                 ]
             );
@@ -126,7 +125,6 @@ class UserLeaderboardService
                 return $carry + $dailyScore;
             }, 0.0);
 
-
             $weight = 1.0 - exp(-$wins / 10.0);
 
             $finalScore = $baseScore * $weight;
@@ -140,17 +138,17 @@ class UserLeaderboardService
             $user = $users->get($userId);
 
             return [
-                'user_id' => $userId,
-                'user' => $user ? [
-                    'id' => $user->getAttribute('id'),
-                    'name' => $user->getAttribute('name'),
+                'user_id'         => $userId,
+                'user'            => $user ? [
+                    'id'    => $user->getAttribute('id'),
+                    'name'  => $user->getAttribute('name'),
                     'email' => $user->getAttribute('email'),
                 ] : null,
-                'wins' => $wins,
+                'wins'            => $wins,
                 'average_guesses' => $averageGuesses,
-                'base_score' => $baseScore,
-                'weight' => $weight,
-                'final_score' => $finalScore,
+                'base_score'      => $baseScore,
+                'weight'          => $weight,
+                'final_score'     => $finalScore,
             ];
         })->values();
 
@@ -195,7 +193,7 @@ class UserLeaderboardService
             $perPage,
             $page,
             [
-                'path' => request()->url(),
+                'path'  => request()->url(),
                 'query' => request()->query(),
             ]
         );

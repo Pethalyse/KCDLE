@@ -16,7 +16,6 @@ use App\Http\Controllers\Api\UserProfileController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
-
 Route::prefix('games')
     ->group(function () {
         Route::get('{game}/daily', [DailyGameController::class, 'show']);
@@ -30,12 +29,12 @@ Route::prefix('auth')
         Route::post('register', [AuthController::class, 'register']);
         Route::post('login', [AuthController::class, 'login']);
     });
+
 Route::prefix('auth')
     ->middleware(['auth:sanctum'])
     ->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
-
     });
 
 Route::prefix('user')
@@ -58,6 +57,11 @@ Route::prefix('friend-groups')
         Route::get('/', [FriendGroupController::class, 'index']);
         Route::post('/', [FriendGroupController::class, 'store']);
         Route::post('/join', [FriendGroupController::class, 'join']);
+
+        Route::get('{slug}', [FriendGroupController::class, 'show']);
+        Route::post('{slug}/leave', [FriendGroupController::class, 'leave']);
+        Route::delete('{slug}', [FriendGroupController::class, 'destroy']);
+
         Route::get('{slug}/leaderboards/{game}', [FriendGroupController::class, 'leaderboard']);
     });
 
@@ -69,12 +73,12 @@ Route::get('/health', function () {
     try {
         DB::connection()->getPdo();
         $db = true;
-    } catch (Throwable) {
+    } catch (\Throwable) {
         $db = false;
     }
 
     return response()->json([
         'app' => true,
-        'db' => $db,
+        'db'  => $db,
     ], $db ? 200 : 500);
 });

@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class FriendGroupController extends Controller
 {
@@ -45,20 +46,21 @@ class FriendGroupController extends Controller
             ->get()
             ->map(function (FriendGroup $group) {
                 return [
-                    'id' => $group->getAttribute('id'),
-                    'name' => $group->getAttribute('name'),
-                    'slug' => $group->getAttribute('slug'),
+                    'id'        => $group->getAttribute('id'),
+                    'name'      => $group->getAttribute('name'),
+                    'slug'      => $group->getAttribute('slug'),
                     'join_code' => $group->getAttribute('join_code'),
-                    'owner' => [
-                        'id' => $group->getAttribute("owner")?->getAttribute('id'),
-                        'name' => $group->getAttribute("owner")?->getAttribute('name'),
+                    'role'      => $group->getRelationValue('pivot')->role ?? null,
+                    'owner'     => [
+                        'id'   => $group->getRelationValue('owner')?->getAttribute('id'),
+                        'name' => $group->getRelationValue('owner')?->getAttribute('name'),
                     ],
                 ];
             })
             ->values();
 
         return response()->json([
-            'data' => $groups,
+            'groups' => $groups,
         ]);
     }
 
@@ -67,7 +69,7 @@ class FriendGroupController extends Controller
      *
      * @param Request $request
      * @return JsonResponse
-     * @throws \Throwable
+     * @throws Throwable
      */
     public function store(Request $request): JsonResponse
     {
@@ -80,7 +82,7 @@ class FriendGroupController extends Controller
         }
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:20'],
         ]);
 
         $slugBase = Str::slug($data['name']);
@@ -97,13 +99,14 @@ class FriendGroupController extends Controller
             $joinCode = Str::upper(Str::random(8));
         }
 
+        /** @var FriendGroup|null $group */
         $group = null;
 
         DB::transaction(function () use ($user, $data, $slug, $joinCode, &$group) {
             $group = FriendGroup::query()->create([
-                'owner_id' => $user->getAttribute('id'),
-                'name' => $data['name'],
-                'slug' => $slug,
+                'owner_id'  => $user->getAttribute('id'),
+                'name'      => $data['name'],
+                'slug'      => $slug,
                 'join_code' => $joinCode,
             ]);
 
@@ -114,12 +117,76 @@ class FriendGroupController extends Controller
 
         return response()->json([
             'group' => [
-                'id' => $group->getAttribute('id'),
-                'name' => $group->getAttribute('name'),
-                'slug' => $group->getAttribute('slug'),
+                'id'        => $group->getAttribute('id'),
+                'name'      => $group->getAttribute('name'),
+                'slug'      => $group->getAttribute('slug'),
                 'join_code' => $group->getAttribute('join_code'),
             ],
         ], Response::HTTP_CREATED);
+    }
+
+    /**
+     * Show a friend group detail (only for members).
+     *
+     * @param string $slug
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function show(string $slug, Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user instanceof User) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $group = FriendGroup::query()
+            ->with([
+                'owner:id,name',
+                'users' => function ($query) {
+                    $query->select('users.id', 'users.name', 'users.email');
+                },
+            ])
+            ->where('slug', $slug)
+            ->first();
+
+        if (!$group) {
+            return response()->json([
+                'message' => 'Group not found.',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $isMember = $group->users()
+            ->where('users.id', $user->getAttribute('id'))
+            ->exists();
+
+        if (!$isMember) {
+            return response()->json([
+                'message' => 'Forbidden.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        $members = $group->users->map(function (User $member) {
+            return [
+                'id'    => $member->getAttribute('id'),
+                'name'  => $member->getAttribute('name'),
+                'email' => $member->getAttribute('email'),
+                'role'  => $member->pivot?->role,
+            ];
+        })->values();
+
+        return response()->json([
+            'group' => [
+                'id'        => $group->getAttribute('id'),
+                'name'      => $group->getAttribute('name'),
+                'slug'      => $group->getAttribute('slug'),
+                'join_code' => $group->getAttribute('join_code'),
+                'owner_id'  => $group->getAttribute('owner_id'),
+            ],
+            'members' => $members,
+        ]);
     }
 
     /**
@@ -168,11 +235,138 @@ class FriendGroupController extends Controller
 
         return response()->json([
             'group' => [
-                'id' => $group->getAttribute('id'),
-                'name' => $group->getAttribute('name'),
-                'slug' => $group->getAttribute('slug'),
+                'id'        => $group->getAttribute('id'),
+                'name'      => $group->getAttribute('name'),
+                'slug'      => $group->getAttribute('slug'),
+                'join_code' => $group->getAttribute('join_code'),
             ],
-        ]);
+        ], Response::HTTP_OK);
+    }
+
+    /**
+     * Leave a friend group.
+     * If the user is the owner:
+     *   - if there is another member, ownership is transferred to the oldest member
+     *   - otherwise the group is deleted
+     *
+     * @param string $slug
+     * @param Request $request
+     * @return JsonResponse
+     * @throws Throwable
+     */
+    public function leave(string $slug, Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user instanceof User) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $group = FriendGroup::query()
+            ->where('slug', $slug)
+            ->first();
+
+        if (!$group) {
+            return response()->json([
+                'message' => 'Group not found.',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $membership = $group->users()
+            ->where('users.id', $user->getAttribute('id'))
+            ->first();
+
+        if (!$membership) {
+            return response()->json([
+                'message' => 'Not a member of this group.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        $role = $membership->pivot?->role ?? 'member';
+
+        if ($role !== 'owner') {
+            $group->users()->detach($user->getAttribute('id'));
+
+            return response()->json([
+                'message' => 'You left the group.',
+            ], Response::HTTP_OK);
+        }
+
+        $nextOwner = $group->users()
+            ->where('users.id', '!=', $user->getAttribute('id'))
+            ->orderBy('friend_group_users.created_at')
+            ->first();
+
+        if (!$nextOwner) {
+            $group->delete();
+
+            return response()->json([
+                'message' => 'Group deleted because you were the last member.',
+            ], Response::HTTP_OK);
+        }
+
+        DB::transaction(function () use ($group, $user, $nextOwner) {
+            $group->setAttribute('owner_id', $nextOwner->getAttribute('id'));
+            $group->save();
+
+            $group->users()->updateExistingPivot($nextOwner->getAttribute('id'), [
+                'role' => 'owner',
+            ]);
+
+            $group->users()->detach($user->getAttribute('id'));
+        });
+
+        return response()->json([
+            'message' => 'You left the group. Ownership has been transferred to another member.',
+            'group'   => [
+                'id'       => $group->getAttribute('id'),
+                'name'     => $group->getAttribute('name'),
+                'slug'     => $group->getAttribute('slug'),
+                'owner_id' => $group->getAttribute('owner_id'),
+            ],
+        ], Response::HTTP_OK);
+    }
+
+    /**
+     * Delete a friend group (only owner).
+     *
+     * @param string $slug
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function destroy(string $slug, Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user instanceof User) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $group = FriendGroup::query()
+            ->where('slug', $slug)
+            ->first();
+
+        if (!$group) {
+            return response()->json([
+                'message' => 'Group not found.',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        if ((int) $group->getAttribute('owner_id') !== (int) $user->getAttribute('id')) {
+            return response()->json([
+                'message' => 'Forbidden.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        $group->delete();
+
+        return response()->json([
+            'message' => 'Group deleted.',
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -237,29 +431,28 @@ class FriendGroupController extends Controller
 
         foreach ($paginator->items() as $row) {
             $data[] = [
-                'rank' => $rankOffset + (++$index),
-                'user' => $row['user'],
-                'wins' => $row['wins'],
+                'rank'            => $rankOffset + (++$index),
+                'user'            => $row['user'],
+                'wins'            => $row['wins'],
                 'average_guesses' => $row['average_guesses'],
-                'base_score' => $row['base_score'],
-                'weight' => $row['weight'],
-                'final_score' => $row['final_score'],
+                'base_score'      => $row['base_score'],
+                'weight'          => $row['weight'],
+                'final_score'     => $row['final_score'],
             ];
         }
 
         return response()->json([
-            'game' => $game,
             'group' => [
-                'id' => $group->getAttribute('id'),
+                'id'   => $group->getAttribute('id'),
                 'name' => $group->getAttribute('name'),
                 'slug' => $group->getAttribute('slug'),
             ],
             'data' => $data,
             'meta' => [
                 'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
+                'last_page'    => $paginator->lastPage(),
+                'per_page'     => $paginator->perPage(),
+                'total'        => $paginator->total(),
             ],
         ]);
     }

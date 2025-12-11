@@ -19,7 +19,7 @@ return new class extends Migration
                 ->constrained('users')
                 ->cascadeOnDelete();
 
-            $table->string('name');
+            $table->string('name', 20);
             $table->string('slug')->unique();
             $table->string('join_code', 32)->unique();
 

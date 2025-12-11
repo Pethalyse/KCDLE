@@ -22,7 +22,7 @@ class FriendGroup extends Model
 
     public function users(): BelongsToMany
     {
-        return $this->belongsToMany(User::class)
+        return $this->belongsToMany(User::class, 'friend_group_users')
             ->withPivot('role')
             ->withTimestamps();
     }
