@@ -81,11 +81,11 @@ function goHome() {
 <template>
   <div class="dle-page HOME">
     <header class="header_HOME">
-      <div class="btn-home">
+      <div class="auth-logo">
         <SimpleImg
           class="logo"
           alt="KCDLE"
-          img="KCDLE_page_Logo.png"
+          img="HOMEDLE_Header-rbg.png"
           @onclick="goHome"
         />
       </div>
@@ -338,6 +338,17 @@ function goHome() {
   text-align: start;
 }
 
+.auth-logo {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.auth-logo img {
+  width: auto;
+  filter: drop-shadow(0 0 4px rgba(0,0,0,0.25));
+}
+
+
 @media (max-width: 640px) {
   .dle-page {
     padding: 14px 10px 18px;
@@ -358,6 +369,10 @@ function goHome() {
 
   .auth-submit {
     font-size: 0.94rem;
+  }
+
+  .auth-logo img {
+    height: 50%;
   }
 }
 </style>

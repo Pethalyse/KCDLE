@@ -15,6 +15,22 @@ const navOpen = ref(false)
 
 const currentRouteName = computed(() => route.name?.toString() ?? '')
 const isAuthenticated = computed(() => auth.isAuthenticated)
+const currentTheme = computed<'kcdle' | 'lecdle' | 'lfldle' | 'default'>(() => {
+  const name = currentRouteName.value
+
+  if (name === 'lecdle') {
+    return 'lecdle'
+  }
+  if (name === 'lfldle') {
+    return 'lfldle'
+  }
+  if (name === 'kcdle') {
+    return 'kcdle'
+  }
+
+  return 'default'
+})
+
 
 function handleMouseEnter() {
   isOpen.value = true
@@ -47,10 +63,6 @@ async function logout() {
   flash.info('Tu as été déconnecté.')
   closeMenus()
 }
-
-onMounted(() => {
-  console.log(currentRouteName)
-})
 </script>
 
 <template>
@@ -61,17 +73,18 @@ onMounted(() => {
   >
     <header
       class="header"
+      :data-theme="currentTheme"
       :class="{ 'is-open': isOpen }"
     >
       <div class="header-inner">
-        <div class="logo-block" @click="go('home')">
-          <div class="logo-main">
-            <span class="logo-kc">KCDLE</span>
-          </div>
-          <div class="logo-sub">
-            Daily KC Guess game
-          </div>
+        <div class="logo-kc" @click="go('home')">
+          <img
+            src="/images/HOMEDLE_Header-rbg.png"
+            alt="kcdle.fr"
+            class="logo-img"
+          />
         </div>
+
 
         <button
           type="button"
@@ -143,7 +156,7 @@ onMounted(() => {
               >
                 LFLDLE
               </button>
-              <button
+              <button v-if="isAuthenticated"
                 class="nav-item"
                 :class="{ active: currentRouteName === 'friends' }"
                 @click="go('friends')"
@@ -210,7 +223,12 @@ onMounted(() => {
 
 .header {
   width: 100%;
-  background: radial-gradient(circle at top, #20263a 0, #05060a 70%);
+  --header-color-main: #20263A;
+  --header-color-dark: #05060A;
+  --header-color-text-1: #00a6ff;
+  --header-color-text-2: #66e0ff;
+
+  background: radial-gradient(circle at top, var(--header-color-main) 0, var(--header-color-dark) 70%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.16);
   transform: translateY(calc(-100% + 26px));
   transition: transform 0.18s ease-out;
@@ -219,12 +237,33 @@ onMounted(() => {
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6);
 }
 
+.header[data-theme='kcdle'],
+.header[data-theme='default'] {
+  --header-color-main: #20263A;
+  --header-color-dark: #05060A;
+  --header-color-text-1: #00a6ff;
+  --header-color-text-2: #66e0ff;
+}
+
+.header[data-theme='lecdle'] {
+  --header-color-main: #7F66C6;
+  --header-color-dark: #5A4693;
+  --header-color-text-1: #A855F7;
+  --header-color-text-2: #C4B5FD;
+}
+
+.header[data-theme='lfldle'] {
+  --header-color-main: #F47857;
+  --header-color-dark: #A85A32;
+  --header-color-text-1: #E26B3D;
+  --header-color-text-2: #FFB199;
+}
+
 .header.is-open {
   transform: translateY(0);
 }
 
 .header-inner {
-  max-width: 1100px;
   margin: 0 auto;
   padding: 6px 14px 10px;
   display: flex;
@@ -235,31 +274,20 @@ onMounted(() => {
   color: #f5f7ff;
 }
 
-.logo-block {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  cursor: pointer;
-}
-
-.logo-main {
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-size: 1.1rem;
-}
-
 .logo-kc {
-  background: linear-gradient(120deg, #00a6ff, #66e0ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.logo-sub {
-  font-size: 0.75rem;
-  opacity: 0.8;
+.logo-img {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(0,0,0,0.3));
 }
+
 
 .burger-button {
   display: none;
@@ -358,9 +386,9 @@ onMounted(() => {
 }
 
 .nav-item.active {
-  background: #00a6ff;
+  background: var(--header-color-text-1);
   color: #fff;
-  box-shadow: 0 0 12px rgba(0, 166, 255, 0.7);
+  box-shadow: 0 0 12px var(--header-color-text-2);
 }
 
 .nav-item.danger {
@@ -371,7 +399,7 @@ onMounted(() => {
   background: rgba(255, 66, 66, 0.5);
 }
 
-@media (max-width: 800px) {
+@media (max-width: 1080px) {
   .header-wrapper {
     position: relative;
   }

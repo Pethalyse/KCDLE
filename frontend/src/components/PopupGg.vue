@@ -88,7 +88,7 @@ async function copyText() {
 
 onMounted(() => {
   if (root.value) {
-    root.value.scrollIntoView({ behavior: 'smooth' })
+    root.value.scrollIntoView({ behavior: 'smooth', block: 'center' })
     setTimeout(() => {
       root.value && root.value.classList.add('fade-in')
     }, 500)

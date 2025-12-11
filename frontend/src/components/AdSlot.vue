@@ -93,15 +93,22 @@ watch(slotId, (newVal) => {
   max-width: 420px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: radial-gradient(circle at top left, #111827, #020617);
-  border: 1px solid rgba(148, 163, 184, 0.45);
+
+  background: radial-gradient(
+    circle at top left,
+    var(--dle-color-main, #111827),
+    var(--dle-color-accent, #020617)
+  );
+  border: 1px solid var(--dle-accent-soft, rgba(148, 163, 184, 0.45));
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 0.85rem;
   color: #e5e7eb;
 }
+
 
 .ad-slot[data-kind='banner'] .ad-card {
   max-width: 720px;
@@ -124,10 +131,11 @@ watch(slotId, (newVal) => {
   letter-spacing: 0.08em;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.7);
-  color: #bfdbfe;
+  background: var(--dle-accent-pill, rgba(59, 130, 246, 0.15));
+  border: 1px solid var(--dle-accent-pill-border, rgba(59, 130, 246, 0.7));
+  color: #e5e7eb;
 }
+
 
 .ad-content {
   margin-top: 4px;
@@ -155,11 +163,12 @@ watch(slotId, (newVal) => {
 }
 
 .ad-card:hover {
-  border-color: rgba(59, 130, 246, 0.8);
+  border-color: var(--dle-accent-strong, rgba(59, 130, 246, 0.8));
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.7);
   transform: translateY(-1px);
   transition: all 120ms ease-out;
 }
+
 
 .ad-placeholder .fake-title {
   font-weight: 600;

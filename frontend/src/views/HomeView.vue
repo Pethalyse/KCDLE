@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import SimpleImg from '@/components/SimpleImg.vue'
 import GameButton from '@/components/GameButton.vue'
 import Credit from '@/components/Credit.vue'
 import AdSlot from "@/components/AdSlot.vue";
@@ -12,12 +11,22 @@ const data = [
 </script>
 
 <template>
-  <div>
-    <header class="header_HOME">
-      <SimpleImg :img="'HOMEDLE_Header.png'" />
+  <div class="home-page">
+    <header class="home-hero">
+      <div class="home-hero-inner">
+        <div class="home-logo">
+          <img
+            src="/images/HOMEDLE_Header-rbg.png"
+            alt="kcdle.fr"
+          />
+        </div>
+        <p class="home-subtitle">
+          Choisis ton DLE et tente de deviner le joueur du jour.
+        </p>
+      </div>
     </header>
 
-    <div class="dle_body HOME">
+    <main class="home-body">
       <div class="btn-container">
         <GameButton
           v-for="val in data"
@@ -27,7 +36,87 @@ const data = [
       </div>
 
       <AdSlot id="dle-bottom-1" kind="banner" />
-    </div>
+    </main>
+
     <Credit />
   </div>
 </template>
+
+<style scoped>
+.home-page {
+  min-height: 100vh;
+  padding: 20px 12px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #f3f3f3;
+  background: radial-gradient(circle at top, #20263A 0, #05060A 75%);
+}
+
+.home-hero {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.home-hero-inner {
+  text-align: center;
+}
+
+.home-title {
+  font-size: clamp(2.2rem, 4vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.home-subtitle {
+  margin-top: 6px;
+  font-size: 0.95rem;
+  opacity: 0.8;
+}
+
+.home-body {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.btn-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 24px;
+}
+
+.home-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.home-logo img {
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(0,0,0,0.4));
+}
+
+@media (max-width: 640px) {
+  .btn-container {
+    gap: 14px;
+  }
+
+  .home-logo img {
+    width: 50%;
+  }
+
+  .home-subtitle {
+    font-size: 0.75rem;
+  }
+}
+</style>
+
