@@ -14,6 +14,8 @@ class PendingGuess extends Model
         'player_id',
         'guess_order',
         'correct',
+        'created_at',
+        'updated_at',
     ];
 
     public function dailyGame(): BelongsTo

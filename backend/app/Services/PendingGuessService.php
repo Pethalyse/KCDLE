@@ -71,23 +71,30 @@ class PendingGuessService
             $result = UserGameResult::firstOrCreate([
                 'user_id'       => $user->getAttribute('id'),
                 'daily_game_id' => $daily->getAttribute('id'),
+                "game" => $daily->getAttribute('game'),
             ]);
 
+            if($result->won_at !== null) {
+                continue;
+            }
+
             $sequence = $guesses
+                ->sortBy(['created_at', 'guess_order'])
                 ->unique('player_id')
                 ->values();
 
             $firstCorrectIndex = $sequence->search(fn ($g) => $g->player_id === $daily->player_id);
 
             if ($firstCorrectIndex !== false) {
-                $result->won_at = $result->won_at ?? now();
+                $result->won_at = now();
                 $result->guesses_count = $firstCorrectIndex + 1;
                 $result->save();
 
-                $unlocked = $unlocked->merge(
-                    $this->achievements->handleGameWin($user, $result)
-                );
+                $newUnlocked = $this->achievements->handleGameWin($user, $result);
+
+                $unlocked = $unlocked->merge(collect($newUnlocked));
             }
+
 
             foreach ($sequence as $idx => $g) {
                 UserGuess::updateOrCreate(
