@@ -100,27 +100,27 @@ class AchievementService
         return [
             'first_win_any' => [
                 'name' => 'First blood',
-                'description' => 'Remporter votre toute première victoire, tous DLE confondus.',
+                'description' => 'Remporter votre toute première victoire, tous jeux confondus.',
                 'game' => null,
             ],
             'first_win_game_3' => [
                 'name' => 'First draft',
-                'description' => 'Remporter votre première victoire sur chacun des DLE disponibles.',
+                'description' => 'Remporter votre première victoire sur chacun des jeux disponibles.',
                 'game' => null,
             ],
             'ten_wins_game' => [
                 'name' => 'Habitué du lobby',
-                'description' => 'Cumuler 10 victoires sur un DLE.',
+                'description' => 'Cumuler 10 victoires sur un jeu.',
                 'game' => null,
             ],
             'streak_5_game' => [
                 'name' => 'La manita',
-                'description' => 'Avoir une streak de 5 sur un DLE.',
+                'description' => 'Avoir une streak de 5 sur un jeu.',
                 'game' => null,
             ],
             'streak_14_game' => [
                 'name' => 'Mur imprenable',
-                'description' => 'Avoir une streak de 14 sur un DLE.',
+                'description' => 'Avoir une streak de 14 sur un jeu.',
                 'game' => null,
             ],
             'perfect_day' => [
@@ -140,17 +140,17 @@ class AchievementService
             ],
             'blue_chants' => [
                 'name' => 'Chants éternels',
-                'description' => 'Cumuler 30 victoires sur un DLE.',
+                'description' => 'Cumuler 30 victoires sur un jeu.',
                 'game' => null,
             ],
             'graphique_vert' => [
                 'name' => 'Graphique tout vert',
-                'description' => 'Cumuler 100 victoires tous DLE confondus.',
+                'description' => 'Cumuler 100 victoires tous jeux confondus.',
                 'game' => null,
             ],
             'tacticien_galactique' => [
                 'name' => 'Galaxies World Champion',
-                'description' => 'Cumuler 50 victoires sur un DLE avec une moyenne de guesses inférieure ou égale à 3.',
+                'description' => 'Cumuler 50 victoires sur un jeu avec une moyenne de guesses inférieure ou égale à 3.',
                 'game' => null,
             ],
             'buzzer_beater' => [
@@ -160,22 +160,22 @@ class AchievementService
             ],
             'back_to_back_magic' => [
                 'name' => 'Back-to-back',
-                'description' => 'Enchaîner 2 victoires consécutives en un 1 guess pour un même dle.',
+                'description' => 'Enchaîner 2 victoires consécutives en un 1 guess pour un même jeu.',
                 'game' => null,
             ],
             '5_times_under_2_guesses' => [
                 'name' => 'Smurf queue',
-                'description' => 'Enchaîner 5 victoires consécutives en 2 tentatives ou moins pour un même dle.',
+                'description' => 'Enchaîner 5 victoires consécutives en 2 tentatives ou moins pour un même jeu.',
                 'game' => null,
             ],
             'mois_de_folie' => [
                 'name' => 'Soir de grande scène',
-                'description' => 'Gagner tous les DLE d’un même mois.',
+                'description' => 'Gagner tous les jeux d’un même mois.',
                 'game' => null,
             ],
             'pluie_de_perticoins' => [
                 'name' => 'Pluie de perticoins',
-                'description' => 'Avoir une streak de 10, tous DLE confondus.',
+                'description' => 'Avoir une streak de 10, tous jeux confondus.',
                 'game' => null,
             ],
             'club_legend' => [
@@ -572,7 +572,7 @@ class AchievementService
      */
     protected function ensureAchievementExists(string $key, array $definition): Achievement
     {
-        return Achievement::query()->firstOrCreate(
+        return Achievement::query()->updateOrCreate(
             ['key' => $key],
             [
                 'name' => $definition['name'],

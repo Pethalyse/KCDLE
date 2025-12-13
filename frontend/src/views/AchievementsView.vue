@@ -24,12 +24,12 @@ const filteredAchievements = computed(() => {
 })
 
 function formatGameLabel(game: string | null) {
-  if (!game) return 'Tous les DLE'
+  if (!game) return ""
   const g = game.toLowerCase()
   if (g === 'kcdle') return 'KCDLE'
   if (g === 'lecdle') return 'LECDLE'
   if (g === 'lfldle') return 'LFLDLE'
-  return game.toUpperCase()
+  return "";
 }
 
 function formatUnlockedAt(dateIso: string | null) {
