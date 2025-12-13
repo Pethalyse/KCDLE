@@ -48,13 +48,19 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
         ];
     }
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        if ($panel->getId() === 'admin') {
+            return (bool) $this->is_admin;
+        }
+
+        return false;
     }
+
 
     public function friendGroups(): BelongsToMany
     {
