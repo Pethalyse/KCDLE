@@ -10,11 +10,27 @@ use Illuminate\Support\Collection;
 class UserGameStatsService
 {
     /**
-     * Get aggregated stats for a user and a game.
+     * Compute aggregated win statistics for a given user and game.
      *
-     * @param User $user
-     * @param string $game
-     * @return array<string, mixed>
+     * This method queries the UserGameResult table for the specified user and game,
+     * then derives:
+     * - the total number of wins,
+     * - the average number of guesses used to win,
+     * - the current winning streak (consecutive days with a win up to the most recent),
+     * - the maximum historical winning streak.
+     *
+     * If the user has no wins for the given game, it returns zeroed/default values.
+     *
+     * Returned array shape:
+     * - 'wins'            => int                 Total number of wins.
+     * - 'average_guesses' => float|null          Average guesses per win, rounded to 2 decimals, or null if no data.
+     * - 'current_streak'  => int                 Number of consecutive days ending at the latest win date.
+     * - 'max_streak'      => int                 Maximum streak observed over the entire history.
+     *
+     * @param User   $user User for whom statistics are computed.
+     * @param string $game Game identifier (e.g. 'kcdle', 'lfldle', 'lecdle').
+     *
+     * @return array{wins:int, average_guesses:float|null, current_streak:int, max_streak:int}
      */
     public function getStatsForUserAndGame(User $user, string $game): array
     {
@@ -59,10 +75,22 @@ class UserGameStatsService
     }
 
     /**
-     * Compute current and maximum streak from a sorted list of win dates.
+     * Compute the current and maximum win streaks from a list of win dates.
      *
-     * @param Collection<int, Carbon> $dates
-     * @return array{int, int}
+     * The input collection is expected to contain Carbon instances representing
+     * the days on which the user has won, sorted in ascending chronological order.
+     *
+     * The method first determines the maximum streak of consecutive days with wins
+     * over the entire history, then computes the current streak ending at the
+     * most recent win date (i.e. counting backwards day by day until a gap is found).
+     *
+     * Returned array:
+     * - index 0: current streak (int)
+     * - index 1: maximum streak (int)
+     *
+     * @param Collection<int, Carbon> $dates Sorted collection of win dates at day precision.
+     *
+     * @return array{0:int, 1:int} [currentStreak, maxStreak]
      */
     protected function computeStreaks(Collection $dates): array
     {

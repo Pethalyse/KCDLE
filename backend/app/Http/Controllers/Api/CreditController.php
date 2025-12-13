@@ -7,6 +7,31 @@ use Illuminate\Http\JsonResponse;
 
 class CreditController extends Controller
 {
+    /**
+     * Return static credits, technologies and legal disclaimers for the application.
+     *
+     * This endpoint exposes a curated, static payload used by the frontend to display:
+     * - main contributors (name, slug, social handle, role, description, avatar URL),
+     * - a list of key technologies used in the project,
+     * - a list of disclaimers regarding affiliation and intellectual property.
+     *
+     * Avatar URLs are generated using the application's asset helper and are expected
+     * to point to publicly accessible files under the configured public storage path.
+     *
+     * Response JSON:
+     * - 'contributors' => array<int, array{
+     *       name:string,
+     *       slug:string,
+     *       twitter:string,
+     *       role:string,
+     *       description:string,
+     *       avatar:string
+     *   }>
+     * - 'technologies' => array<int, string>
+     * - 'disclaimers'  => array<int, string>
+     *
+     * @return JsonResponse JSON response containing credits and disclaimers content.
+     */
     public function show(): JsonResponse
     {
         return response()->json([

@@ -17,7 +17,15 @@ class AchievementService
     protected UserGameStatsService $stats;
 
     /**
-     * @param UserGameStatsService $stats
+     * AchievementService constructor.
+     *
+     * This service encapsulates the achievement domain logic: it stores the
+     * definitions of all achievements, evaluates whether conditions are met
+     * when a user wins a game, ensures corresponding rows exist in the database,
+     * and unlocks achievements for users.
+     *
+     * @param UserGameStatsService $stats Service used to compute user statistics
+     *                                    required by certain achievement conditions.
      */
     public function __construct(UserGameStatsService $stats)
     {
@@ -25,11 +33,23 @@ class AchievementService
     }
 
     /**
-     * Handle achievements for a user when a game is won.
+     * Evaluate and unlock achievements after a successful game for a user.
      *
-     * @param User $user
-     * @param UserGameResult $result
-     * @return Collection<int, Achievement>
+     * This method:
+     * - loads all achievement definitions,
+     * - evaluates the condition of each achievement against the provided user
+     *   and game result using isConditionMet(),
+     * - ensures a persistent Achievement row exists for each matching key,
+     * - checks whether the achievement is already unlocked for the user,
+     * - creates a UserAchievement record for each newly unlocked achievement.
+     *
+     * It returns a collection of Achievement models that have been unlocked
+     * during this specific win.
+     *
+     * @param User           $user   User who has just won a game.
+     * @param UserGameResult $result Persisted result of the daily game for this user.
+     *
+     * @return Collection<int, Achievement> Newly unlocked achievements.
      */
     public function handleGameWin(User $user, UserGameResult $result): Collection
     {
@@ -61,9 +81,19 @@ class AchievementService
     }
 
     /**
-     * Get achievement definitions.
+     * Return the static definitions of all achievements.
      *
-     * @return array<string, array<string, mixed>>
+     * Each achievement is keyed by a unique string identifier and includes:
+     * - 'name'        => string           Display name.
+     * - 'description' => string           Human-readable description.
+     * - 'game'        => string|null      Game identifier if scoped to a specific game, or null for global.
+     *
+     * The keys are used internally to:
+     * - evaluate eligibility with isConditionMet(),
+     * - ensure persistence with ensureAchievementExists(),
+     * - map user unlocks in UserAchievement.
+     *
+     * @return array<string, array{name:string, description:string, game:string|null}>
      */
     protected function definitions(): array
     {
@@ -156,6 +186,29 @@ class AchievementService
         ];
     }
 
+    /**
+     * Determine whether a given achievement condition is met for a user and result.
+     *
+     * The logic inside this method interprets the achievement key and uses
+     * data from:
+     * - the supplied UserGameResult,
+     * - the UserGameStatsService (global stats and per-game stats),
+     * - related models such as DailyGame, UserGuess, and KcdlePlayer
+     *   when necessary,
+     * to decide if the user satisfies the required condition at the moment of
+     * this particular win.
+     *
+     * This method does not persist anything; it only performs the eligibility
+     * check for a single achievement definition.
+     *
+     * @param string         $key        Unique achievement key (e.g. 'first_win_any').
+     * @param array{name:string, description:string, game:string|null} $definition
+     *                                  Static definition for the achievement.
+     * @param User           $user       User to evaluate.
+     * @param UserGameResult $result     Game result that triggered the evaluation.
+     *
+     * @return bool True if the achievement should be unlocked based on this win.
+     */
     protected function isConditionMet(string $key, array $definition, User $user, UserGameResult $result): bool
     {
         $userId = $user->getAttribute('id');
@@ -411,6 +464,41 @@ class AchievementService
         return false;
     }
 
+    /**
+     * List all achievements with unlock status and global unlock statistics.
+     *
+     * For each defined achievement, this method ensures there is a corresponding
+     * row in the achievements table, then computes:
+     * - whether the given user (if any) has unlocked it,
+     * - the timestamp when the user unlocked it,
+     * - how many users have unlocked it,
+     * - the global unlock percentage among all users.
+     *
+     * The returned collection is a flat list of associative arrays, each with:
+     * - 'id'                   => int
+     * - 'key'                  => string
+     * - 'name'                 => string
+     * - 'description'          => string
+     * - 'game'                 => string|null
+     * - 'unlocked'             => bool
+     * - 'unlocked_at'          => string|null ISO 8601 datetime when unlocked, or null.
+     * - 'unlocked_percentage'  => float       Percentage of users who unlocked it.
+     *
+     * If $user is null, the unlock flags are computed as if no user has unlocked anything.
+     *
+     * @param User|null $user User for whom to compute unlock flags, or null for anonymous.
+     *
+     * @return Collection<int, array{
+     *     id:int,
+     *     key:string,
+     *     name:string,
+     *     description:string,
+     *     game:string|null,
+     *     unlocked:bool,
+     *     unlocked_at:string|null,
+     *     unlocked_percentage:float
+     * }>
+     */
     public function listAllForUser(?User $user): Collection
     {
         $definitions = $this->definitions();
@@ -467,11 +555,20 @@ class AchievementService
 
 
     /**
-     * Ensure an achievement row exists in database for a given key.
+     * Ensure that a persistent Achievement row exists for the given key.
      *
-     * @param string $key
-     * @param array<string, mixed> $definition
-     * @return Achievement
+     * If an Achievement already exists with the provided key, it is returned
+     * as-is. Otherwise, a new row is created using the supplied definition
+     * (name, description, game).
+     *
+     * This method does not perform any user-specific logic; it guarantees
+     * a canonical Achievement instance for the given key.
+     *
+     * @param string $key  Unique achievement key.
+     * @param array{name:string, description:string, game:string|null} $definition
+     *                     Static definition used to create the record if needed.
+     *
+     * @return Achievement Existing or newly created achievement model.
      */
     protected function ensureAchievementExists(string $key, array $definition): Achievement
     {
@@ -486,11 +583,15 @@ class AchievementService
     }
 
     /**
-     * Check if an achievement is already unlocked for the user.
+     * Check whether the given user has already unlocked a specific achievement.
      *
-     * @param User $user
-     * @param Achievement $achievement
-     * @return bool
+     * This method inspects the UserAchievement pivot table to determine if a
+     * row exists for the (user_id, achievement_id) pair.
+     *
+     * @param User        $user        User to check.
+     * @param Achievement $achievement Achievement to check.
+     *
+     * @return bool True if a corresponding UserAchievement row already exists.
      */
     protected function isAlreadyUnlocked(User $user, Achievement $achievement): bool
     {
@@ -501,10 +602,16 @@ class AchievementService
     }
 
     /**
-     * Unlock an achievement for the user.
+     * Persist a new unlock of the given achievement for the specified user.
      *
-     * @param User $user
-     * @param Achievement $achievement
+     * This method inserts a new UserAchievement record associating the user
+     * and the achievement, and sets the unlock timestamp to the current time.
+     * It assumes that isAlreadyUnlocked() has been checked beforehand to avoid
+     * duplicates.
+     *
+     * @param User        $user        User who unlocked the achievement.
+     * @param Achievement $achievement Achievement that has been unlocked.
+     *
      * @return void
      */
     protected function unlockAchievement(User $user, Achievement $achievement): void

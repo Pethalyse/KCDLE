@@ -14,7 +14,13 @@ class AchievementController extends Controller
     protected AchievementService $achievements;
 
     /**
-     * @param AchievementService $achievements
+     * Create a new AchievementController instance.
+     *
+     * This controller exposes read-only endpoints to retrieve achievement data.
+     * It delegates all business logic to the AchievementService and optionally
+     * resolves the user from a bearer token when present.
+     *
+     * @param AchievementService $achievements Achievement domain service.
      */
     public function __construct(AchievementService $achievements)
     {
@@ -22,10 +28,25 @@ class AchievementController extends Controller
     }
 
     /**
-     * List all achievements with user status.
+     * List all achievements with unlock status for the current requester.
      *
-     * @param Request $request
-     * @return JsonResponse
+     * This endpoint is accessible without authentication middleware. If a bearer
+     * token is present, it attempts to resolve a Sanctum PersonalAccessToken and
+     * extract its tokenable user. If token resolution fails or the tokenable is
+     * not a User instance, the requester is treated as anonymous.
+     *
+     * The response always returns the full achievement catalog with:
+     * - per-achievement unlocked flags (only when a valid user is resolved),
+     * - unlocked timestamp (only when a valid user is resolved),
+     * - global unlocked percentage for each achievement.
+     *
+     * Response JSON:
+     * - 'data' => Collection of achievement entries as returned by
+     *             AchievementService::listAllForUser().
+     *
+     * @param Request $request Incoming HTTP request, optionally containing a bearer token.
+     *
+     * @return JsonResponse JSON response containing the achievements list.
      */
     public function index(Request $request): JsonResponse
     {

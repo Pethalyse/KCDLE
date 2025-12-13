@@ -7,6 +7,29 @@ use Illuminate\Http\JsonResponse;
 
 class LegalController extends Controller
 {
+    /**
+     * Return the legal notice ("Mentions légales") content as a static JSON payload.
+     *
+     * This endpoint exposes a structured, front-end ready representation of the
+     * application's legal notice, including:
+     * - a global title and last update date,
+     * - multiple sections (editor, hosting, intellectual property, personal data,
+     *   cookies, responsibility, applicable law, contact),
+     * - for each section: a title and an ordered list of paragraphs.
+     *
+     * The returned content is static and does not depend on authentication,
+     * request parameters, or database state.
+     *
+     * Response JSON structure:
+     * - 'title'        => string
+     * - 'last_updated' => string (YYYY-MM-DD)
+     * - '<section_key>' => array{
+     *       title:string,
+     *       paragraphs:array<int, string>
+     *   }
+     *
+     * @return JsonResponse JSON response containing the legal notice content.
+     */
     public function show(): JsonResponse
     {
         return response()->json([

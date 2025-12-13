@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Achievement;
 use App\Models\DailyGame;
 use App\Models\KcdlePlayer;
 use App\Models\LoldlePlayer;
 use App\Models\PendingGuess;
 use App\Models\Player;
 use App\Services\AchievementService;
+use App\Services\AnonKeyService;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Http\JsonResponse;
@@ -26,21 +28,79 @@ use Throwable;
 class GameGuessController extends Controller
 {
     protected AchievementService $achievements;
+    protected AnonKeyService $anonKeys;
 
     /**
-     * @param AchievementService $achievements
+     * Create a new GameGuessController instance.
+     *
+     * This controller handles the entire lifecycle of guesses for the
+     * different games (kcdle, lfldle, lecdle):
+     * - recording guesses for authenticated and anonymous users,
+     * - computing and returning today's status for the caller,
+     * - providing history and per-date details for past games,
+     * - comparing guesses to the secret player and building structured
+     *   comparison results for the frontend.
+     *
+     * @param AchievementService $achievements Service used to evaluate and unlock
+     *                                         achievements when a user wins a game.
+     * @param AnonKeyService $anonKeys Service used to create an anonymize key
+     *                                 from user ip.
      */
-    public function __construct(AchievementService $achievements)
-    {
+    public function __construct(
+        AchievementService $achievements,
+        AnonKeyService $anonKeys,
+    ) {
         $this->achievements = $achievements;
+        $this->anonKeys = $anonKeys;
     }
 
+
     /**
-     * Handle a guess for the given game.
+     * Submit a new guess for today's daily game.
      *
-     * @param string $game
-     * @param Request $request
-     * @return JsonResponse
+     * Supported games: 'kcdle', 'lfldle', 'lecdle'. Any other value results
+     * in a 404 JSON error: { "message": "Unknown game." }.
+     *
+     * This endpoint:
+     * - validates the input payload:
+     *   - player_id: required, integer.
+     *   - guesses:  required, integer, min 1 (position of this guess in the sequence).
+     * - loads today's DailyGame for the requested game; if none exists,
+     *   returns HTTP 404.
+     * - resolves the secret player wrapper model using Player::resolvePlayerModel().
+     * - resolves the guessed player wrapper; if either is missing, returns HTTP 404.
+     * - uses comparePlayers() to derive a comparison array and detect if
+     *   the guess is correct.
+     *
+     * If the user is authenticated:
+     * - calls persistUserGuess() to update UserGameResult and UserGuess,
+     *   and possibly unlock achievements.
+     *
+     * If the user is anonymous:
+     * - uses an IP-based anonymous key, and stores or updates a PendingGuess
+     *   row keyed by (anon_key, daily_game_id, guess_order).
+     *
+     * In both cases, the DailyGame aggregate statistics are updated:
+     * - solvers_count is incremented when the daily is newly solved,
+     * - total_guesses is incremented,
+     * - average_guesses is recomputed.
+     *
+     * Response JSON payload:
+     * - 'game'                 => string
+     * - 'date'                 => string (YYYY-MM-DD)
+     * - 'correct'              => bool
+     * - 'comparison'           => array  Structured comparison fields.
+     * - 'stats'                => array{
+     *       solvers_count:int,
+     *       total_guesses:int,
+     *       average_guesses:float|null
+     *   }
+     * - 'unlocked_achievements'=> array[] List of newly unlocked achievements (for authenticated users).
+     *
+     * @param string  $game    Identifier of the game ('kcdle', 'lfldle', 'lecdle').
+     * @param Request $request HTTP request containing guess data and authenticated user if any.
+     *
+     * @return JsonResponse JSON response describing the guess result and stats.
      */
     public function store(string $game, Request $request): JsonResponse
     {
@@ -105,7 +165,7 @@ class GameGuessController extends Controller
                 $correct
             );
         } else {
-            $anonKey = $this->makeAnonKey($request);
+            $anonKey = $this->anonKeys->fromRequest($request);
             PendingGuess::updateOrCreate(
                 [
                     'anon_key'      => $anonKey,
@@ -147,14 +207,30 @@ class GameGuessController extends Controller
 
 
     /**
-     * Persist the guess for an authenticated user.
+     * Persist a guess for an authenticated user and update related stats.
      *
-     * @param User $user
-     * @param DailyGame $daily
-     * @param int $playerId
-     * @param int $guessesCount
-     * @param bool $correct
-     * @return Collection
+     * This method:
+     * - loads or creates a UserGameResult for the (user, daily_game) pair,
+     * - updates the guesses_count if it differs from the provided value,
+     * - if the guess is correct and the game was not previously won, sets
+     *   won_at to the current time,
+     * - saves the UserGameResult,
+     * - creates or updates a UserGuess record for the given guessesCount
+     *   (guess_order) and player_id,
+     * - if the guess is correct and the game transitioned from "not won" to
+     *   "won", calls AchievementService::handleGameWin() and returns the
+     *   unlocked achievements.
+     *
+     * If the game was already won before this guess, no additional achievements
+     * are unlocked by this method.
+     *
+     * @param User      $user         Authenticated user submitting the guess.
+     * @param DailyGame $daily        Daily game for which the guess is submitted.
+     * @param int       $playerId     Identifier of the guessed player.
+     * @param int       $guessesCount Position of this guess within today's guesses.
+     * @param bool      $correct      Whether the guess matches the secret player.
+     *
+     * @return Collection<int, Achievement> Collection of achievements unlocked by this guess.
      */
     protected function persistUserGuess(User $user, DailyGame $daily, int $playerId, int $guessesCount, bool $correct): Collection
     {
@@ -202,11 +278,38 @@ class GameGuessController extends Controller
 
 
     /**
-     * Get today's guesses for the authenticated user and given game.
+     * Retrieve today's game status and guesses for the current user.
      *
-     * @param string $game
-     * @param Request $request
-     * @return JsonResponse
+     * This endpoint:
+     * - checks that the game identifier is supported,
+     * - loads today's DailyGame for the given game; returns 404 if not found,
+     * - loads the UserGameResult and its UserGuess entries for today,
+     *
+     * The guesses are transformed into a list of entries containing:
+     * - resolved player wrapper model,
+     * - comparison result (via comparePlayers()),
+     * - global stats of the daily game (solvers_count, total_guesses, average_guesses),
+     * and a boolean 'correct' flag for each guess.
+     *
+     * Response JSON payload:
+     * - 'game'          => string
+     * - 'date'          => string (YYYY-MM-DD)
+     * - 'won'           => bool   True if the user has already solved the daily.
+     * - 'guesses_count' => int    Number of guesses stored for this user/IP today.
+     * - 'guesses'       => array[] Each element includes:
+     *      - 'player_id'  => int
+     *      - 'correct'    => bool
+     *      - 'comparison' => array
+     *      - 'stats'      => array{
+     *            solvers_count:int,
+     *            total_guesses:int,
+     *            average_guesses:float|null
+     *        }
+     *
+     * @param string  $game    Identifier of the game ('kcdle', 'lfldle', 'lecdle').
+     * @param Request $request HTTP request with authenticated user.
+     *
+     * @return JsonResponse JSON response with today's game status and guesses.
      */
     public function today(string $game, Request $request): JsonResponse
     {
@@ -283,11 +386,32 @@ class GameGuessController extends Controller
     }
 
     /**
-     * Get history of wins for the authenticated user and given game.
+     * Retrieve the history of past wins for the authenticated user.
      *
-     * @param string $game
-     * @param Request $request
-     * @return JsonResponse
+     * This endpoint:
+     * - requires an authenticated user,
+     * - validates that the game identifier is supported,
+     * - queries UserGameResult joined with DailyGame for rows where:
+     *   - user_id matches the current user,
+     *   - game matches the requested game,
+     *   - won_at is not null (only completed wins),
+     * - orders results by DailyGame.selected_for_date in descending order,
+     * - maps each row to a simplified structure containing:
+     *   - internal result id,
+     *   - number of guesses used,
+     *   - date of the daily game.
+     *
+     * Response JSON payload:
+     * - 'history' => array<int, array{
+     *       id:int,
+     *       guesses_count:int,
+     *       date:string (YYYY-MM-DD)
+     *   }>
+     *
+     * @param string  $game    Identifier of the game.
+     * @param Request $request HTTP request providing the authenticated user.
+     *
+     * @return JsonResponse JSON response with the list of completed daily results.
      */
     public function history(string $game, Request $request): JsonResponse
     {
@@ -334,12 +458,39 @@ class GameGuessController extends Controller
     }
 
     /**
-     * Get detailed history for a given date, game and authenticated user.
+     * Retrieve detailed guesses for a specific past date and game.
      *
-     * @param string $game
-     * @param string $date
-     * @param Request $request
-     * @return JsonResponse
+     * This endpoint:
+     * - requires an authenticated user,
+     * - validates that the game identifier is supported,
+     * - parses the provided date and finds the corresponding DailyGame,
+     *   returning 404 if not found,
+     * - loads the UserGameResult for the (user, daily_game) pair; if no result
+     *   exists, returns an empty guesses list,
+     * - resolves the secret player wrapper model for the daily; if missing,
+     *   returns an empty guesses list,
+     * - iterates through the associated UserGuess records in guess order,
+     *   and for each one:
+     *   - resolves the guessed player wrapper,
+     *   - computes the comparison against the secret player via comparePlayers(),
+     *   - determines whether the guess is correct,
+     *   - attaches current DailyGame stats.
+     *
+     * Response JSON payload:
+     * - 'game'          => string
+     * - 'date'          => string (YYYY-MM-DD)
+     * - 'won'           => bool|null  True if result is won, null if no result.
+     * - 'guesses_count' => int|null   Number of guesses used, null if no result.
+     * - 'guesses'       => array[]    List of guess entries:
+     *      - 'player_id'  => int
+     *      - 'correct'    => bool
+     *      - 'comparison' => array
+     *
+     * @param string  $game    Identifier of the game.
+     * @param string  $date    Target daily date in YYYY-MM-DD format.
+     * @param Request $request HTTP request providing the authenticated user.
+     *
+     * @return JsonResponse JSON response with detailed guesses for the given date.
      */
     public function historyByDate(string $game, string $date, Request $request): JsonResponse
     {
@@ -417,7 +568,26 @@ class GameGuessController extends Controller
         ]);
     }
 
-    protected function comparePlayers($secret, $guess, string $game): array
+    /**
+     * Compare the secret player to a guessed player depending on the game.
+     *
+     * This method dispatches to the appropriate comparison implementation
+     * based on the game identifier:
+     * - 'kcdle'         => compareKcdlePlayers()
+     * - 'lfldle','lecdle'=> compareLoldlePlayers()
+     * - any other value => returns a default 'incorrect' comparison.
+     *
+     * The returned array always has the following structure:
+     * - 'correct' => bool  True if the guess matches the secret player.
+     * - 'fields'  => array Field-specific comparison values understood by the frontend.
+     *
+     * @param mixed  $secret Wrapper model instance representing the secret player.
+     * @param mixed  $guess  Wrapper model instance representing the guessed player.
+     * @param string $game   Identifier of the game ('kcdle', 'lfldle', 'lecdle').
+     *
+     * @return array{correct:bool, fields:array} Comparison result.
+     */
+    protected function comparePlayers(mixed $secret, mixed $guess, string $game): array
     {
         return match ($game) {
             'kcdle'  => $this->compareKcdlePlayers($secret, $guess),
@@ -429,6 +599,52 @@ class GameGuessController extends Controller
         };
     }
 
+    /**
+     * Compare two KcdlePlayer instances and compute field-level hints.
+     *
+     * The comparison covers multiple attributes of the wrapped Player and
+     * KcdlePlayer models, including:
+     * - slug (exact equality, used to determine global correctness),
+     * - country_code (exact equality),
+     * - role_id (exact equality),
+     * - game_id (exact equality),
+     * - currentTeam id (exact equality),
+     * - previousTeam id (exact equality),
+     * - birthday (age comparison),
+     * - first_official_year (numeric comparison),
+     * - trophies_count (numeric comparison).
+     *
+     * For equality-based fields, eq() returns:
+     * - 1 if values are equal,
+     * - 0 otherwise.
+     *
+     * For numeric and date based fields, cmpNumber() / cmpDate() return:
+     * -  1 if secret == guess,
+     * -  0 if secret > guess,
+     * - -1 if secret < guess,
+     * - null if either side is null.
+     *
+     * The guess is considered globally correct if the slug comparison returns 1.
+     *
+     * Returned array structure:
+     * - 'correct' => bool  True if slug matches.
+     * - 'fields'  => array{
+     *       country:int|null,
+     *       birthday:int|null,
+     *       game:int|null,
+     *       first_official_year:int|null,
+     *       trophies:int|null,
+     *       previous_team:int|null,
+     *       current_team:int|null,
+     *       role:int|null,
+     *       slug:int
+     *   }
+     *
+     * @param KcdlePlayer $secret KcdlePlayer wrapper for the secret player.
+     * @param KcdlePlayer $guess  KcdlePlayer wrapper for the guessed player.
+     *
+     * @return array{correct:bool, fields:array<string,int|null>} Detailed comparison result.
+     */
     protected function compareKcdlePlayers(KcdlePlayer $secret, KcdlePlayer $guess): array
     {
         $secretPlayer = $secret->getAttribute('player');
@@ -480,6 +696,33 @@ class GameGuessController extends Controller
     }
 
 
+    /**
+     * Compare two LoldlePlayer instances and compute field-level hints.
+     *
+     * The comparison covers:
+     * - slug (exact equality, used to determine global correctness),
+     * - country_code (exact equality),
+     * - birthday (age comparison),
+     * - current team id (exact equality),
+     * - lol role id (exact equality).
+     *
+     * The guess is considered globally correct if the slug comparison returns 1.
+     *
+     * Returned array structure:
+     * - 'correct' => bool  True if slug matches.
+     * - 'fields'  => array{
+     *       country:int|null,
+     *       birthday:int|null,
+     *       team:int|null,
+     *       lol_role:int|null,
+     *       slug:int
+     *   }
+     *
+     * @param LoldlePlayer $secret LoldlePlayer wrapper for the secret player.
+     * @param LoldlePlayer $guess  LoldlePlayer wrapper for the guessed player.
+     *
+     * @return array{correct:bool, fields:array<string,int|null>} Detailed comparison result.
+     */
     protected function compareLoldlePlayers(LoldlePlayer $secret, LoldlePlayer $guess): array
     {
         $secretPlayer = $secret->getAttribute('player');
@@ -518,12 +761,17 @@ class GameGuessController extends Controller
     }
 
     /**
-     * @param mixed $a
-     * @param mixed $b
-     * @return int
+     * Compare two values for strict equality.
      *
-     * 0 : false
-     * 1 : true
+     * The comparison uses the strict === operator. The result is encoded
+     * as an integer flag to be consumed by the frontend:
+     * - 0 => values are not equal,
+     * - 1 => values are strictly equal.
+     *
+     * @param mixed $a Left-hand value.
+     * @param mixed $b Right-hand value.
+     *
+     * @return int 1 if values are strictly equal, 0 otherwise.
      */
     protected function eq(mixed $a, mixed $b): int
     {
@@ -531,13 +779,23 @@ class GameGuessController extends Controller
     }
 
     /**
-     * @param float|null $secret
-     * @param float|null $guess
-     * @return int|null
+     * Compare two numeric values and return a directional hint.
      *
-     * -1 : secret < guess
-     *  0 : secret > guess
-     *  1 : secret == guess
+     * If either value is null, null is returned to indicate that no hint
+     * can be computed.
+     *
+     * Otherwise:
+     * - returns  1 if secret == guess,
+     * - returns  0 if secret > guess,
+     * - returns -1 if secret < guess.
+     *
+     * These codes are interpreted by the frontend to indicate whether the
+     * guessed value is too low, too high, or correct relative to the secret.
+     *
+     * @param float|null $secret Secret numeric value.
+     * @param float|null $guess  Guessed numeric value.
+     *
+     * @return int|null Directional comparison result or null when unavailable.
      */
     protected function cmpNumber(?float $secret, ?float $guess): ?int
     {
@@ -553,14 +811,25 @@ class GameGuessController extends Controller
     }
 
     /**
-     * @param string|DateTimeInterface|null $secret
-     * @param string|DateTimeInterface|null $guess
-     * @return int|null
+     * Compare two dates based on their age in years.
      *
-     * Compare l'age selon les dates données.
-     * -1 : secret est plus jeune
-     *  0 : secret est plus âgé
-     *  1 : même date
+     * The method accepts strings, DateTimeInterface instances or null values.
+     * If either date is null, null is returned, meaning no hint can be given.
+     *
+     * When both are non-null:
+     * - both values are converted to Carbon instances,
+     * - their age in years is computed,
+     * - returns  1 if ages are equal,
+     * - returns  0 if secret age > guess age,
+     * - returns -1 if secret age < guess age.
+     *
+     * From the player's viewpoint, this indicates whether the guessed player
+     * is older, younger, or the same age as the secret player.
+     *
+     * @param string|DateTimeInterface|null $secret Secret date or null.
+     * @param string|DateTimeInterface|null $guess  Guessed date or null.
+     *
+     * @return int|null Directional comparison result or null when values are missing.
      */
     protected function cmpDate(null|string|DateTimeInterface $secret, null|string|DateTimeInterface $guess): ?int
     {
@@ -576,11 +845,5 @@ class GameGuessController extends Controller
         }
 
         return $s < $g ? -1 : 0;
-    }
-
-    protected function makeAnonKey(Request $request): string
-    {
-        $ip = (string) $request->ip();
-        return hash_hmac('sha256', $ip, config('app.key'));
     }
 }

@@ -18,8 +18,20 @@ class UserProfileController extends Controller
     protected AchievementService $achievements;
 
     /**
-     * @param UserGameStatsService $stats
-     * @param AchievementService $achievements
+     * Create a new UserProfileController instance.
+     *
+     * This controller exposes a single endpoint returning a consolidated profile
+     * for the authenticated user, including:
+     * - global aggregated stats across all games,
+     * - per-game aggregated stats,
+     * - achievement counts,
+     * - friend groups membership overview.
+     *
+     * All per-game statistics are delegated to UserGameStatsService, and the
+     * achievements catalog/unlock status is delegated to AchievementService.
+     *
+     * @param UserGameStatsService $stats Service responsible for computing per-game user stats.
+     * @param AchievementService   $achievements Service responsible for listing achievements and unlock status.
      */
     public function __construct(UserGameStatsService $stats, AchievementService $achievements)
     {
@@ -28,10 +40,53 @@ class UserProfileController extends Controller
     }
 
     /**
-     * Get full loyalty profile for the authenticated user.
+     * Retrieve the authenticated user's consolidated profile.
      *
-     * @param Request $request
-     * @return JsonResponse
+     * This endpoint requires authentication. If Request::user() does not resolve
+     * to a User instance, it returns HTTP 401 with { "message": "Unauthenticated." }.
+     *
+     * The response includes:
+     * - user identity fields (id, name, email, created_at),
+     * - global win statistics across all games based on UserGameResult rows where won_at is not null:
+     *   - total_wins
+     *   - global_average_guesses (rounded to 2 decimals, null if no wins)
+     *   - first_win_at (min won_at, null if no wins)
+     *   - last_win_at (max won_at, null if no wins)
+     *   - distinct_days_played (count of distinct daily_games.selected_for_date where the user has a win)
+     * - per-game statistics for the hardcoded games list ['kcdle', 'lfldle', 'lecdle']
+     *   computed via UserGameStatsService::getStatsForUserAndGame()
+     * - achievements summary computed from AchievementService::listAllForUser():
+     *   - total achievements
+     *   - unlocked achievements (where unlocked === true)
+     * - friend groups overview for groups the user belongs to, including owner identity.
+     *
+     * Response JSON:
+     * - 'user' => array{
+     *     id:int,
+     *     name:string,
+     *     email:string|null,
+     *     created_at:string|null
+     *   }
+     * - 'global_stats' => array{
+     *     total_wins:int,
+     *     global_average_guesses:float|null,
+     *     first_win_at:mixed,
+     *     last_win_at:mixed,
+     *     distinct_days_played:int
+     *   }
+     * - 'games' => array<string, array<string, mixed>>
+     * - 'achievements' => array{ total:int, unlocked:int }
+     * - 'friend_groups' => array<int, array{
+     *     id:int,
+     *     name:string,
+     *     slug:string,
+     *     join_code:string,
+     *     owner:array{id:int|null, name:string|null}
+     *   }>
+     *
+     * @param Request $request HTTP request providing the authenticated user.
+     *
+     * @return JsonResponse JSON response containing the user profile payload.
      */
     public function show(Request $request): JsonResponse
     {

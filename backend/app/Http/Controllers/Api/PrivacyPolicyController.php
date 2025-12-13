@@ -7,6 +7,31 @@ use Illuminate\Http\JsonResponse;
 
 class PrivacyPolicyController extends Controller
 {
+    /**
+     * Return the privacy policy content as a static JSON payload.
+     *
+     * This endpoint exposes a structured, front-end ready representation of the
+     * application's privacy policy, including:
+     * - a global title and last update date,
+     * - an ordered list of sections, each containing:
+     *   - an identifier (id),
+     *   - a display title,
+     *   - an ordered list of paragraphs.
+     *
+     * The returned content is static and does not depend on authentication,
+     * request parameters, or database state.
+     *
+     * Response JSON structure:
+     * - 'title'        => string
+     * - 'last_updated' => string (YYYY-MM-DD)
+     * - 'sections'     => array<int, array{
+     *       id:string,
+     *       title:string,
+     *       paragraphs:array<int, string>
+     *   }>
+     *
+     * @return JsonResponse JSON response containing the privacy policy content.
+     */
     public function show(): JsonResponse
     {
         return response()->json([

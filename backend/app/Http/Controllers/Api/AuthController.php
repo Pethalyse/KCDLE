@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Achievement;
 use App\Models\DailyGame;
 use App\Models\PendingGuess;
 use App\Models\User;
 use App\Models\UserGameResult;
 use App\Models\UserGuess;
 use App\Services\AchievementService;
+use App\Services\PendingGuessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -18,11 +20,48 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
 {
-    public function __construct(
-        protected AchievementService $achievements,
-    ) {}
     /**
-     * Inscription + émission d'un token Sanctum.
+     * Create a new AuthController instance.
+     *
+     * This controller is responsible for user authentication flows:
+     * registration, login, logout and retrieving the authenticated user's
+     * profile. It also imports pending anonymous guesses (stored under an
+     * IP-based anonymous key) into the newly authenticated account and
+     * triggers achievement unlocking when appropriate.
+     *
+     * @param PendingGuessService $pendingGuesses Service used to import pending
+     *                                            guesses into a user account.
+     */
+    public function __construct(
+        protected PendingGuessService  $pendingGuesses,
+    ) {}
+
+    /**
+     * Register a new user and issue a Sanctum token.
+     *
+     * This endpoint:
+     * - validates the registration payload (name, unique email, password),
+     * - creates a new User with a hashed password,
+     * - revokes any existing tokens for safety (should not exist for new users,
+     *   but keeps behavior consistent with login),
+     * - creates a new personal access token using Sanctum,
+     * - imports any pending anonymous guesses for the caller's IP, linking them
+     *   to the new account and unlocking achievements if conditions are met,
+     * - returns the created user in a normalized shape and the API token.
+     *
+     * Validation rules:
+     * - name: required, string, max 20 characters.
+     * - email: required, valid email, max 255 characters, unique in users.
+     * - password: required, string, minimum 8 characters.
+     *
+     * Response JSON payload:
+     * - 'user'         => array{ id:int, name:string, email:string|null }
+     * - 'token'        => string  Newly issued API token.
+     * - 'achievements' => array[] List of unlocked achievements from imported guesses.
+     *
+     * @param Request $request Incoming HTTP request containing registration data.
+     *
+     * @return JsonResponse JSON response with created user, token and unlocked achievements.
      */
     public function register(Request $request): JsonResponse
     {
@@ -39,7 +78,7 @@ class AuthController extends Controller
         ]);
 
         $token = $user->createToken('kcdle-app')->plainTextToken;
-        $unlocked = $this->importPendingGuesses($user, $request);
+        $unlocked = $this->pendingGuesses->import($user, $request);
 
         return response()->json([
             'user'  => $this->formatUser($user),
@@ -49,7 +88,35 @@ class AuthController extends Controller
     }
 
     /**
-     * Connexion email / mot de passe + nouveau token Sanctum.
+     * Authenticate an existing user and issue a new Sanctum token.
+     *
+     * This endpoint:
+     * - validates the login credentials (email, password),
+     * - locates the user by email,
+     * - verifies the provided password against the stored password hash,
+     * - returns a validation error if credentials are invalid,
+     * - revokes any existing tokens for the user,
+     * - creates a new Sanctum personal access token,
+     * - imports any pending anonymous guesses associated with the caller's IP
+     *   into the account and evaluates achievements on those imported wins,
+     * - returns the authenticated user, the new token and unlocked achievements.
+     *
+     * Validation rules:
+     * - email: required, valid email.
+     * - password: required, string.
+     *
+     * On invalid credentials, the response is:
+     * - HTTP 422 Unprocessable Entity
+     * - JSON: { "message": "Identifiants invalides." }
+     *
+     * On success, Response JSON payload:
+     * - 'user'         => array{ id:int, name:string, email:string|null }
+     * - 'token'        => string
+     * - 'achievements' => array[] Newly unlocked achievements from imported guesses.
+     *
+     * @param Request $request Incoming HTTP request with login credentials.
+     *
+     * @return JsonResponse JSON response containing the user, token and achievements.
      */
     public function login(Request $request): JsonResponse
     {
@@ -73,7 +140,7 @@ class AuthController extends Controller
 
         $token = $user->createToken('kcdle-app')->plainTextToken;
 
-        $unlocked = $this->importPendingGuesses($user, $request);
+        $unlocked = $this->pendingGuesses->import($user, $request);
 
         return response()->json([
             'user'  => $this->formatUser($user),
@@ -83,7 +150,20 @@ class AuthController extends Controller
     }
 
     /**
-     * Déconnexion : on invalide le token actuel.
+     * Revoke all API tokens for the authenticated user.
+     *
+     * This endpoint deletes every Sanctum token associated with the currently
+     * authenticated user, effectively logging them out from all devices
+     * and clients.
+     *
+     * If no user is authenticated, it still returns a success response.
+     *
+     * Response JSON payload:
+     * - 'message' => string  Confirmation message.
+     *
+     * @param Request $request HTTP request used to resolve the authenticated user.
+     *
+     * @return JsonResponse JSON response confirming logout completion.
      */
     public function logout(Request $request): JsonResponse
     {
@@ -97,7 +177,19 @@ class AuthController extends Controller
     }
 
     /**
-     * Récupère l'utilisateur courant à partir du token.
+     * Return the profile of the currently authenticated user.
+     *
+     * This endpoint:
+     * - retrieves the user attached to the incoming request,
+     * - returns a normalized representation of the user, or null if no user
+     *   is authenticated (depending on route middleware configuration).
+     *
+     * Response JSON payload:
+     * - 'user' => array{ id:int, name:string, email:string|null }
+     *
+     * @param Request $request HTTP request providing the authenticated user.
+     *
+     * @return JsonResponse JSON response containing the current user profile.
      */
     public function me(Request $request): JsonResponse
     {
@@ -108,6 +200,22 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Normalize a User model into a public API-safe array.
+     *
+     * The normalized representation exposes only the fields needed by the
+     * frontend: identifier, display name and email address. Sensitive fields
+     * (password hash, tokens, timestamps, etc.) are intentionally omitted.
+     *
+     * Returned array structure:
+     * - 'id'    => int          User primary key.
+     * - 'name'  => string       User display name.
+     * - 'email' => string|null  User email address if set.
+     *
+     * @param User $user User instance to normalize.
+     *
+     * @return array{id:int, name:string, email:string|null} Normalized user data.
+     */
     protected function formatUser(User $user): array
     {
         return [
@@ -115,141 +223,5 @@ class AuthController extends Controller
             'name'  => $user->getAttribute("name"),
             'email' => $user->getAttribute("email"),
         ];
-    }
-
-    /**
-     * Rattache les pending_guesses à l'utilisateur
-     * et déclenche les achievements liés aux win.
-     *
-     * @param User $user
-     * @param Request $request
-     * @return Collection
-     */
-    protected function importPendingGuesses(User $user, Request $request): Collection
-    {
-        $anonKey = $this->makeAnonKey($request);
-
-        $pending = PendingGuess::query()
-            ->where('anon_key', $anonKey)
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->get();
-
-        if ($pending->isEmpty()) {
-            return collect();
-        }
-
-        $unlocked = collect();
-
-        $byDaily = $pending->groupBy('daily_game_id');
-
-        foreach ($byDaily as $dailyId => $entries) {
-            /** @var DailyGame|null $daily */
-            $daily = DailyGame::find($dailyId);
-            if (!$daily) {
-                continue;
-            }
-
-            /** @var UserGameResult $result */
-            $result = UserGameResult::firstOrCreate(
-                [
-                    'user_id'       => $user->getAttribute('id'),
-                    'daily_game_id' => $daily->getAttribute('id'),
-                ],
-                [
-                    'game'          => $daily->getAttribute('game'),
-                    'guesses_count' => 0,
-                ]
-            );
-
-            if ($result->getAttribute('won_at') !== null) {
-                continue;
-            }
-
-            $existingGuesses = UserGuess::query()
-                ->where('user_game_result_id', $result->getAttribute('id'))
-                ->orderBy('guess_order')
-                ->get();
-
-            $sequence = [];
-            $seen = [];
-
-            foreach ($existingGuesses as $guess) {
-                $sequence[] = [
-                    'player_id'  => $guess->getAttribute('player_id'),
-                    'correct'    => false,
-                    'created_at' => $guess->getAttribute('created_at'),
-                ];
-                $seen[$guess->getAttribute('player_id')] = true;
-            }
-
-            $firstCorrectIndex = null;
-            $firstCorrectDate  = null;
-
-            /** @var PendingGuess $entry */
-            foreach ($entries->sortBy(['created_at', 'guess_order']) as $entry) {
-                $playerId = $entry->getAttribute('player_id');
-
-                if (isset($seen[$playerId])) {
-                    continue;
-                }
-
-                $seen[$playerId] = true;
-
-                $sequence[] = [
-                    'player_id'  => $playerId,
-                    'correct'    => (bool) $entry->getAttribute('correct'),
-                    'created_at' => $entry->getAttribute('created_at'),
-                ];
-
-                if ($entry->getAttribute('correct') && $firstCorrectIndex === null) {
-                    $firstCorrectIndex = count($sequence);
-                    $firstCorrectDate  = $entry->getAttribute('created_at');
-                }
-            }
-
-            if (empty($sequence)) {
-                continue;
-            }
-
-            foreach ($sequence as $index => $item) {
-                $order = $index + 1;
-
-                UserGuess::updateOrCreate(
-                    [
-                        'user_game_result_id' => $result->getAttribute('id'),
-                        'guess_order'         => $order,
-                    ],
-                    [
-                        'player_id' => $item['player_id'],
-                    ]
-                );
-            }
-
-            $result->setAttribute('guesses_count', count($sequence));
-
-            $newlyWon = false;
-            if ($firstCorrectIndex !== null && $result->getAttribute('won_at') === null) {
-                $result->setAttribute('won_at', $firstCorrectDate ?? now());
-                $newlyWon = true;
-            }
-
-            $result->save();
-
-            if ($newlyWon) {
-                $newAchievements = $this->achievements->handleGameWin($user, $result);
-                $unlocked = $unlocked->merge($newAchievements);
-            }
-        }
-
-        PendingGuess::where('anon_key', $anonKey)->delete();
-
-        return $unlocked->unique('id')->values();
-    }
-
-    protected function makeAnonKey(Request $request): string
-    {
-        $ip = (string) $request->ip();
-        return hash_hmac('sha256', $ip, config('app.key'));
     }
 }

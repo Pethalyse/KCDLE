@@ -12,10 +12,36 @@ use Symfony\Component\HttpFoundation\Response;
 class UserAchievementController extends Controller
 {
     /**
-     * List unlocked achievements for the authenticated user.
+     * List achievements unlocked by the authenticated user.
      *
-     * @param Request $request
-     * @return JsonResponse
+     * This endpoint requires authentication. It resolves the current requester
+     * via Request::user() and returns HTTP 401 if the token does not correspond
+     * to a valid User instance.
+     *
+     * For an authenticated user, it retrieves the user's unlocked achievements
+     * through the many-to-many relationship, ordered by the pivot column
+     * user_achievements.unlocked_at in descending order (most recent unlocks first).
+     *
+     * Each achievement is normalized into an API-safe structure including the
+     * pivot unlock timestamp in ISO 8601 format.
+     *
+     * Response JSON on success:
+     * - 'data' => array<int, array{
+     *     id:int,
+     *     key:string,
+     *     name:string,
+     *     description:string,
+     *     game:string|null,
+     *     unlocked_at:string|null
+     * }>
+     *
+     * Error response:
+     * - HTTP 401
+     * - { "message": "Unauthenticated." }
+     *
+     * @param Request $request HTTP request providing the authenticated user.
+     *
+     * @return JsonResponse JSON response containing the unlocked achievements list.
      */
     public function index(Request $request): JsonResponse
     {
