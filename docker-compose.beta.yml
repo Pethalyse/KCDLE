@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: docker/php/Dockerfile.prod
-    image: kcdle-app-beta:latest
     container_name: kcdle_app_beta
     env_file:
       - backend/.env
@@ -17,7 +16,9 @@ services:
     restart: unless-stopped
 
   scheduler:
-    image: kcdle-app-beta:latest
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.prod
     container_name: kcdle_scheduler_beta
     env_file:
       - backend/.env
