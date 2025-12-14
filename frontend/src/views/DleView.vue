@@ -35,7 +35,7 @@ const dleCode = computed(
 
 const storageKey = computed(() => dleCode.value)
 const winKey = computed(() => `${dleCode.value}_win`)
-const lastClearKey = 'lastClearTime'
+const lastClearKey = computed(() => `${dleCode.value}_lastClearTime`)
 
 const hasWon = computed(() => guesses.value.some(g => g.correct === true))
 
@@ -49,14 +49,14 @@ function clearLocalStorageDaily(): boolean {
   ).getTime()
 
   const lastClearLocal = parseInt(
-    localStorage.getItem(lastClearKey) || '0',
+    localStorage.getItem(lastClearKey.value) || '0',
     10,
   )
 
   if (lastClearLocal < todayLocal) {
     localStorage.removeItem(storageKey.value)
     localStorage.removeItem(winKey.value)
-    localStorage.setItem(lastClearKey, todayLocal.toString())
+    localStorage.setItem(lastClearKey.value, todayLocal.toString())
     return true
   }
 
