@@ -3,29 +3,32 @@ services:
     build:
       context: .
       dockerfile: docker/php/Dockerfile.prod
+    image: kcdle-app-beta:latest
     container_name: kcdle_app_beta
     env_file:
-      - backend/.env.beta
+      - backend/.env
     environment:
       RUN_MIGRATIONS: "true"
     working_dir: /var/www/html
     depends_on:
       - db
+    volumes:
+      - app_code:/var/www/html
     restart: unless-stopped
 
   scheduler:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile.prod
+    image: kcdle-app-beta:latest
     container_name: kcdle_scheduler_beta
     env_file:
-      - backend/.env.beta
+      - backend/.env
     environment:
       RUN_MIGRATIONS: "false"
     working_dir: /var/www/html
     command: sh -c "php artisan schedule:work"
     depends_on:
       - db
+    volumes:
+      - app_code:/var/www/html
     restart: unless-stopped
 
   nginx:
@@ -34,6 +37,7 @@ services:
     ports:
       - "8080:80"
     volumes:
+      - app_code:/var/www/html:ro
       - ./docker/nginx/default.prod.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - app
@@ -47,7 +51,7 @@ services:
       POSTGRES_USER: kcdle
       POSTGRES_PASSWORD: kcdle
     volumes:
-      - db_beta_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
     restart: unless-stopped
 
   adminer:
@@ -62,4 +66,5 @@ services:
       - db
 
 volumes:
-  db_beta_data:
+  db_data:
+  app_code:
