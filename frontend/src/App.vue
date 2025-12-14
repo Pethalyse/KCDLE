@@ -8,6 +8,10 @@ const route = useRoute()
 </script>
 
 <template>
+  <head>
+    <title>KCDLE</title>
+    <link rel="icon" href="/images/HOMEDLE_Header-rbg.png" />
+  </head>
   <div id="app-wrapper">
     <HeaderKcdle />
     <RouterView v-slot="{ Component }">
