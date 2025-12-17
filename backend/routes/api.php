@@ -10,6 +10,11 @@ use App\Http\Controllers\Api\GamePlayerController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\Api\LegalController;
 use App\Http\Controllers\Api\PrivacyPolicyController;
+use App\Http\Controllers\Api\Pvp\PvpEventController;
+use App\Http\Controllers\Api\Pvp\PvpHeartbeatController;
+use App\Http\Controllers\Api\Pvp\PvpMatchController;
+use App\Http\Controllers\Api\Pvp\PvpQueueController;
+use App\Http\Controllers\Api\Pvp\PvpRoundController;
 use App\Http\Controllers\Api\UserAchievementController;
 use App\Http\Controllers\Api\UserGameStatsController;
 use App\Http\Controllers\Api\UserProfileController;
@@ -63,6 +68,25 @@ Route::prefix('friend-groups')
         Route::delete('{slug}', [FriendGroupController::class, 'destroy']);
 
         Route::get('{slug}/leaderboards/{game}', [FriendGroupController::class, 'leaderboard']);
+    });
+
+Route::prefix('pvp')
+    ->middleware(['auth:sanctum'])
+    ->group(function () {
+        Route::post('games/{game}/queue/join', [PvpQueueController::class, 'join']);
+        Route::post('games/{game}/queue/leave', [PvpQueueController::class, 'leave']);
+
+        Route::get('matches/{match}', [PvpMatchController::class, 'show']);
+        Route::get('matches/{match}/events', [PvpMatchController::class, 'events']);
+        Route::post('matches/{match}/heartbeat', [PvpMatchController::class, 'heartbeat']);
+        Route::post('matches/{match}/leave', [PvpMatchController::class, 'leave']);
+        Route::get('matches/{match}/round', [PvpRoundController::class, 'show']);
+        Route::post('matches/{match}/round/action', [PvpRoundController::class, 'action']);
+        Route::get('matches/{match}/events', [PvpEventController::class, 'index']);
+        Route::post('matches/{match}/heartbeat', [PvpHeartbeatController::class, 'store']);
+
+        Route::get('resume', [PvpQueueController::class, 'resume']);
+
     });
 
 Route::get('/credits', [CreditController::class, 'show']);

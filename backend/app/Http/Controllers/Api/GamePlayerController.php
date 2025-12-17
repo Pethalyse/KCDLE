@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\KcdlePlayer;
 use App\Models\LoldlePlayer;
+use App\Services\Dle\GamePlayerService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class GamePlayerController extends Controller
 {
+    public function __construct(private readonly GamePlayerService $players)
+    {
+    }
+
     /**
      * List players for a given game identifier.
      *
@@ -45,23 +50,15 @@ class GamePlayerController extends Controller
     public function index(string $game, Request $request): JsonResponse
     {
         if (!in_array($game, ['kcdle', 'lfldle', 'lecdle'], true)) {
-            return response()->json([
-                'message' => 'Unknown game.',
-            ], 404);
+            return response()->json(['message' => 'Unknown game.'], 404);
         }
 
         $onlyActive = filter_var($request->query('active', '1'), FILTER_VALIDATE_BOOL);
 
-        $players = match ($game) {
-            'kcdle'  => $this->getKcdlePlayers($onlyActive),
-            'lfldle' => $this->getLfldlePlayers($onlyActive),
-            'lecdle' => $this->getLecdllePlayers($onlyActive),
-        };
-
         return response()->json([
-            'game'    => $game,
-            'active'  => $onlyActive,
-            'players' => $players,
+            'game' => $game,
+            'active' => $onlyActive,
+            'players' => $this->players->listPlayers($game, $onlyActive),
         ]);
     }
 
