@@ -6,6 +6,7 @@ use App\Services\Pvp\Rounds\ClassicRoundHandler;
 use App\Services\Pvp\Rounds\DraftRoundHandler;
 use App\Services\Pvp\Rounds\LockedInfosRoundHandler;
 use App\Services\Pvp\Rounds\PvpRoundHandlerFactory;
+use App\Services\Pvp\Rounds\RevealRaceRoundHandler;
 use App\Services\Pvp\Rounds\WhoisRoundHandler;
 use Illuminate\Support\ServiceProvider;
 
@@ -29,6 +30,7 @@ class PvpServiceProvider extends ServiceProvider
                 app(WhoisRoundHandler::class),
                 app(DraftRoundHandler::class),
                 app(LockedInfosRoundHandler::class),
+                app(RevealRaceRoundHandler::class),
 
             ]);
         });
