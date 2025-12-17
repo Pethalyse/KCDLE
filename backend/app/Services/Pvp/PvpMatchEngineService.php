@@ -14,7 +14,7 @@ use Throwable;
  *
  * The engine is format-aware (BO1/BO3/BO5) and round-type agnostic.
  * It delegates round-specific rules to handlers and performs generic transitions:
- * points update, next round selection, chooser selection, and match completion.
+ * points update, next round selection, chooser selection, passive tick, and match completion.
  */
 readonly class PvpMatchEngineService
 {
@@ -27,7 +27,57 @@ readonly class PvpMatchEngineService
     }
 
     /**
+     * Build the canonical match payload for a participant.
+     *
+     * This payload is used across the PvP network API to avoid shape drift between endpoints.
+     * When the match is active, this method also ensures:
+     * - the current round is initialized once,
+     * - the chooser is computed,
+     * - an optional passive tick is applied for time-driven rounds.
+     *
+     * @param PvpMatch $match Match instance.
+     * @param int $userId Requesting user id.
+     *
+     * @return array Match payload enriched with the current round public state.
+     * @throws Throwable
+     */
+    public function buildMatchPayload(PvpMatch $match, int $userId): array
+    {
+        return DB::transaction(function () use ($match, $userId) {
+            $match = PvpMatch::whereKey($match->id)->lockForUpdate()->firstOrFail();
+
+            $this->matches->assertParticipant($match->id, $userId);
+
+            if ($match->status === 'active') {
+                [$roundIndex, $roundType] = $this->resolveRound($match);
+                $handler = $this->factory->forType($roundType);
+
+                $state = $match->state ?? [];
+                $state = $this->ensureRoundInitialized($match, $state, $roundIndex, $roundType, $handler);
+
+                $tick = $this->tickIfSupported($match, $handler);
+                if (! empty($tick['statePatch'])) {
+                    $state = $this->mergeState($state, (array) $tick['statePatch']);
+                    $match->state = $state;
+                    $match->save();
+                }
+
+                if (! empty($tick['events'])) {
+                    $this->events->emitMany($match->id, (array) $tick['events']);
+                }
+            }
+
+            $fresh = PvpMatch::findOrFail($match->id);
+
+            return $this->buildUnifiedPayload($fresh, $userId);
+        });
+    }
+
+    /**
      * Return the current round public state for a participant.
+     *
+     * This method also performs initialization (if needed) and an optional passive tick (if supported by the
+     * current round handler), so time-driven rounds remain consistent regardless of which endpoint is polled.
      *
      * @param PvpMatch $match  Match instance.
      * @param int      $userId Requesting user id.
@@ -36,21 +86,7 @@ readonly class PvpMatchEngineService
      */
     public function currentRoundState(PvpMatch $match, int $userId): array
     {
-        $this->matches->assertParticipant($match->id, $userId);
-
-        $state = $match->state ?? [];
-        $roundType = (string) ($state['round_type'] ?? ($match->rounds[($match->current_round - 1)] ?? ''));
-
-        $handler = $this->factory->forType($roundType);
-
-        return [
-            'match_id' => $match->id,
-            'best_of' => $match->best_of,
-            'current_round' => $match->current_round,
-            'round_type' => $roundType,
-            'chooser_user_id' => $state['chooser_user_id'] ?? null,
-            'round' => $handler->publicState($match, $userId),
-        ];
+        return $this->buildMatchPayload($match, $userId);
     }
 
     /**
@@ -74,26 +110,21 @@ readonly class PvpMatchEngineService
 
             $this->matches->assertParticipant($match->id, $userId);
 
-            $state = $match->state ?? [];
-            $roundIndex = (int) $match->current_round;
-            $roundType = (string) ($state['round_type'] ?? ($match->rounds[$roundIndex - 1] ?? ''));
-
+            [$roundIndex, $roundType] = $this->resolveRound($match);
             $handler = $this->factory->forType($roundType);
 
-            if (! isset($state['round_initialized']) || (int) $state['round_initialized'] !== $roundIndex) {
-                $initPatch = $handler->initialize($match);
-                $state = $this->mergeState($state, $initPatch);
-                $state['round_initialized'] = $roundIndex;
-                $state = $this->ensureChooser($match, $state);
+            $state = $match->state ?? [];
+            $state = $this->ensureRoundInitialized($match, $state, $roundIndex, $roundType, $handler);
 
+            $tick = $this->tickIfSupported($match, $handler);
+            if (! empty($tick['statePatch'])) {
+                $state = $this->mergeState($state, (array) $tick['statePatch']);
                 $match->state = $state;
                 $match->save();
+            }
 
-                $this->events->emit($match->id, 'round_started', [
-                    'round' => $roundIndex,
-                    'round_type' => $roundType,
-                    'chooser_user_id' => $state['chooser_user_id'] ?? null,
-                ]);
+            if (! empty($tick['events'])) {
+                $this->events->emitMany($match->id, (array) $tick['events']);
             }
 
             $result = $handler->handleAction($match, $userId, $action);
@@ -111,7 +142,7 @@ readonly class PvpMatchEngineService
                 return [
                     'ok' => true,
                     'round_ended' => false,
-                    'state' => $this->currentRoundState($fresh, $userId),
+                    'state' => $this->buildUnifiedPayload($fresh, $userId),
                 ];
             }
 
@@ -133,6 +164,8 @@ readonly class PvpMatchEngineService
             $matchFinished = $this->isMatchFinished($match->id, (int) $match->best_of);
 
             if ($matchFinished) {
+                $match->state = $state;
+                $match->save();
                 $finish = $this->finishByPoints($match);
                 return [
                     'ok' => true,
@@ -159,9 +192,127 @@ readonly class PvpMatchEngineService
                 'ok' => true,
                 'round_ended' => true,
                 'next_round' => $fresh->current_round,
-                'state' => $this->currentRoundState($fresh, $userId),
+                'state' => $this->buildUnifiedPayload($fresh, $userId),
             ];
         });
+    }
+
+    /**
+     * Build a unified match payload without mutating state.
+     *
+     * @param PvpMatch $match  Match instance.
+     * @param int      $userId Requesting user id.
+     *
+     * @return array
+     */
+    private function buildUnifiedPayload(PvpMatch $match, int $userId): array
+    {
+        $base = $this->matches->buildMatchPayload($match, $userId);
+
+        $state = $match->state ?? [];
+        $roundType = (string) ($state['round_type'] ?? ($match->rounds[($match->current_round - 1)] ?? ''));
+
+        $round = null;
+        if ($match->status === 'active' && $roundType !== '') {
+            $handler = $this->factory->forType($roundType);
+            $round = $handler->publicState($match, $userId);
+        }
+
+        $base['round_type'] = $roundType;
+        $base['chooser_user_id'] = $state['chooser_user_id'] ?? null;
+        $base['round'] = $round;
+        $base['match_id'] = $base['id'];
+
+        return $base;
+    }
+
+    /**
+     * Resolve current round index and type from match state.
+     *
+     * @param PvpMatch $match Match instance.
+     *
+     * @return array{0:int,1:string}
+     */
+    private function resolveRound(PvpMatch $match): array
+    {
+        $state = $match->state ?? [];
+        $roundIndex = (int) $match->current_round;
+
+        $roundType = (string) ($state['round_type'] ?? ($match->rounds[$roundIndex - 1] ?? ''));
+        if ($roundType === '') {
+            abort(500, 'Round type not found.');
+        }
+
+        return [$roundIndex, $roundType];
+    }
+
+    /**
+     * Ensure the round is initialized (only once per round) and chooser is set.
+     *
+     * @param PvpMatch $match      Locked match instance.
+     * @param array    $state      Current match state.
+     * @param int      $roundIndex Current round index.
+     * @param string   $roundType  Current round type.
+     * @param mixed    $handler    Round handler.
+     *
+     * @return array
+     */
+    private function ensureRoundInitialized(PvpMatch $match, array $state, int $roundIndex, string $roundType, mixed $handler): array
+    {
+        if (isset($state['round_initialized']) && (int) $state['round_initialized'] === $roundIndex) {
+            return $state;
+        }
+
+        $initPatch = $handler->initialize($match);
+        $state = $this->mergeState($state, (array) $initPatch);
+        $state['round_initialized'] = $roundIndex;
+        $state = $this->ensureChooser($match, $state);
+
+        $match->state = $state;
+        $match->save();
+
+        $this->events->emit($match->id, 'round_started', [
+            'round' => $roundIndex,
+            'round_type' => $roundType,
+            'chooser_user_id' => $state['chooser_user_id'] ?? null,
+        ]);
+
+        return $state;
+    }
+
+    /**
+     * Run an optional passive tick on the handler to update time-driven state.
+     *
+     * Handler contract (optional):
+     * - tick(PvpMatch $match): array{statePatch?:array, events?:array}
+     *
+     * @param PvpMatch $match   Locked match instance.
+     * @param mixed    $handler Round handler.
+     *
+     * @return array{statePatch?:array, events?:array}
+     */
+    private function tickIfSupported(PvpMatch $match, mixed $handler): array
+    {
+        if (! method_exists($handler, 'tick')) {
+            return [];
+        }
+
+        $res = $handler->tick($match);
+        if (! is_array($res)) {
+            return [];
+        }
+
+        $statePatch = (array) ($res['statePatch'] ?? []);
+        $events = (array) ($res['events'] ?? []);
+
+        if (empty($statePatch) && empty($events)) {
+            return [];
+        }
+
+        return [
+            'statePatch' => $statePatch,
+            'events' => $events,
+        ];
     }
 
     /**
@@ -292,5 +443,4 @@ readonly class PvpMatchEngineService
             ->where('user_id', $userId)
             ->update(['last_action_at' => now()]);
     }
-
 }

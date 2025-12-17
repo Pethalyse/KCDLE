@@ -67,7 +67,7 @@ readonly class RevealRaceRoundHandler implements PvpRoundHandlerInterface
                 'reveal_race' => [
                     'secret_player_id' => $secretId,
                     'started_at' => $nowIso,
-                    'next_reveal_at' => $now->addSeconds(self::REVEAL_INTERVAL_SECONDS)->toISOString(),
+                    'next_reveal_at' => $now->copy()->addSeconds(self::REVEAL_INTERVAL_SECONDS)->toISOString(),
                     'allowed_keys' => array_values($allowedKeys),
                     'revealed_keys' => [],
                     'revealed_hints' => [],
@@ -90,10 +90,54 @@ readonly class RevealRaceRoundHandler implements PvpRoundHandlerInterface
     }
 
     /**
-     * Return the public round state for a participant.
+     * Passive tick hook (optional).
      *
-     * This method also performs time-based reveal progression, so simply polling
-     * this endpoint will make hints appear over time without requiring guesses.
+     * The engine calls this method to persist time-driven reveals in match state.
+     *
+     * @param PvpMatch $match Locked match instance.
+     *
+     * @return array{statePatch?:array, events?:array}
+     */
+    public function tick(PvpMatch $match): array
+    {
+        $state = $match->state ?? [];
+        $data = (array) Arr::get($state, 'round_data.reveal_race', []);
+
+        $beforeKeys = array_values((array) ($data['revealed_keys'] ?? []));
+
+        $updated = $this->applyTimeReveals($match, $data);
+
+        $afterKeys = array_values((array) ($updated['revealed_keys'] ?? []));
+
+        if ($this->sameStringList($beforeKeys, $afterKeys) && ($data['next_reveal_at'] ?? null) === ($updated['next_reveal_at'] ?? null)) {
+            return [];
+        }
+
+        $newKeys = array_values(array_diff($afterKeys, $beforeKeys));
+
+        $events = [];
+        if (!empty($newKeys)) {
+            $events[] = [
+                'type' => 'reveal_race_reveal',
+                'user_id' => null,
+                'payload' => [
+                    'keys' => $newKeys,
+                ],
+            ];
+        }
+
+        return [
+            'statePatch' => [
+                'round_data' => [
+                    'reveal_race' => $updated,
+                ],
+            ],
+            'events' => $events,
+        ];
+    }
+
+    /**
+     * Return the public round state for a participant.
      *
      * @param PvpMatch $match  Match instance.
      * @param int      $userId Requesting user id.
@@ -104,7 +148,6 @@ readonly class RevealRaceRoundHandler implements PvpRoundHandlerInterface
     {
         $state = $match->state ?? [];
         $data = (array) Arr::get($state, 'round_data.reveal_race', []);
-        $data = $this->applyTimeReveals($match, $data);
 
         $players = (array) ($data['players'] ?? []);
         $you = (array) ($players[$userId] ?? []);
@@ -139,9 +182,9 @@ readonly class RevealRaceRoundHandler implements PvpRoundHandlerInterface
      * Supported action:
      * - { type: "lock", player_id: int }
      *
-     * @param PvpMatch     $match  Match instance.
-     * @param int          $userId Acting user id.
-     * @param array $action Action payload.
+     * @param PvpMatch $match  Match instance.
+     * @param int      $userId Acting user id.
+     * @param array    $action Action payload.
      *
      * @return PvpRoundResult
      */
@@ -160,7 +203,6 @@ readonly class RevealRaceRoundHandler implements PvpRoundHandlerInterface
 
         $state = $match->state ?? [];
         $data = (array) Arr::get($state, 'round_data.reveal_race', []);
-        $data = $this->applyTimeReveals($match, $data);
 
         $winnerAlready = (int) ($data['winner_user_id'] ?? 0);
         if ($winnerAlready > 0) {
@@ -214,14 +256,12 @@ readonly class RevealRaceRoundHandler implements PvpRoundHandlerInterface
                 ],
             ];
 
-            $patch = [
+            return PvpRoundResult::ended($userId, [
                 'turn_user_id' => null,
                 'round_data' => [
                     'reveal_race' => $data,
                 ],
-            ];
-
-            return PvpRoundResult::ended($userId, $patch, $events);
+            ], $events);
         }
 
         $players[$userId]['lock_blocked_until'] = $now->copy()
@@ -230,21 +270,19 @@ readonly class RevealRaceRoundHandler implements PvpRoundHandlerInterface
 
         $data['players'] = $players;
 
-        $patch = [
+        return PvpRoundResult::ongoing([
             'turn_user_id' => null,
             'round_data' => [
                 'reveal_race' => $data,
             ],
-        ];
-
-        return PvpRoundResult::ongoing($patch, $events);
+        ], $events);
     }
 
     /**
      * Apply time-driven reveals to the round data.
      *
-     * @param PvpMatch     $match Match instance.
-     * @param array $data  Round data.
+     * @param PvpMatch $match Match instance.
+     * @param array    $data  Round data.
      *
      * @return array
      */
@@ -339,7 +377,7 @@ readonly class RevealRaceRoundHandler implements PvpRoundHandlerInterface
      * Get the opponent state from players map.
      *
      * @param array $players Players state map.
-     * @param int          $userId  Current user id.
+     * @param int   $userId  Current user id.
      *
      * @return array
      */
@@ -352,5 +390,22 @@ readonly class RevealRaceRoundHandler implements PvpRoundHandlerInterface
         }
 
         return [];
+    }
+
+    /**
+     * Compare two string lists ignoring order and duplicates.
+     *
+     * @param array<int,string> $a First list.
+     * @param array<int,string> $b Second list.
+     *
+     * @return bool
+     */
+    private function sameStringList(array $a, array $b): bool
+    {
+        $aa = array_values(array_unique(array_map('strval', $a)));
+        $bb = array_values(array_unique(array_map('strval', $b)));
+        sort($aa);
+        sort($bb);
+        return $aa === $bb;
     }
 }
