@@ -93,7 +93,7 @@ class PvpMatchService
     *   last_event_id:int
     * }
     */
-    public function buildMatchPayload(PvpMatch $match, int $userId): array
+    public function buildBaseMatchPayload(PvpMatch $match, int $userId): array
     {
         $this->assertParticipant($match->id, $userId);
 

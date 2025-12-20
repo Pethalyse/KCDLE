@@ -29,6 +29,7 @@ class PvpEventController extends Controller
      * Query params:
      * - after_id: int (default 0)
      * - limit: int (default 50, max 200)
+     * - include_state: bool (default false)
      *
      * @param PvpMatch $match   Route-bound match model.
      * @param Request  $request Current HTTP request.
@@ -47,6 +48,36 @@ class PvpEventController extends Controller
         $afterId = (int) $request->query('after_id', 0);
         $limit = (int) $request->query('limit', 50);
 
-        return response()->json($this->events->fetchAfter((int) $match->id, $afterId, $limit));
+        $events = $this->events->fetchAfter((int) $match->id, $afterId, $limit);
+
+        if (! $request->boolean('include_state', false)) {
+            return response()->json($events);
+        }
+
+        return response()->json([
+            'events' => $events['events'] ?? $events,
+            'state' => $this->buildMinimalState($match, (int) $user->id),
+        ]);
+    }
+
+    /**
+     * Build a lightweight state payload suitable for frequent polling endpoints.
+     *
+     * @param PvpMatch $match Match instance.
+     * @param int $userId Authenticated participant id.
+     *
+     * @return array{id:int, match_id:int, status:string, best_of:int, current_round:int}
+     */
+    private function buildMinimalState(PvpMatch $match, int $userId): array
+    {
+        $this->matches->assertParticipant($match->id, $userId);
+
+        return [
+            'id' => (int) $match->id,
+            'match_id' => (int) $match->id,
+            'status' => (string) $match->status,
+            'best_of' => (int) $match->best_of,
+            'current_round' => (int) $match->current_round,
+        ];
     }
 }

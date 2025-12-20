@@ -4,6 +4,8 @@ namespace App\Services\Pvp;
 
 use App\Models\PvpMatch;
 use App\Models\PvpMatchPlayer;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -87,7 +89,8 @@ class PvpAfkSweepService
             foreach ($players as $player) {
                 $userId = (int) $player->user_id;
 
-                if ($player->last_seen_at === null || $player->last_seen_at->lt($presenceCutoff)) {
+                $last_seen_at = $this->toCarbon($player->last_seen_at);
+                if ($last_seen_at === null || $last_seen_at->lt($presenceCutoff)) {
                     $this->forfeitAfk($match, $userId);
                     return true;
                 }
@@ -95,7 +98,8 @@ class PvpAfkSweepService
                 $shouldCheckIdle = !($turnBased && $turnUserId !== null) || $turnUserId === $userId;
 
                 if ($shouldCheckIdle) {
-                    if ($player->last_action_at === null || $player->last_action_at->lt($idleCutoff)) {
+                    $last_action_at = $this->toCarbon($player->last_action_at);
+                    if ($last_action_at === null || $last_action_at->lt($idleCutoff)) {
                         $this->forfeitAfk($match, $userId);
                         return true;
                     }
@@ -184,6 +188,41 @@ class PvpAfkSweepService
         $nested2 = Arr::get($state, $path2);
         if (is_numeric($nested2)) {
             return (int) $nested2;
+        }
+
+        return null;
+    }
+
+    /**
+     * Convert a datetime value (Carbon/DateTime/string) to Carbon.
+     *
+     * @param mixed $value
+     * @return Carbon|null
+     */
+    private function toCarbon(mixed $value): ?Carbon
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if ($value instanceof Carbon) {
+            return $value;
+        }
+
+        if ($value instanceof CarbonInterface) {
+            return Carbon::instance($value);
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return Carbon::instance($value);
+        }
+
+        if (is_string($value) && $value !== '') {
+            try {
+                return Carbon::parse($value);
+            } catch (Throwable) {
+                return null;
+            }
         }
 
         return null;

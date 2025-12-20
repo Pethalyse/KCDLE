@@ -23,10 +23,11 @@ class PvpRoundController extends Controller
     /**
      * Return the current round public state for the authenticated participant.
      *
-     * @param PvpMatch $match   Route-bound match model.
-     * @param Request  $request Current HTTP request.
+     * @param PvpMatch $match Route-bound match model.
+     * @param Request $request Current HTTP request.
      *
      * @return JsonResponse Current round state payload.
+     * @throws Throwable
      */
     public function show(PvpMatch $match, Request $request): JsonResponse
     {

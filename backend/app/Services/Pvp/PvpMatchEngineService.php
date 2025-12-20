@@ -79,10 +79,11 @@ readonly class PvpMatchEngineService
      * This method also performs initialization (if needed) and an optional passive tick (if supported by the
      * current round handler), so time-driven rounds remain consistent regardless of which endpoint is polled.
      *
-     * @param PvpMatch $match  Match instance.
-     * @param int      $userId Requesting user id.
+     * @param PvpMatch $match Match instance.
+     * @param int $userId Requesting user id.
      *
      * @return array Current round payload.
+     * @throws Throwable
      */
     public function currentRoundState(PvpMatch $match, int $userId): array
     {
@@ -207,7 +208,7 @@ readonly class PvpMatchEngineService
      */
     private function buildUnifiedPayload(PvpMatch $match, int $userId): array
     {
-        $base = $this->matches->buildMatchPayload($match, $userId);
+        $base = $this->matches->buildBaseMatchPayload($match, $userId);
 
         $state = $match->state ?? [];
         $roundType = (string) ($state['round_type'] ?? ($match->rounds[($match->current_round - 1)] ?? ''));

@@ -77,17 +77,17 @@ Route::prefix('pvp')
         Route::post('games/{game}/queue/leave', [PvpQueueController::class, 'leave']);
 
         Route::get('matches/{match}', [PvpMatchController::class, 'show']);
-        Route::get('matches/{match}/events', [PvpMatchController::class, 'events']);
-        Route::post('matches/{match}/heartbeat', [PvpMatchController::class, 'heartbeat']);
         Route::post('matches/{match}/leave', [PvpMatchController::class, 'leave']);
+
         Route::get('matches/{match}/round', [PvpRoundController::class, 'show']);
         Route::post('matches/{match}/round/action', [PvpRoundController::class, 'action']);
+
         Route::get('matches/{match}/events', [PvpEventController::class, 'index']);
         Route::post('matches/{match}/heartbeat', [PvpHeartbeatController::class, 'store']);
 
         Route::get('resume', [PvpQueueController::class, 'resume']);
-
     });
+
 
 Route::get('/credits', [CreditController::class, 'show']);
 Route::get('/privacy-policy', [PrivacyPolicyController::class, 'show']);
