@@ -5,6 +5,7 @@ return [
     'idle_seconds' => env('PVP_IDLE_SECONDS', 90),
 
     'allowed_best_of' => [1, 3, 5],
+    'disable_shuffle' => env('PVP_DISABLE_SHUFFLE', false),
 
     'default_best_of' => 5,
 

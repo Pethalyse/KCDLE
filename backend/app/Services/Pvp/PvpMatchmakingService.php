@@ -124,7 +124,9 @@ class PvpMatchmakingService
                 abort(500, 'PvP round pool is smaller than requested best-of format.');
             }
 
-            shuffle($roundPool);
+            if (!config('pvp.disable_shuffle', false)) {
+                shuffle($roundPool);
+            }
             $selectedRounds = array_values(array_slice($roundPool, 0, $bestOf));
 
             $match = PvpMatch::create([

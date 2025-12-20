@@ -38,11 +38,7 @@ class PvpChooserRuleTest extends TestCase
         $this->actingAs($u1, 'sanctum')->getJson("/api/pvp/matches/{$matchId}/round")->assertOk();
 
         $m1 = PvpMatch::findOrFail($matchId);
-        $secretId = (int) ((
-            $m1->state['round_data']['classic']['secret_player_id']
-            ?? $m1->state['round_data']['draft']['secret_player_id']
-            ?? $m1->state['round_data']['locked_infos']['secret_player_id']
-            ?? 0));
+        $secretId = (int) (($m1->state['round_data']['classic']['secret_player_id'] ?? 0));
         $this->assertTrue(in_array($secretId, [$idA, $idB], true));
 
         $wrongId = ($secretId === $idA) ? $idB : $idA;
