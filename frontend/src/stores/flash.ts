@@ -38,22 +38,24 @@ export const useFlashStore = defineStore('flash', {
           this.remove(msg.id)
         }, timeout)
       }
+
+      return msg.id
     },
 
     success(message: string, title?: string, timeout = 4000) {
-      this.push('success', message, title, timeout)
+      return this.push('success', message, title, timeout)
     },
 
     error(message: string, title?: string, timeout = 6000) {
-      this.push('error', message, title, timeout)
+      return this.push('error', message, title, timeout)
     },
 
     info(message: string, title?: string, timeout = 4000) {
-      this.push('info', message, title, timeout)
+      return this.push('info', message, title, timeout)
     },
 
     warning(message: string, title?: string, timeout = 5000) {
-      this.push('warning', message, title, timeout)
+      return this.push('warning', message, title, timeout)
     },
 
     remove(id: number) {

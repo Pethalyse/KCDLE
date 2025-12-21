@@ -18,7 +18,7 @@ class PvpAfkSweepServiceTest extends TestCase
     public function test_presence_timeout_forfeits_match(): void
     {
         $this->pvpConfigureForSingleRound('classic');
-        Config::set('pvp.presence_seconds', 90);
+        Config::set('pvp.afk_seconds', 90);
 
         [$match, $u1, $u2] = $this->pvpCreateMatch('kcdle', 'classic');
 

@@ -11,116 +11,46 @@ import ProfileView from '@/views/ProfileView.vue'
 import LeaderboardView from '@/views/LeaderboardView.vue'
 import AchievementsView from '@/views/AchievementsView.vue'
 import FriendGroupsView from '@/views/FriendGroupsView.vue'
+import PvpView from '@/views/PvpView.vue'
+import PvpMatchView from '@/views/PvpMatchView.vue'
+import PvpMatchPlayView from '@/views/PvpMatchPlayView.vue'
 
 const routes: RouteRecordRaw[] = [
-  {
-    path: '/',
-    name: 'home',
-    component: HomeView,
-  },
-  {
-    path: '/kcdle',
-    name: 'kcdle',
-    component: DleView,
-    props: {
-      game: 'kcdle',
-    },
-  },
-  {
-    path: '/lecdle',
-    name: 'lecdle',
-    component: DleView,
-    props: {
-      game: 'lecdle',
-    },
-  },
-  {
-    path: '/lfldle',
-    name: 'lfldle',
-    component: DleView,
-    props: {
-      game: 'lfldle',
-    },
-  },
-  {
-    path: '/credits',
-    name: 'credits',
-    component: CreditsView,
-  },
-  {
-    path: '/privacy',
-    name: 'privacy',
-    component: PrivacyPolicyView,
-  },
-  {
-    path: '/legal',
-    name: 'legal',
-    component: LegalView,
-  },
-  {
-    path: '/login',
-    name: 'login',
-    component: LoginView,
-  },
-  {
-    path: '/register',
-    name: 'register',
-    component: RegisterView,
-  },
-  {
-    path: '/profile',
-    name: 'profile',
-    component: ProfileView,
-  },
-  {
-    path: '/leaderboard/kcdle',
-    name: 'leaderboard_kcdle',
-    props: {
-      game: 'kcdle',
-    },
-    component: LeaderboardView,
-  },
-  {
-    path: '/leaderboard/lecdle',
-    name: 'leaderboard_lecdle',
-    props: {
-      game: 'lecdle',
-    },
-    component: LeaderboardView,
-  },
-  {
-    path: '/leaderboard/lfldle',
-    name: 'leaderboard_lfldle',
-    props: {
-      game: 'lfldle',
-    },
-    component: LeaderboardView,
-  },
-  {
-    path: '/achievements',
-    name: 'achievements',
-    component: AchievementsView,
-  },
-  {
-    path: '/friends',
-    name: 'friends',
-    component: FriendGroupsView,
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'not-found',
-    component: NotFoundView,
-  },
+  { path: '/', name: 'home', component: HomeView },
+
+  { path: '/kcdle', name: 'kcdle', component: DleView, props: { game: 'kcdle' } },
+  { path: '/lecdle', name: 'lecdle', component: DleView, props: { game: 'lecdle' } },
+  { path: '/lfldle', name: 'lfldle', component: DleView, props: { game: 'lfldle' } },
+
+  { path: '/pvp', name: 'pvp', component: PvpView },
+
+  { path: '/pvp/matches/:matchId', name: 'pvp_match', component: PvpMatchView, props: true },
+  { path: '/pvp/matches/:matchId/play', name: 'pvp_match_play', component: PvpMatchPlayView, props: true },
+
+  { path: '/credits', name: 'credits', component: CreditsView },
+  { path: '/privacy', name: 'privacy', component: PrivacyPolicyView },
+  { path: '/legal', name: 'legal', component: LegalView },
+
+  { path: '/login', name: 'login', component: LoginView },
+  { path: '/register', name: 'register', component: RegisterView },
+
+  { path: '/profile', name: 'profile', component: ProfileView },
+
+  { path: '/leaderboard/kcdle', name: 'leaderboard_kcdle', component: LeaderboardView, props: { game: 'kcdle' } },
+  { path: '/leaderboard/lecdle', name: 'leaderboard_lecdle', component: LeaderboardView, props: { game: 'lecdle' } },
+  { path: '/leaderboard/lfldle', name: 'leaderboard_lfldle', component: LeaderboardView, props: { game: 'lfldle' } },
+
+  { path: '/achievements', name: 'achievements', component: AchievementsView },
+  { path: '/friends', name: 'friends', component: FriendGroupsView },
+
+  { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
 ]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior(to, from, savedPosition) {
-    if (savedPosition) {
-      return savedPosition
-    }
-
+    if (savedPosition) return savedPosition
     return { top: 0 }
   },
 })

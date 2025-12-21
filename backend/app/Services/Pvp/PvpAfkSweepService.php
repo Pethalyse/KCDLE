@@ -76,7 +76,7 @@ class PvpAfkSweepService
                 return false;
             }
 
-            $presenceSeconds = (int) config('pvp.presence_seconds', 90);
+            $presenceSeconds = (int) config('pvp.afk_seconds', 90);
             $idleSeconds = (int) config('pvp.idle_seconds', 300);
 
             $roundType = $this->getRoundType($match);

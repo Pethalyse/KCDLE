@@ -286,10 +286,37 @@ body,
 /*    background-repeat: repeat;*/
 /*}*/
 
+.theBody
+{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.playerTabScroll{
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  justify-content: center;
+}
+
 .infoNom{
-    display: flex;
-    justify-content: center;
-  	padding-top: 15px;
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 15px;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.divInfo
+{
+  margin-inline: 2px;
+  margin-top: 15px;
+  margin-bottom: 2px;
+  width: 102px;
+  flex: 0 0 102px;
 }
 
 .divInfo
@@ -868,31 +895,29 @@ p{
         justify-content: center;
     }
 
-    .dle_body.KCDLE .infoNom{
-        width: 1%;
-        overflow-x: auto;
-        white-space: nowrap;
-        margin-left: -2.5vw;
-        padding-left: 95vw;
+    .playerTabScroll{
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
-    .dle_body .infoNom{
-        width: 80%;
-        overflow-x: auto;
-        white-space: nowrap;
-        margin-left: -8.5vw;
-        padding-left: 30vw;
+    .infoNom{
+      width: max-content;
+      justify-content: flex-start;
+      white-space: nowrap;
     }
 
     .divInfo
     {
-        margin-inline: 2px;
-        margin-top: 15px;
-        margin-bottom: 2px;
-        flex: 1;
+      margin-inline: 2px;
+      margin-top: 12px;
+      margin-bottom: 2px;
+      width: 92px;
+      flex: 0 0 92px;
     }
 
-    .divText{
+
+  .divText{
         font-size: 70%;
     }
 
@@ -950,36 +975,35 @@ p{
 
     .nationalite, .age, .role, .equipe, .joueur, .jeu, .arrivee, .titres, .avantkc, .maintenant
     {
-        display: flex;
-        flex-direction: column;
-        width: 20vw;
-        height: 100%;
-        align-items: center;
+      display: flex;
+      flex-direction: column;
+      width: auto;
+      height: 100%;
+      align-items: center;
     }
 
     .divInfoJoueur
     {
-        max-height: 80px;
-        max-width: 80px;
+      width: 72px;
+      height: 72px;
+      max-width: 72px;
+      max-height: 72px;
 
-        border: 1px solid black;
-        box-shadow: inset 0 0 6px #000;
+      border: 1px solid black;
+      box-shadow: inset 0 0 6px #000;
 
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
 
-        margin-top: 4px;
+      margin: 2px;
 
-        opacity: 0;
-        transform: translateY(-20px);
-        transition: opacity 1s, transform 1s;
-        flex: 1;
-
-        width: 100%;
-        height: 100%;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: opacity 1s, transform 1s;
     }
+
 
     .arrow{
         scale: 0.05;

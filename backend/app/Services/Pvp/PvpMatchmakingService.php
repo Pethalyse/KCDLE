@@ -2,6 +2,7 @@
 
 namespace App\Services\Pvp;
 
+use App\Models\PvpActiveMatchLock;
 use App\Models\PvpMatch;
 use App\Models\PvpMatchEvent;
 use App\Models\PvpMatchPlayer;
@@ -10,9 +11,9 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-class PvpMatchmakingService
+readonly class PvpMatchmakingService
 {
-    public function __construct(private readonly PvpMatchService $matches)
+    public function __construct(private PvpMatchService $matches)
     {
     }
 
@@ -161,6 +162,18 @@ class PvpMatchmakingService
                 'points' => 0,
                 'last_seen_at' => now(),
                 'last_action_at' => now(),
+            ]);
+
+            PvpActiveMatchLock::create([
+                'user_id' => $u1,
+                'match_id' => $match->id,
+                'created_at' => now(),
+            ]);
+
+            PvpActiveMatchLock::create([
+                'user_id' => $u2,
+                'match_id' => $match->id,
+                'created_at' => now(),
             ]);
 
             PvpMatchEvent::create([

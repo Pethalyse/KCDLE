@@ -17,7 +17,7 @@ trait PvpTestHelper
         Config::set('pvp.allowed_best_of', [1, 3, 5]);
         Config::set('pvp.default_best_of', 5);
         Config::set('pvp.round_pool', [$roundType]);
-        Config::set('pvp.presence_seconds', 90);
+        Config::set('pvp.afk_seconds', 90);
         Config::set('pvp.idle_seconds', 300);
     }
 

@@ -59,9 +59,9 @@ function verificationClass(cmp: number | null | undefined): string {
 
 function arrowOption(cmp: number | null | undefined): number {
   if (cmp === null || cmp === undefined) return 0
-  if (cmp === 1) return 0       // égal → pas d’arrow
-  if (cmp === 0) return -1      // secret > guess → flèche “+ haut”
-  if (cmp === -1) return 1      // secret < guess → flèche “+ bas”
+  if (cmp === 1) return 0
+  if (cmp === 0) return -1
+  if (cmp === -1) return 1
   return 0
 }
 
@@ -221,70 +221,72 @@ function textClass(col: InfoCol): string | null {
 
 <template>
   <div class="theBody">
-    <div class="infoNom">
-      <div
-        v-for="(info, infoIndex) in infoBar"
-        :key="info.className"
-        class="divInfo"
-      >
-        <div class="divText">
-          {{ info.text }}
-        </div>
-        <hr>
-        <div :class="info.className">
-          <div
-            v-for="(guess, guessIndex) in guesses"
-            :key="(guess.player?.id ?? '') + '-' + info.className + '-' + props.game"
-            :class="[
-              'divInfoJoueur',
-              verificationClass(guess.comparison?.fields?.[info.cmpField]),
-              'fade-in',
-            ]"
-            :style="fadeStyle(infoIndex)"
-          >
-            <template v-if="info.type === 'cmp'">
-              <div class="ageContainer">
+    <div class="playerTabScroll">
+      <div class="infoNom">
+        <div
+          v-for="(info, infoIndex) in infoBar"
+          :key="info.className"
+          class="divInfo"
+        >
+          <div class="divText">
+            {{ info.text }}
+          </div>
+          <hr>
+          <div :class="info.className">
+            <div
+              v-for="(guess, guessIndex) in guesses"
+              :key="(guess.player?.id ?? '') + '-' + info.className + '-' + props.game"
+              :class="[
+                'divInfoJoueur',
+                verificationClass(guess.comparison?.fields?.[info.cmpField]),
+                'fade-in',
+              ]"
+              :style="fadeStyle(infoIndex)"
+            >
+              <template v-if="info.type === 'cmp'">
+                <div class="ageContainer">
+                  <SimpleImg
+                    v-if="arrowOption(guess.comparison?.fields?.[info.cmpField]) !== 0"
+                    class="arrow"
+                    img="arrow-age.png"
+                    alt=""
+                    :style="rotateStyle(arrowOption(guess.comparison?.fields?.[info.cmpField]))"
+                  />
+                  <p
+                    class="ageText"
+                    :style="blackTextStyle(arrowOption(guess.comparison?.fields?.[info.cmpField]))"
+                  >
+                    {{ displayValue(info, guess) }}
+                  </p>
+                </div>
+              </template>
+
+              <template v-else-if="isImageCell(info)">
                 <SimpleImg
-                  v-if="arrowOption(guess.comparison?.fields?.[info.cmpField]) !== 0"
-                  class="arrow"
-                  img="arrow-age.png"
-                  alt=""
-                  :style="rotateStyle(arrowOption(guess.comparison?.fields?.[info.cmpField]))"
+                  v-if="getImageUrl(info, guess)"
+                  :class="imageClass(info)"
+                  :img="getImageUrl(info, guess)!"
+                  :alt="displayValue(info, guess)"
                 />
-                <p
-                  class="ageText"
-                  :style="blackTextStyle(arrowOption(guess.comparison?.fields?.[info.cmpField]))"
+                <span
+                  v-else
+                  :class="textClass(info)"
+                  :style="textStyle(info, guess)"
                 >
                   {{ displayValue(info, guess) }}
-                </p>
-              </div>
-            </template>
+                </span>
+              </template>
 
-            <template v-else-if="isImageCell(info)">
-              <SimpleImg
-                v-if="getImageUrl(info, guess)"
-                :class="imageClass(info)"
-                :img="getImageUrl(info, guess)!"
-                :alt="displayValue(info, guess)"
-              />
-              <span
-                v-else
-                :class="textClass(info)"
-                :style="textStyle(info, guess)"
-              >
-                {{ displayValue(info, guess) }}
-              </span>
-            </template>
+              <template v-else>
+                <span
+                  :class="textClass(info)"
+                  :style="textStyle(info, guess)"
+                >
+                  {{ displayValue(info, guess) }}
+                </span>
+              </template>
 
-            <template v-else>
-              <span
-                :class="textClass(info)"
-                :style="textStyle(info, guess)"
-              >
-                {{ displayValue(info, guess) }}
-              </span>
-            </template>
-
+            </div>
           </div>
         </div>
       </div>
