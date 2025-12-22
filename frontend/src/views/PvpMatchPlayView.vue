@@ -3,7 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePvpStore } from '@/stores/pvp'
 import { useFlashStore } from '@/stores/flash'
-import { pvpGetMatch, pvpGetRound, pvpHeartbeat, pvpLeaveMatch, pvpPollEvents } from '@/api/pvpApi'
+import { pvpGetMatch, pvpHeartbeat, pvpLeaveMatch, pvpPollEvents, pvpPostAction } from '@/api/pvpApi'
+import PvpClassicRound from '@/components/pvp/rounds/PvpClassicRound.vue'
+import PvpScoreboard from '@/components/pvp/PvpScoreboard.vue'
+import PvpRoundResultOverlay from '@/components/pvp/PvpRoundResultOverlay.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,7 +23,24 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 
 const match = ref<any | null>(null)
-const round = ref<any | null>(null)
+const round = computed(() => match.value?.round ?? null)
+const roundType = computed(() => {
+  const rt = match.value?.round_type
+  return typeof rt === 'string' && rt.length > 0 ? rt : 'classic'
+})
+
+const navigating = ref(false)
+
+const overlayDurationMs = ref(4500)
+const overlayAnimationMs = ref(1000)
+const roundWinBanner = ref<{ winnerUserId: number; winnerName: string } | null>(null)
+
+const scoreLeftName = ref('J1')
+const scoreRightName = ref('J2')
+const scoreFromLeft = ref(0)
+const scoreFromRight = ref(0)
+const scoreToLeft = ref(0)
+const scoreToRight = ref(0)
 
 let eventsTimer: number | null = null
 let heartbeatTimer: number | null = null
@@ -36,6 +56,32 @@ function stopTimers() {
   }
 }
 
+function winnerNameFromMatch(winnerId: number): string {
+  const list = Array.isArray(match.value?.players) ? match.value.players : []
+  const p = list.find((x: any) => Number(x?.user_id) === Number(winnerId))
+  return p?.name ?? 'Joueur'
+}
+
+function extractScore(m: any) {
+  const list = Array.isArray(m?.players) ? m.players : []
+  const a = list[0] ?? {}
+  const b = list[1] ?? {}
+
+  return {
+    leftName: a?.name ?? 'J1',
+    rightName: b?.name ?? 'J2',
+    leftPts: Number(a?.points ?? 0),
+    rightPts: Number(b?.points ?? 0),
+  }
+}
+
+function goTransitionAfterDelay(ms: number) {
+  if (!matchId.value) return
+  window.setTimeout(() => {
+    router.replace({ name: 'pvp_match', params: { matchId: matchId.value } })
+  }, ms)
+}
+
 async function loadAll() {
   if (!matchId.value) return
   loading.value = true
@@ -44,15 +90,13 @@ async function loadAll() {
   try {
     const m = await pvpGetMatch(matchId.value)
     match.value = m
+    pvp.setMatch(matchId.value)
 
     if (typeof m?.last_event_id === 'number') {
       pvp.setLastEventId(m.last_event_id)
+    } else {
+      pvp.setLastEventId(0)
     }
-
-    const r = await pvpGetRound(matchId.value)
-    round.value = r
-
-    pvp.setMatch(matchId.value)
   } catch {
     error.value = 'Impossible de charger le match.'
   } finally {
@@ -61,41 +105,60 @@ async function loadAll() {
 }
 
 async function poll() {
-  if (!matchId.value) return
+  if (!matchId.value || navigating.value) return
+
   try {
     const res = await pvpPollEvents(matchId.value, pvp.lastEventId, 50)
-    if (Array.isArray(res.events) && res.events.length > 0) {
-      pvp.setLastEventId(res.last_id)
+    if (!Array.isArray(res.events) || res.events.length === 0) return
 
-      const finished = res.events.some(ev => ev.type === 'match_finished')
-      const forfeited = res.events.some(ev => ev.type === 'player_forfeited')
-      const roundChanged = res.events.some(ev => ev.type === 'round_started' || ev.type === 'round_changed' || ev.type === 'round_advanced')
+    pvp.setLastEventId(res.last_id)
+
+    const roundFinishedEv = res.events.find(ev => ev.type === 'round_finished')
+    if (roundFinishedEv) {
+      navigating.value = true
+      stopTimers()
+
+      const before = extractScore(match.value)
 
       const m = await pvpGetMatch(matchId.value)
       match.value = m
 
-      const r = await pvpGetRound(matchId.value)
-      round.value = r
+      const after = extractScore(m)
 
-      if (finished || forfeited || m?.status === 'finished') {
-        pvp.clearMatch()
-        stopTimers()
-        flash.info('Match terminé.', 'PvP', 3000)
-        router.push({ name: 'pvp' })
-        return
+      scoreLeftName.value = after.leftName
+      scoreRightName.value = after.rightName
+      scoreFromLeft.value = before.leftPts
+      scoreFromRight.value = before.rightPts
+      scoreToLeft.value = after.leftPts
+      scoreToRight.value = after.rightPts
+
+      const wid = Number(roundFinishedEv?.payload?.winner_user_id ?? 0)
+      roundWinBanner.value = {
+        winnerUserId: wid,
+        winnerName: wid > 0 ? winnerNameFromMatch(wid) : 'Résultat du round',
       }
 
-      if (roundChanged) {
-        router.replace({ name: 'pvp_match', params: { matchId: matchId.value } })
-        return
-      }
+      goTransitionAfterDelay(overlayDurationMs.value)
+      return
+    }
+
+    const m = await pvpGetMatch(matchId.value)
+    match.value = m
+
+    const finished = res.events.some(ev => ev.type === 'match_finished') || m?.status === 'finished'
+    const forfeited = res.events.some(ev => ev.type === 'player_forfeited')
+    if (finished || forfeited) {
+      pvp.clearMatch()
+      stopTimers()
+      flash.info('Match terminé.', 'PvP', 3000)
+      await router.push({name: 'pvp'})
     }
   } catch {
   }
 }
 
 async function beat() {
-  if (!matchId.value) return
+  if (!matchId.value || navigating.value) return
   try {
     await pvpHeartbeat(matchId.value)
   } catch {
@@ -104,75 +167,90 @@ async function beat() {
 
 async function leave() {
   if (!matchId.value) return
-  try {
-    await pvpLeaveMatch(matchId.value)
-  } catch {
+
+  if(confirm("Voulez-vous abandonner le match ?"))
+  {
+    try {
+      await pvpLeaveMatch(matchId.value)
+    } catch {
+    }
+    pvp.clearMatch()
+    stopTimers()
+    flash.info('Tu as quitté le match.', 'PvP', 3000)
+    await router.push({name: 'pvp'})
   }
-  pvp.clearMatch()
-  stopTimers()
-  flash.info('Tu as quitté le match.', 'PvP', 3000)
-  router.push({ name: 'pvp' })
+
+}
+
+async function onClassicGuess(playerId: number): Promise<boolean> {
+  if (!matchId.value || navigating.value) return false
+  try {
+    await pvpPostAction(matchId.value, { type: 'guess', player_id: playerId })
+    return true
+  } catch {
+    flash.error("Impossible d'envoyer le guess.", 'PvP')
+    return false
+  }
 }
 
 onMounted(async () => {
   if (!matchId.value) {
     flash.error('Match introuvable.', 'PvP')
-    router.push({ name: 'pvp' })
+    await router.push({name: 'pvp'})
     return
   }
 
-  pvp.setMatch(matchId.value)
   await loadAll()
 
   eventsTimer = window.setInterval(poll, 1200)
   heartbeatTimer = window.setInterval(beat, 25000)
 })
 
-onBeforeUnmount(() => {
-  stopTimers()
-})
+onBeforeUnmount(() => stopTimers())
 </script>
 
 <template>
   <div class="match-page">
-    <header class="match-header">
-      <div class="header-left">
-        <h1>Match PvP</h1>
-        <p v-if="match">
-          {{ (match.game || '').toUpperCase() }} • BO{{ match.best_of }} • Round {{ match.current_round }} / {{ match.best_of }}
-        </p>
-        <p v-else>Chargement…</p>
-      </div>
-
-      <div class="header-actions">
-        <button type="button" class="btn danger" @click="leave">Quitter le match</button>
-      </div>
-    </header>
-
     <main class="match-main">
       <div v-if="loading" class="state">Chargement du match…</div>
       <div v-else-if="error" class="state state--error">{{ error }}</div>
 
       <template v-else>
-        <section class="card">
-          <div class="card-title">Joueurs</div>
-          <div class="players" v-if="Array.isArray(match?.players)">
-            <div class="player" v-for="p in match.players" :key="p.user_id">
-              <div class="player-name">{{ p.name || 'Joueur' }}</div>
-              <div class="player-meta">Points : {{ p.points }}</div>
-            </div>
-          </div>
-          <div v-else class="state">—</div>
-        </section>
+        <div v-if="match" class="top">
+          <PvpScoreboard
+            :game="match.game"
+            :best-of="match.best_of"
+            :current-round="match.current_round"
+            :players="match.players || []"
+            @leave="leave"
+          />
+        </div>
 
-        <section class="card">
+        <PvpRoundResultOverlay
+          v-if="roundWinBanner"
+          :winner-name="roundWinBanner.winnerName"
+          :left-name="scoreLeftName"
+          :right-name="scoreRightName"
+          :from-left="scoreFromLeft"
+          :from-right="scoreFromRight"
+          :to-left="scoreToLeft"
+          :to-right="scoreToRight"
+          :delay-ms="overlayDurationMs"
+          :score-anim-ms="overlayAnimationMs"
+        />
+
+        <PvpClassicRound
+          v-if="!roundWinBanner && roundType === 'classic'"
+          :match-id="matchId!"
+          :game="match.game"
+          :players="match.players"
+          :round="round"
+          @guess="async (id: number) => { await onClassicGuess(id) }"
+        />
+
+        <section v-else-if="!roundWinBanner && roundType !== 'classic'" class="card">
           <div class="card-title">Round</div>
-          <div class="round-meta">
-            <div v-if="round?.round_type" class="chip">Type : {{ round.round_type }}</div>
-            <div v-if="round?.phase" class="chip">Phase : {{ round.phase }}</div>
-          </div>
-
-          <pre class="json">{{ round }}</pre>
+          <div class="state">Ce type de round n’est pas encore intégré côté front.</div>
         </section>
       </template>
     </main>
@@ -190,74 +268,25 @@ onBeforeUnmount(() => {
   background: radial-gradient(circle at top, #20263a 0, #05060a 75%);
 }
 
-.match-header {
-  width: 100%;
-  gap: 10px;
-  max-width: 900px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-
-.header-left h1 {
-  font-size: 1.8rem;
-  margin: 0 0 4px;
-}
-
-.header-left p {
-  font-size: 0.95rem;
-  margin: 0;
-  opacity: 0.85;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.btn {
-  padding: 9px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f3f3f3;
-  cursor: pointer;
-  transition: transform 0.12s ease, background 0.12s ease;
-  white-space: nowrap;
-}
-
-.btn:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.btn.danger {
-  background: rgba(255, 66, 66, 0.18);
-  border-color: rgba(255, 66, 66, 0.35);
-}
-
-.btn.danger:hover {
-  background: rgba(255, 66, 66, 0.28);
-}
-
 .match-main {
   width: 100%;
-  max-width: 900px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
+.top {
+  width: 100%;
+  margin: 0 auto;
+}
+
 .card {
   width: 100%;
+  margin: 0 auto;
   background: rgba(6, 8, 18, 0.92);
   border-radius: 14px;
   padding: 16px 12px 18px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  text-align: start;
 }
 
 .card-title {
@@ -266,57 +295,6 @@ onBeforeUnmount(() => {
   margin-bottom: 10px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-}
-
-.players {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
-.player {
-  padding: 10px 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.player-name {
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.player-meta {
-  font-size: 0.9rem;
-  opacity: 0.85;
-}
-
-.round-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.chip {
-  font-size: 0.82rem;
-  padding: 5px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.json {
-  margin: 0;
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  overflow: auto;
-  font-size: 0.82rem;
-  line-height: 1.35;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 .state {
@@ -330,11 +308,5 @@ onBeforeUnmount(() => {
 
 .state--error {
   color: #ffb4b4;
-}
-
-@media (min-width: 720px) {
-  .players {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 </style>

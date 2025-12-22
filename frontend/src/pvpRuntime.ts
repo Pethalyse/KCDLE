@@ -112,7 +112,7 @@ export function initPvpRuntime(router: Router) {
 
     const id = flash.push(
       'info',
-      `En queue PvP sur ${pvp.queue.game.toUpperCase()} (BO${pvp.queue.bestOf}). Tu peux naviguer, on te redirige dès qu’un match est trouvé.`,
+      `En queue PvP sur ${pvp.queue.game.toUpperCase()} (BO${pvp.queue.bestOf}).`,
       'PvP',
       0,
     )

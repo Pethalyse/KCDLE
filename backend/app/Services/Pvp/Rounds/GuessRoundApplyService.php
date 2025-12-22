@@ -21,14 +21,14 @@ readonly class GuessRoundApplyService
      *
      * @return array{data:array, players:array, correct:bool, nowIso:string, guessCount:int}
      */
-    public function apply(array $data, int $userId, int $playerId, int $secretId): array
+    public function apply(array $data, int $userId, int $playerId, int $secretId, array $meta = []): array
     {
         $players = (array) ($data['players'] ?? []);
         $correct = $playerId === $secretId;
 
         $nowIso = now()->toISOString();
 
-        $applied = $this->guessState->applyGuess($players, $userId, $playerId, $correct, $nowIso);
+        $applied = $this->guessState->applyGuess($players, $userId, $playerId, $correct, $nowIso, $meta);
 
         $players = $applied['players'];
         $data['players'] = $players;

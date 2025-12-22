@@ -5,6 +5,7 @@ import { usePvpStore } from '@/stores/pvp'
 import { useFlashStore } from '@/stores/flash'
 import { pvpGetMatch } from '@/api/pvpApi'
 import PvpRoundTransition from '@/components/pvp/PvpRoundTransition.vue'
+import PvpScoreboard from '@/components/pvp/PvpScoreboard.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -13,12 +14,7 @@ const flash = useFlashStore()
 
 const matchId = computed(() => {
   const raw = route.params.matchId
-  const n =
-    typeof raw === 'string'
-      ? Number(raw)
-      : Array.isArray(raw)
-        ? Number(raw[0])
-        : Number(raw)
+  const n = typeof raw === 'string' ? Number(raw) : Array.isArray(raw) ? Number(raw[0]) : Number(raw)
   return Number.isFinite(n) ? n : null
 })
 
@@ -71,7 +67,6 @@ async function load() {
     revealed.value = getRoundType(m)
 
     const key = seenKey(matchId.value, roundNumber.value)
-
     if (sessionStorage.getItem(key) === '1') {
       showTransition.value = false
       router.replace({ name: 'pvp_match_play', params: { matchId: matchId.value } })
@@ -109,13 +104,24 @@ onMounted(async () => {
     <div v-if="loading" class="state">Chargement…</div>
     <div v-else-if="error" class="state state--error">{{ error }}</div>
 
-    <PvpRoundTransition
-      v-if="showTransition"
-      :key="transitionKey"
-      :pool="pool"
-      :revealed="revealed"
-      @done="done"
-    />
+    <template v-else>
+      <div v-if="match" class="wrap">
+        <PvpScoreboard
+          :game="match.game"
+          :best-of="match.best_of"
+          :current-round="match.current_round"
+          :players="match.players || []"
+        />
+      </div>
+
+      <PvpRoundTransition
+        v-if="showTransition"
+        :key="transitionKey"
+        :pool="pool"
+        :revealed="revealed"
+        @done="done"
+      />
+    </template>
   </div>
 </template>
 
@@ -128,6 +134,12 @@ onMounted(async () => {
   align-items: center;
   color: #f3f3f3;
   background: radial-gradient(circle at top, #20263a 0, #05060a 75%);
+}
+
+.wrap {
+  width: 100%;
+  max-width: 900px;
+  margin-bottom: 14px;
 }
 
 .state {

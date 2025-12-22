@@ -26,23 +26,11 @@ readonly class ClassicRoundHandler implements PvpRoundHandlerInterface
     ) {
     }
 
-    /**
-     * Return the unique round type identifier handled by this implementation.
-     *
-     * @return string
-     */
     public function type(): string
     {
         return 'classic';
     }
 
-    /**
-     * Initialize round state when the round starts.
-     *
-     * @param PvpMatch $match Match instance.
-     *
-     * @return array
-     */
     public function initialize(PvpMatch $match): array
     {
         [$u1, $u2] = $this->participants->getTwoUserIds((int) $match->id);
@@ -63,14 +51,6 @@ readonly class ClassicRoundHandler implements PvpRoundHandlerInterface
         ];
     }
 
-    /**
-     * Return the public round state for a participant.
-     *
-     * @param PvpMatch $match  Match instance.
-     * @param int      $userId Requesting user id.
-     *
-     * @return array
-     */
     public function publicState(PvpMatch $match, int $userId): array
     {
         $data = (array) Arr::get($match->state ?? [], 'round_data.classic', []);
@@ -84,15 +64,6 @@ readonly class ClassicRoundHandler implements PvpRoundHandlerInterface
         ];
     }
 
-    /**
-     * Handle a participant action for this round.
-     *
-     * @param PvpMatch     $match  Match instance.
-     * @param int          $userId Acting user id.
-     * @param array $action Action payload.
-     *
-     * @return PvpRoundResult
-     */
     public function handleAction(PvpMatch $match, int $userId, array $action): PvpRoundResult
     {
         $playerId = $this->guessPayload->requireGuessPlayerId($action);
@@ -108,13 +79,15 @@ readonly class ClassicRoundHandler implements PvpRoundHandlerInterface
         $secretWrapper = Player::resolvePlayerModel((string) $match->game, $secretId);
         $guessWrapper = Player::resolvePlayerModel((string) $match->game, $playerId);
 
-        if (!$secretWrapper || !$guessWrapper) {
+        if (! $secretWrapper || ! $guessWrapper) {
             abort(422, 'Invalid player.');
         }
 
         $comparison = $this->comparison->comparePlayers($secretWrapper, $guessWrapper, (string) $match->game);
 
-        $applied = $this->guessApply->apply($data, $userId, $playerId, $secretId);
+        $applied = $this->guessApply->apply($data, $userId, $playerId, $secretId, [
+            'comparison' => $comparison,
+        ]);
 
         $data = $applied['data'];
         $players = $applied['players'];
@@ -127,6 +100,7 @@ readonly class ClassicRoundHandler implements PvpRoundHandlerInterface
             'user_id' => null,
             'payload' => [
                 'actor_user_id' => $userId,
+                'player_id' => $playerId,
                 'guess_order' => $guessCount,
                 'correct' => $correct,
                 'comparison' => $comparison,

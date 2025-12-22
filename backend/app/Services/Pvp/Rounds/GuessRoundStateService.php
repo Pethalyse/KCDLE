@@ -2,8 +2,6 @@
 
 namespace App\Services\Pvp\Rounds;
 
-use Illuminate\Support\Arr;
-
 /**
  * Shared helper for guess-based PvP rounds.
  *
@@ -41,23 +39,36 @@ class GuessRoundStateService
     /**
      * Apply a guess to a user's state.
      *
-     * @param array $players Players map.
-     * @param int          $userId  Acting user id.
-     * @param int          $playerId Guessed player id.
-     * @param bool         $correct Whether guess is correct.
-     * @param string       $nowIso Current time ISO string.
+     * @param array  $players  Players map.
+     * @param int    $userId   Acting user id.
+     * @param int    $playerId Guessed player id.
+     * @param bool   $correct  Whether guess is correct.
+     * @param string $nowIso   Current time ISO string.
+     * @param array  $meta     Extra data to persist with the guess entry (e.g. comparison payload).
      *
      * @return array{players:array, guess_count:int, entry:array}
      */
-    public function applyGuess(array $players, int $userId, int $playerId, bool $correct, string $nowIso): array
-    {
+    public function applyGuess(
+        array $players,
+        int $userId,
+        int $playerId,
+        bool $correct,
+        string $nowIso,
+        array $meta = []
+    ): array {
         $self = (array) ($players[$userId] ?? null);
         if ($self === []) {
             abort(403, 'Not a participant.');
         }
 
-        if (!empty($self['solved_at'])) {
+        if (! empty($self['solved_at'])) {
             abort(409, 'Already solved.');
+        }
+
+        foreach ((array) ($self['guesses'] ?? []) as $g) {
+            if ((int) ($g['player_id'] ?? 0) === $playerId) {
+                abort(409, 'Already guessed.');
+            }
         }
 
         $guessCount = ((int) ($self['guess_count'] ?? 0)) + 1;
@@ -68,6 +79,14 @@ class GuessRoundStateService
             'correct' => $correct,
             'guessed_at' => $nowIso,
         ];
+
+        if ($meta !== []) {
+            foreach ($meta as $k => $v) {
+                if (! array_key_exists($k, $entry)) {
+                    $entry[$k] = $v;
+                }
+            }
+        }
 
         $self['guess_count'] = $guessCount;
         $self['guesses'] = array_values(array_merge((array) ($self['guesses'] ?? []), [$entry]));
@@ -96,7 +115,7 @@ class GuessRoundStateService
     {
         $solved = 0;
         foreach ($players as $p) {
-            if (!empty($p['solved_at'])) {
+            if (! empty($p['solved_at'])) {
                 $solved++;
             }
         }
@@ -107,7 +126,7 @@ class GuessRoundStateService
      * Build common public view (you + opponent summary).
      *
      * @param array $players Players map.
-     * @param int          $userId  Current user id.
+     * @param int   $userId  Current user id.
      *
      * @return array{you:array, opponent:array}
      */

@@ -37,7 +37,6 @@ function queueUp() {
     return
   }
   pvp.setQueued(selectedGame.value, selectedBestOf.value)
-  flash.success(`Recherche lancée sur ${selectedGame.value.toUpperCase()} (BO${selectedBestOf.value}).`, 'PvP', 2500)
 }
 
 async function leaveQueue() {
