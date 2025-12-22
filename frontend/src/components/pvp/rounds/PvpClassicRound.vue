@@ -186,7 +186,7 @@ watch(
 
 <template>
   <div class="classic" :class="dleCode">
-    <header :class="'header_' + dleCode" class="classic-header">
+    <header class="classic-header">
       <div class="header-top">
         <div class="btn-home">
           <SimpleImg class="logo" :alt="dleCode" :img="dleCode + '_page_Logo.png'" />

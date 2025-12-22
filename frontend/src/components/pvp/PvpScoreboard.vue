@@ -53,7 +53,6 @@ const metaLine = computed(() => {
 
 <style scoped>
 .scoreboard {
-  width: 100%;
   border-radius: 14px;
   padding: 10px 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);

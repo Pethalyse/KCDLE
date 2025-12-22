@@ -487,7 +487,7 @@ footer a
 }
 
 .btn-game:hover {
-    transform: scale(1.03); /* Échelle de 1.2 (20% d'agrandissement) au survol */
+    transform: scale(1.03);
 }
 
 .btn-home .logo:hover, .x_logo:hover{
@@ -716,55 +716,6 @@ p{
     margin: 0;
 }
 
-#admin_header{
-    display: flex;
-    flex-direction: column;
-    padding-block: 30px;
-    gap: 10px;
-    background-color: dimgray;
-}
-
-#admin_header>div{
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-}
-
-#admin_header button {
-    display: inline-block;
-    padding: 10px 20px;
-    font-size: 16px;
-    font-weight: bold;
-    text-align: center;
-    text-decoration: none;
-    cursor: pointer;
-    border: none;
-    border-radius: 8px;
-    transition: all 0.3s ease-in-out;
-}
-
-#admin_body{
-    background-color: lightslategray;
-    flex-grow: 1;
-
-}
-
-#admin_body .clickable_elements{
-    display: grid;
-    grid-template-columns: repeat(5, 1fr); /* 5 éléments par ligne */
-    gap: 10px; /* Espacement entre les éléments */
-    margin-top: 20px;
-}
-
-#admin_body .clickable_elements div{
-    cursor: pointer;
-}
-
-#admin_body img{
-    width: 100px;
-    height: 100px;
-}
-
 .ageContainer {
   position: relative;
   width: 100%;
@@ -867,19 +818,15 @@ p{
         flex-direction: column;
         text-align: center;
 
-        /* Assurez-vous que le corps occupe tout l'écran pour que l'image de fond soit visible partout */
         margin: 0;
         padding: 0;
         /*height: 100%;*/
 
-
-        /* Définir l'image de fond et ses propriétés */
-
-        background-size: cover; /* Ajuster la taille de l'image pour couvrir l'ensemble de l'arrière-plan */
+        background-size: cover;
         background-repeat: no-repeat;
         background-position: center;
-        /*background-position: center; /* Centrer l'image de fond */
-        background-attachment: fixed; /* Fixer l'image de fond, elle ne bougera pas lors du défilement */
+        /*background-position: center; */
+        background-attachment: fixed;
 
         color: white;
 

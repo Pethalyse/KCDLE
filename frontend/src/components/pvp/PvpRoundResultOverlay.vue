@@ -119,7 +119,7 @@ watch(
   border-radius: 18px;
   padding: 18px 16px 16px;
   border: 1px solid rgba(255, 255, 255, 0.10);
-  background: radial-gradient(circle at top, rgba(80, 220, 140, 0.18), rgba(10, 12, 22, 0.92) 65%);
+  background: radial-gradient(circle at top, #20263a, rgba(10, 12, 22, 0.92) 65%);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
   text-align: center;
   animation: pop 520ms ease both;
