@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import api from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { useFlashStore } from '@/stores/flash'
@@ -8,6 +8,7 @@ import SimpleImg from '@/components/SimpleImg.vue'
 
 type GameCode = 'kcdle' | 'lecdle' | 'lfldle'
 type Panel = 'keys' | 'ops' | 'values' | null
+type KeyType = 'enum' | 'number'
 
 const props = defineProps<{
   game: GameCode
@@ -73,24 +74,42 @@ const bannedIds = computed<Set<number>>(() => {
   return set
 })
 
-function normalizeKeyType(t: any): 'enum' | 'number' {
-  const s = String(t ?? '').toLowerCase()
-  if (['number', 'int', 'integer', 'numeric'].includes(s)) return 'number'
+const NUMERIC_KEYS = new Set<string>(['trophies_count', 'first_official_year', 'age'])
+
+function normalizeKeyType(key: string, t: any): KeyType {
+  if (NUMERIC_KEYS.has(key)) return 'number'
+  const s = String(t ?? '').toLowerCase().trim()
+  if (!s) return 'enum'
+  if (s === 'enum') return 'enum'
+  if (s === 'number') return 'number'
+  if (s === 'int' || s === 'integer' || s === 'float' || s === 'double' || s === 'decimal' || s === 'numeric') return 'number'
   return 'enum'
 }
 
+function normalizeOpsForKey(type: KeyType, opsRaw: any): string[] {
+  const ops = Array.isArray(opsRaw) ? opsRaw.map((x: any) => String(x)) : []
+  const cleaned = ops.filter(x => x === 'eq' || x === 'lt' || x === 'gt')
+  if (type === 'number') {
+    const set = new Set(cleaned.length ? cleaned : ['lt', 'eq', 'gt'])
+    set.add('lt')
+    set.add('eq')
+    set.add('gt')
+    return Array.from(set)
+  }
+  return cleaned.length ? cleaned : ['eq']
+}
+
 const availableKeys = computed(() => {
-  const out: Array<{ key: string; type: 'enum' | 'number'; ops: string[] }> = []
+  const out: Array<{ key: string; type: KeyType; ops: string[] }> = []
   out.push({ key: 'player', type: 'enum', ops: ['eq'] })
   const v = props.round?.available_keys
   if (Array.isArray(v)) {
     for (const k of v) {
       const key = String(k?.key ?? '')
       if (!key) continue
-      const type = normalizeKeyType(k?.type ?? 'enum')
-      const ops = Array.isArray(k?.ops) ? k.ops.map((x: any) => String(x)) : ['eq']
-      const cleanOps = ops.length ? ops : ['eq']
-      out.push({ key, type, ops: cleanOps })
+      const type = normalizeKeyType(key, k?.type)
+      const ops = normalizeOpsForKey(type, k?.ops)
+      out.push({ key, type, ops })
     }
   }
   return out
@@ -106,7 +125,7 @@ function keyLabel(key: string): string {
     current_team_id: 'Équipe actuelle',
     previous_team_id: 'Équipe précédente',
     trophies_count: 'Trophées',
-    first_official_year: '1re année pro',
+    first_official_year: '1re année officielle chez KC',
     age: 'Âge',
   } as any)[key] ?? key
 }
@@ -119,7 +138,7 @@ const activePanel = ref<Panel>('keys')
 const search = ref('')
 
 const selectedKey = ref<string | null>(null)
-const selectedKeyType = ref<'enum' | 'number' | null>(null)
+const selectedKeyType = ref<KeyType | null>(null)
 const selectedOps = ref<string[]>([])
 const selectedOp = ref<string | null>(null)
 const selectedValue = ref<any>(null)
@@ -135,10 +154,12 @@ const joueurs = ref<any[]>([])
 const playersById = computed(() => {
   const map = new Map<number, any>()
   for (const j of joueurs.value) {
-    if (typeof j?.id === 'number') map.set(j.id, j)
+    const id = Number(j?.id)
+    if (Number.isFinite(id) && id > 0) map.set(id, j)
   }
   return map
 })
+
 const filteredSelectablePlayers = computed<any[]>(() => {
   const ids = new Set(candidateIds.value)
   const banned = bannedIds.value
@@ -159,8 +180,48 @@ const games = ref<any[]>([])
 const roles = ref<any[]>([])
 const lolRoles = ref<any[]>([])
 
+const countriesByCode = computed(() => {
+  const m = new Map<string, any>()
+  for (const c of countries.value) {
+    const code = String(c?.code ?? '').toUpperCase()
+    if (code) m.set(code, c)
+  }
+  return m
+})
+const teamsById = computed(() => {
+  const m = new Map<number, any>()
+  for (const t of teams.value) {
+    const id = Number(t?.id)
+    if (Number.isFinite(id) && id > 0) m.set(id, t)
+  }
+  return m
+})
+const gamesById = computed(() => {
+  const m = new Map<number, any>()
+  for (const g of games.value) {
+    const id = Number(g?.id)
+    if (Number.isFinite(id) && id > 0) m.set(id, g)
+  }
+  return m
+})
+const rolesById = computed(() => {
+  const m = new Map<number, any>()
+  for (const r of roles.value) {
+    const id = Number(r?.id)
+    if (Number.isFinite(id) && id > 0) m.set(id, r)
+  }
+  return m
+})
+const lolRolesByCode = computed(() => {
+  const m = new Map<string, any>()
+  for (const r of lolRoles.value) {
+    const code = String(r?.code ?? '').toUpperCase()
+    if (code) m.set(code, r)
+  }
+  return m
+})
+
 const isNumberKey = computed(() => selectedKeyType.value === 'number')
-const isEnumKey = computed(() => selectedKeyType.value === 'enum')
 const isPlayerKey = computed(() => selectedKey.value === 'player')
 
 const valueItems = computed<any[]>(() => {
@@ -220,12 +281,17 @@ function valueItemImage(it: any): string | null {
   return null
 }
 
-const selectedPlayer = computed(() => {
-  if (selectedKey.value !== 'player') return null
-  const id = Number(selectedValue.value ?? 0)
-  if (!id) return null
-  return playersById.value.get(id) ?? null
-})
+const numberDraft = ref<string>('')
+const numberError = ref<string | null>(null)
+
+function parseNonNegativeInt(raw: string): number | null {
+  const s = raw.trim().replace(',', '.')
+  if (s === '') return null
+  const n = Number(s)
+  if (!Number.isFinite(n)) return null
+  if (n < 0) return null
+  return Math.trunc(n)
+}
 
 function resetSelection() {
   selectedKey.value = null
@@ -234,6 +300,8 @@ function resetSelection() {
   selectedOp.value = null
   selectedValue.value = null
   search.value = ''
+  numberDraft.value = ''
+  numberError.value = null
   activePanel.value = canInteract.value ? 'keys' : null
 }
 
@@ -248,6 +316,10 @@ function clickCaseOps() {
   if (!canInteract.value) return
   if (!selectedKey.value) {
     activePanel.value = 'keys'
+    return
+  }
+  if (selectedKeyType.value === 'number') {
+    activePanel.value = 'ops'
     return
   }
   if (selectedOps.value.length <= 1) {
@@ -275,7 +347,7 @@ function clickCaseValues() {
   activePanel.value = 'values'
 }
 
-function selectKey(k: { key: string; type: 'enum' | 'number'; ops: string[] }) {
+function selectKey(k: { key: string; type: KeyType; ops: string[] }) {
   if (!canInteract.value) return
   selectedKey.value = k.key
   selectedKeyType.value = k.type
@@ -284,14 +356,9 @@ function selectKey(k: { key: string; type: 'enum' | 'number'; ops: string[] }) {
   selectedValue.value = null
   search.value = ''
   numberDraft.value = ''
-
-  if (k.ops.length <= 1) {
-    selectedOp.value = k.ops[0] ?? 'eq'
-    activePanel.value = 'values'
-    return
-  }
-
-  activePanel.value = 'ops'
+  numberError.value = null
+  activePanel.value = k.ops.length <= 1 ? 'values' : 'ops'
+  if (k.ops.length <= 1) selectedOp.value = k.ops[0] ?? 'eq'
 }
 
 function selectOp(op: string) {
@@ -304,7 +371,6 @@ function selectEnumValue(it: any) {
   if (!canInteract.value) return
   const k = selectedKey.value
   if (!k) return
-
   if (k === 'country_code') selectedValue.value = String(it?.code ?? '').toUpperCase()
   else if (k === 'current_team_id' || k === 'previous_team_id') selectedValue.value = Number(it?.id ?? 0)
   else if (k === 'game_id') selectedValue.value = Number(it?.id ?? 0)
@@ -312,21 +378,24 @@ function selectEnumValue(it: any) {
   else if (k === 'lol_role') selectedValue.value = String(it?.code ?? '').toUpperCase()
   else if (k === 'player') selectedValue.value = Number(it?.id ?? 0)
   else selectedValue.value = it
-
   activePanel.value = null
 }
 
-const numberDraft = ref<string>('')
-
 function commitNumber() {
   if (!canInteract.value) return
-  const raw = numberDraft.value.trim()
-  if (raw === '') return
-  const n = Number(raw)
-  if (!Number.isFinite(n)) return
-  if (n < 0) return
-  selectedValue.value = Math.trunc(n)
+  numberError.value = null
+  const parsed = parseNonNegativeInt(numberDraft.value)
+  if (parsed === null) {
+    numberError.value = 'Valeur invalide (entier ≥ 0)'
+    return
+  }
+  selectedValue.value = parsed
   activePanel.value = null
+}
+
+function onNumberEnter() {
+  if (!canInteract.value) return
+  commitNumber()
 }
 
 const canSubmit = computed(() => {
@@ -334,7 +403,7 @@ const canSubmit = computed(() => {
   if (!selectedKey.value) return false
   if (!selectedOp.value) return false
   if (selectedValue.value === null || selectedValue.value === undefined || selectedValue.value === '') return false
-  if (isNumberKey.value) {
+  if (selectedKeyType.value === 'number') {
     const n = Number(selectedValue.value)
     if (!Number.isFinite(n) || n < 0) return false
   }
@@ -346,91 +415,201 @@ function submit() {
   if (!canSubmit.value) return
   if (submitting.value) return
   submitting.value = true
-
   const key = String(selectedKey.value)
   const op = String(selectedOp.value)
   const value = selectedValue.value
-
   resetSelection()
-
-  if (key === 'player') {
-    emit('guess', Number(value))
-  } else {
-    emit('ask', { key, op, value })
-  }
-
+  if (key === 'player') emit('guess', Number(value))
+  else emit('ask', { key, op, value })
   window.setTimeout(() => {
     submitting.value = false
   }, 1200)
 }
 
-function caseLeftText(): string {
-  if (!selectedKey.value) return '—'
-  return keyLabel(selectedKey.value)
+function resolveEnumLabel(key: string, value: any): string {
+  if (key === 'country_code') {
+    const code = String(value ?? '').toUpperCase()
+    const c = countriesByCode.value.get(code)
+    return c ? String(c?.name ?? code) : code
+  }
+  if (key === 'current_team_id' || key === 'previous_team_id') {
+    const id = Number(value ?? 0)
+    const t = teamsById.value.get(id)
+    return t ? String(t?.display_name ?? t?.short_name ?? t?.slug ?? id) : String(id)
+  }
+  if (key === 'game_id') {
+    const id = Number(value ?? 0)
+    const g = gamesById.value.get(id)
+    return g ? String(g?.name ?? g?.code ?? id) : String(id)
+  }
+  if (key === 'role_id') {
+    const id = Number(value ?? 0)
+    const r = rolesById.value.get(id)
+    return r ? String(r?.label ?? r?.code ?? id) : String(id)
+  }
+  if (key === 'lol_role') {
+    const code = String(value ?? '').toUpperCase()
+    const r = lolRolesByCode.value.get(code)
+    return r ? String(r?.label ?? code) : code
+  }
+  return String(value ?? '')
 }
 
-function caseMidText(): string {
-  if (!selectedOp.value) return '—'
-  return opLabel(selectedOp.value)
-}
-
-function caseRightText(): string {
-  if (selectedValue.value === null || selectedValue.value === undefined || selectedValue.value === '') return '—'
-  if (selectedKey.value === 'player') {
-    const p = selectedPlayer.value
-    return p ? String(p?.name ?? p?.player?.name ?? '') : 'Joueur'
-  }
-  if (selectedKey.value === 'country_code') {
-    const c = countries.value.find(x => String(x?.code ?? '').toUpperCase() === String(selectedValue.value).toUpperCase())
-    return c ? String(c?.name ?? c?.code ?? '') : String(selectedValue.value)
-  }
-  if (selectedKey.value === 'current_team_id' || selectedKey.value === 'previous_team_id') {
-    const t = teams.value.find(x => Number(x?.id ?? 0) === Number(selectedValue.value))
-    return t ? String(t?.display_name ?? t?.short_name ?? '') : 'Équipe'
-  }
-  if (selectedKey.value === 'game_id') {
-    const g = games.value.find(x => Number(x?.id ?? 0) === Number(selectedValue.value))
-    return g ? String(g?.name ?? '') : 'Jeu'
-  }
-  if (selectedKey.value === 'role_id') {
-    const r = roles.value.find(x => Number(x?.id ?? 0) === Number(selectedValue.value))
-    return r ? String(r?.label ?? '') : 'Rôle'
-  }
-  if (selectedKey.value === 'lol_role') {
-    const lr = lolRoles.value.find(x => String(x?.code ?? '').toUpperCase() === String(selectedValue.value).toUpperCase())
-    return lr ? String(lr?.label ?? lr?.code ?? '') : String(selectedValue.value)
-  }
-  return String(selectedValue.value)
-}
-
-function caseRightImg(): string | null {
-  if (selectedKey.value === 'player') {
-    const p = selectedPlayer.value
-    return p?.image_url ?? p?.player?.image_url ?? null
-  }
-  if (selectedKey.value === 'country_code') {
-    const c = countries.value.find(x => String(x?.code ?? '').toUpperCase() === String(selectedValue.value).toUpperCase())
+function resolveEnumImage(key: string, value: any): string | null {
+  if (key === 'country_code') {
+    const code = String(value ?? '').toUpperCase()
+    const c = countriesByCode.value.get(code)
     return c?.flag_url ?? null
   }
-  if (selectedKey.value === 'current_team_id' || selectedKey.value === 'previous_team_id') {
-    const t = teams.value.find(x => Number(x?.id ?? 0) === Number(selectedValue.value))
+  if (key === 'current_team_id' || key === 'previous_team_id') {
+    const id = Number(value ?? 0)
+    const t = teamsById.value.get(id)
     return t?.logo_url ?? null
   }
-  if (selectedKey.value === 'game_id') {
-    const g = games.value.find(x => Number(x?.id ?? 0) === Number(selectedValue.value))
+  if (key === 'game_id') {
+    const id = Number(value ?? 0)
+    const g = gamesById.value.get(id)
     return g?.logo_url ?? null
   }
-  if (selectedKey.value === 'lol_role') {
-    const lr = lolRoles.value.find(x => String(x?.code ?? '').toUpperCase() === String(selectedValue.value).toUpperCase())
-    return lr?.icon_url ?? null
+  if (key === 'lol_role') {
+    const code = String(value ?? '').toUpperCase()
+    const r = lolRolesByCode.value.get(code)
+    return r?.icon_url ?? null
   }
   return null
 }
 
-const history = computed(() => {
-  const evs = Array.isArray(props.events) ? props.events : []
-  return evs.slice(-10).reverse()
+function resolvePlayerLabel(playerId: any): string {
+  const id = Number(playerId ?? 0)
+  const p = playersById.value.get(id)
+  return p ? String(p?.name ?? p?.player?.name ?? p?.player?.slug ?? id) : String(id)
+}
+
+function resolvePlayerImage(playerId: any): string | null {
+  const id = Number(playerId ?? 0)
+  const p = playersById.value.get(id)
+  return p?.image_url ?? p?.player?.image_url ?? null
+}
+
+function caseRightText(): string {
+  if (selectedValue.value === null || selectedValue.value === undefined || selectedValue.value === '') return '—'
+  if (selectedKey.value === 'player') return resolvePlayerLabel(selectedValue.value)
+  if (!selectedKey.value) return '—'
+  if (NUMERIC_KEYS.has(selectedKey.value)) return String(selectedValue.value)
+  return resolveEnumLabel(selectedKey.value, selectedValue.value)
+}
+
+function caseRightImg(): string | null {
+  if (selectedValue.value === null || selectedValue.value === undefined || selectedValue.value === '') return null
+  if (selectedKey.value === 'player') return resolvePlayerImage(selectedValue.value)
+  if (!selectedKey.value) return null
+  if (NUMERIC_KEYS.has(selectedKey.value)) return null
+  return resolveEnumImage(selectedKey.value, selectedValue.value)
+}
+
+type HistoryActionItem =
+  | {
+  actionIndex: number
+  type: 'whois_question'
+  key: string
+  op: string
+  valueLabel: string
+  valueImage: string | null
+  ok: boolean
+}
+  | {
+  actionIndex: number
+  type: 'whois_guess'
+  playerLabel: string
+  playerImage: string | null
+  ok: boolean
+}
+
+function uniqEvents(evs: any[]): any[] {
+  const arr = Array.isArray(evs) ? evs.slice() : []
+  const hasId = arr.some(e => e && (typeof e.id === 'number' || typeof e.id === 'string'))
+  if (hasId) {
+    const map = new Map<string, any>()
+    for (const e of arr) {
+      const id = e?.id
+      if (id === null || id === undefined) continue
+      const key = String(id)
+      if (!map.has(key)) map.set(key, e)
+    }
+    const out = Array.from(map.values())
+    out.sort((a, b) => Number(a.id) - Number(b.id))
+    return out
+  }
+
+  const map = new Map<string, any>()
+  for (const e of arr) {
+    const type = String(e?.type ?? '')
+    const payload = e?.payload ?? {}
+    const sig = `${type}:${JSON.stringify(payload)}`
+    if (!map.has(sig)) map.set(sig, e)
+  }
+  return Array.from(map.values())
+}
+
+const historyItems = computed<HistoryActionItem[]>(() => {
+  const evs = uniqEvents(props.events ?? [])
+  const items: HistoryActionItem[] = []
+  let actionIndex = 0
+
+  for (const e of evs) {
+    const type = String(e?.type ?? '')
+    if (type === 'whois_question') {
+      actionIndex += 1
+      const q = e?.payload?.question ?? {}
+      const key = String(q?.key ?? '')
+      const op = String(q?.op ?? 'eq')
+      const value = q?.value
+      const ok = !!e?.payload?.answer
+      const valueLabel = NUMERIC_KEYS.has(key) ? String(value ?? '') : resolveEnumLabel(key, value)
+      const valueImage = NUMERIC_KEYS.has(key) ? null : resolveEnumImage(key, value)
+
+      items.push({
+        actionIndex,
+        type: 'whois_question',
+        key,
+        op,
+        valueLabel,
+        valueImage,
+        ok,
+      })
+    } else if (type === 'whois_guess') {
+      actionIndex += 1
+      const pid = Number(e?.payload?.player_id ?? 0)
+      const ok = !!e?.payload?.correct
+      items.push({
+        actionIndex,
+        type: 'whois_guess',
+        playerLabel: resolvePlayerLabel(pid),
+        playerImage: resolvePlayerImage(pid),
+        ok,
+      })
+    }
+  }
+
+  return items.slice().reverse()
 })
+
+const hasHistory = computed(() => historyItems.value.length > 0)
+const historyScrollRef = ref<HTMLElement | null>(null)
+
+async function scrollHistoryToTop() {
+  await nextTick()
+  const el = historyScrollRef.value
+  if (!el) return
+  el.scrollTop = 0
+}
+
+watch(
+  () => historyItems.value.length,
+  async (n, p) => {
+    if (n > (p ?? 0)) await scrollHistoryToTop()
+  }
+)
 
 async function loadRefs() {
   try {
@@ -472,11 +651,8 @@ watch(candidateIds, () => {
 
 watch(isMyTurn, (v, prev) => {
   if (canChooseTurn.value) return
-  if (v === true && prev === false) {
-    activePanel.value = 'keys'
-  } else if (v === false) {
-    activePanel.value = null
-  }
+  if (v === true && prev === false) activePanel.value = 'keys'
+  else if (v === false) activePanel.value = null
 })
 
 watch(canInteract, (v) => {
@@ -487,6 +663,7 @@ watch(canInteract, (v) => {
 onMounted(async () => {
   await Promise.all([loadRefs(), loadPlayers()])
   activePanel.value = canInteract.value ? 'keys' : null
+  await scrollHistoryToTop()
 })
 </script>
 
@@ -494,7 +671,6 @@ onMounted(async () => {
   <section class="whois" :class="dleCode">
     <header class="whois-header">
       <div class="brand">
-        <SimpleImg class="logo" :alt="dleCode" :img="dleCode + '_page_Logo.png'" />
         <div class="title">
           <div class="mode">WHOIS</div>
           <div class="sub">{{ turnLabel }}</div>
@@ -519,558 +695,274 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="card" v-else>
-      <div class="history" v-if="history.length">
-        <div class="history-title">Historique</div>
+    <div class="card card--layout" v-else>
+      <div class="left">
+        <div class="cases">
+          <button class="case" :class="{ active: activePanel === 'keys' }" :disabled="!canInteract" @click="clickCaseKeys">
+            <div class="case-label">Clé</div>
+            <div class="case-value">{{ selectedKey ? keyLabel(selectedKey) : '—' }}</div>
+          </button>
 
-        <div class="history-list">
-          <div v-for="(e, idx) in history" :key="idx" class="history-item">
-            <div class="history-type">{{ String(e?.type ?? '') }}</div>
+          <button class="case case--mid" :class="{ active: activePanel === 'ops' }" :disabled="!canInteract" @click="clickCaseOps">
+            <div class="case-label">Op</div>
+            <div class="case-value">{{ selectedOp ? opLabel(selectedOp) : '—' }}</div>
+          </button>
 
-            <div class="history-line" v-if="e?.type === 'whois_question'">
-              <span class="h-key">{{ keyLabel(String(e?.payload?.question?.key ?? '')) }}</span>
-              <span class="h-op">{{ opLabel(String(e?.payload?.question?.op ?? '')) }}</span>
-              <span class="h-val">{{ String(e?.payload?.question?.value ?? '') }}</span>
-              <span class="h-res" :class="{ ok: !!e?.payload?.answer }">{{ e?.payload?.answer ? 'VRAI' : 'FAUX' }}</span>
+          <button class="case" :class="{ active: activePanel === 'values' }" :disabled="!canInteract" @click="clickCaseValues">
+            <div class="case-label">Valeur</div>
+            <div class="case-value">
+              <div class="picked" v-if="caseRightText() !== '—'">
+                <SimpleImg v-if="caseRightImg()" class="picked-img" :alt="caseRightText()" :img="caseRightImg()!" />
+                <div class="picked-name" :class="{noImage: !caseRightImg()}">{{ caseRightText() }}</div>
+              </div>
+              <div v-else>—</div>
             </div>
-
-            <div class="history-line" v-else-if="e?.type === 'whois_guess'">
-              <span class="h-key">Joueur</span>
-              <span class="h-op">=</span>
-              <span class="h-val">{{ String(e?.payload?.player_id ?? '') }}</span>
-              <span class="h-res" :class="{ ok: !!e?.payload?.correct }">{{ e?.payload?.correct ? 'JUSTE' : 'FAUX' }}</span>
-            </div>
-
-            <div class="history-line" v-else-if="e?.type === 'whois_turn_chosen'">
-              <span class="h-val">Premier tour: {{ String(e?.payload?.first_user_id ?? '') }}</span>
-            </div>
-
-            <div class="history-line" v-else-if="e?.type === 'whois_eliminated'">
-              <span class="h-val">Éliminé: {{ String(e?.payload?.player_id ?? '') }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="cases">
-        <button class="case" :class="{ active: activePanel === 'keys' }" @click="clickCaseKeys">
-          <div class="case-label">Clé</div>
-          <div class="case-value">{{ caseLeftText() }}</div>
-        </button>
-
-        <button class="case case--mid" :class="{ active: activePanel === 'ops' }" @click="clickCaseOps">
-          <div class="case-label">Op</div>
-          <div class="case-value">{{ caseMidText() }}</div>
-        </button>
-
-        <button class="case" :class="{ active: activePanel === 'values' }" @click="clickCaseValues">
-          <div class="case-label">Valeur</div>
-          <div class="case-value">
-            <div class="picked" v-if="caseRightText() !== '—'">
-              <SimpleImg v-if="caseRightImg()" class="picked-img" :alt="caseRightText()" :img="caseRightImg()!" />
-              <div class="picked-name">{{ caseRightText() }}</div>
-            </div>
-            <div v-else>—</div>
-          </div>
-        </button>
-      </div>
-
-      <div class="panel" v-if="activePanel">
-        <div class="panel-head">
-          <div class="panel-title">
-            <template v-if="activePanel === 'keys'">Choisir une clé</template>
-            <template v-else-if="activePanel === 'ops'">Choisir une opération</template>
-            <template v-else>Choisir une valeur</template>
-          </div>
-
-          <button class="panel-reset" v-if="(selectedKey || selectedOp || selectedValue) && canInteract" @click="resetSelection">
-            Reset
           </button>
         </div>
 
-        <div class="panel-body" v-if="activePanel === 'keys'">
-          <div class="grid grid--keys">
-            <button
-              v-for="k in availableKeys"
-              :key="k.key"
-              class="big-item"
-              :disabled="!canInteract"
-              @click="selectKey(k)"
-            >
-              {{ keyLabel(k.key) }}
-            </button>
-          </div>
-        </div>
-
-        <div class="panel-body" v-else-if="activePanel === 'ops'">
-          <div class="grid grid--ops">
-            <button
-              v-for="op in selectedOps"
-              :key="op"
-              class="big-item"
-              :disabled="!canInteract"
-              @click="selectOp(op)"
-            >
-              {{ opLabel(op) }}
-            </button>
-          </div>
-        </div>
-
-        <div class="panel-body" v-else>
-          <div v-if="isNumberKey" class="num">
-            <input
-              v-model="numberDraft"
-              class="num-input"
-              type="number"
-              inputmode="numeric"
-              min="0"
-              step="1"
-              :disabled="!canInteract"
-              placeholder="Entrer une valeur…"
-            />
-            <button class="num-btn" :disabled="!canInteract || numberDraft.trim() === '' || Number(numberDraft) < 0" @click="commitNumber">
-              Valider
-            </button>
-          </div>
-
-          <template v-else>
-            <div class="search">
-              <input v-model="search" class="search-input" type="text" placeholder="Rechercher…" :disabled="!canInteract" />
+        <div class="panel" v-if="canInteract && activePanel">
+          <div class="panel-head">
+            <div class="panel-title">
+              <template v-if="activePanel === 'keys'">Choisir une clé</template>
+              <template v-else-if="activePanel === 'ops'">Choisir une opération</template>
+              <template v-else>Choisir une valeur</template>
             </div>
 
-            <div class="grid">
-              <div
-                v-for="it in searchedValueItems"
-                :key="valueItemKey(it)"
-                class="grid-item"
-                :class="{ disabled: !canInteract }"
-                @click="selectEnumValue(it)"
-              >
-                <template v-if="isPlayerKey">
-                  <PlayerCard :joueur="it" />
-                </template>
+            <button class="panel-reset" v-if="selectedKey || selectedOp || selectedValue" @click="resetSelection">
+              Reset
+            </button>
+          </div>
 
-                <template v-else>
-                  <div class="ref">
-                    <SimpleImg v-if="valueItemImage(it)" class="ref-img" :alt="valueItemLabel(it)" :img="valueItemImage(it)!" />
-                    <div class="ref-label">{{ valueItemLabel(it) }}</div>
-                  </div>
-                </template>
+          <div class="panel-body panel-body--scroll" v-if="activePanel === 'keys'">
+            <div class="grid grid--keys">
+              <button v-for="k in availableKeys" :key="k.key" class="big-item" @click="selectKey(k)">
+                {{ keyLabel(k.key) }}
+              </button>
+            </div>
+          </div>
+
+          <div class="panel-body panel-body--scroll" v-else-if="activePanel === 'ops'">
+            <div class="grid grid--ops">
+              <button v-for="op in selectedOps" :key="op" class="big-item" @click="selectOp(op)">
+                {{ opLabel(op) }}
+              </button>
+            </div>
+          </div>
+
+          <div class="panel-body panel-body--scroll" v-else>
+            <div v-if="isNumberKey" class="num">
+              <input
+                v-model="numberDraft"
+                class="num-input"
+                type="text"
+                inputmode="numeric"
+                placeholder="Entier ≥ 0"
+                @keydown.enter.prevent="onNumberEnter"
+              />
+              <button class="num-btn" @click="commitNumber">Valider</button>
+            </div>
+
+            <div v-if="isNumberKey && numberError" class="num-error">{{ numberError }}</div>
+
+            <template v-if="!isNumberKey">
+              <div class="search">
+                <input v-model="search" class="search-input" type="text" placeholder="Rechercher…" />
               </div>
 
-              <div v-if="searchedValueItems.length === 0" class="empty">Aucun résultat</div>
-            </div>
-          </template>
+              <div class="grid">
+                <div
+                  v-for="it in searchedValueItems"
+                  :key="valueItemKey(it)"
+                  class="grid-item"
+                  @click="selectEnumValue(it)"
+                >
+                  <template v-if="isPlayerKey">
+                    <PlayerCard :joueur="it" />
+                  </template>
+
+                  <template v-else>
+                    <div class="ref">
+                      <SimpleImg v-if="valueItemImage(it)" class="ref-img" :alt="valueItemLabel(it)" :img="valueItemImage(it)!" />
+                      <div class="ref-label">{{ valueItemLabel(it) }}</div>
+                    </div>
+                  </template>
+                </div>
+
+                <div v-if="searchedValueItems.length === 0" class="empty">Aucun résultat</div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <div class="footer" v-if="canInteract">
+          <button class="submit" :disabled="!canSubmit || submitting" @click="submit">
+            <template v-if="selectedKey === 'player'">Guess</template>
+            <template v-else>Indice</template>
+          </button>
         </div>
       </div>
 
-      <div class="footer">
-        <button class="submit" :disabled="!canSubmit || submitting" @click="submit">
-          <template v-if="selectedKey === 'player'">Guess</template>
-          <template v-else>Indice</template>
-        </button>
-      </div>
+      <aside class="right">
+        <div class="history">
+          <div class="history-title">Indices</div>
+
+          <div ref="historyScrollRef" class="history-scroll">
+            <div class="history-list">
+              <div v-if="!hasHistory" class="empty">Aucun indice pour le moment</div>
+
+              <div
+                v-for="(it, idx) in historyItems"
+                :key="idx"
+                class="history-item"
+                :class="it.ok ? 'item-ok' : 'item-ko'"
+              >
+                <div class="history-meta">
+                  <span class="meta-chip">Tour {{ it.actionIndex }}</span>
+                </div>
+
+                <div class="history-line" v-if="it.type === 'whois_question'">
+                  <span class="h-key">{{ keyLabel(it.key) }}</span>
+                  <span class="h-op">{{ opLabel(it.op) }}</span>
+
+                  <span class="h-val">
+                    <span class="h-picked" v-if="it.valueImage">
+                      <SimpleImg class="h-img" :alt="it.valueLabel" :img="it.valueImage" />
+                      <span class="h-txt">{{ it.valueLabel }}</span>
+                    </span>
+                    <span v-else>{{ it.valueLabel }}</span>
+                  </span>
+
+<!--                  <span class="h-res">{{ it.ok ? 'VRAI' : 'FAUX' }}</span>-->
+                </div>
+
+                <div class="history-line" v-else>
+                  <span class="h-key">Joueur</span>
+                  <span class="h-op">=</span>
+
+                  <span class="h-val">
+                    <span class="h-picked">
+                      <SimpleImg v-if="it.playerImage" class="h-img" :alt="it.playerLabel" :img="it.playerImage" />
+                      <span class="h-txt">{{ it.playerLabel }}</span>
+                    </span>
+                  </span>
+
+<!--                  <span class="h-res">{{ it.ok ? 'JUSTE' : 'FAUX' }}</span>-->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
   </section>
 </template>
 
 <style scoped>
-.whois {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.whois{width:100%;max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:0 10px;box-sizing:border-box;overflow:hidden}
+.whois-header{width:100%;background:rgba(6,8,18,.92);border-radius:16px;padding:12px;border:1px solid rgba(255,255,255,.06);box-sizing:border-box;overflow:hidden}
+.brand{display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-width:100%}
+.title{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:100%}
+.mode{font-weight:900;letter-spacing:.16em;font-size:1.5rem;opacity:.9}
+.sub{font-size:.95rem;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%; margin: 0}
+
+.card{width:100%;background:rgba(6,8,18,.92);border-radius:16px;padding:14px 12px 16px;border:1px solid rgba(255,255,255,.06);box-sizing:border-box;overflow:hidden}
+.card-title{font-size:.9rem;opacity:.85;margin-bottom:8px;text-transform:uppercase;letter-spacing:.12em}
+.card-sub{opacity:.85;margin-bottom:12px;line-height:1.3}
+
+.choices{display:grid;grid-template-columns:1fr;gap:10px}
+.choice{width:100%;text-align:left;border-radius:14px;padding:14px 12px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);color:#f3f3f3;cursor:pointer;box-sizing:border-box}
+.choice:disabled{opacity:.55;cursor:not-allowed}
+.choice-name{font-weight:900;font-size:1.05rem}
+.choice-hint{opacity:.8;margin-top:2px;font-size:.9rem}
+
+.card--layout{display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.left{display:flex;flex-direction:column;gap:12px;min-width:0;max-width:100%}
+.right{display:block;min-width:0;max-width:100%}
+
+.cases{display:grid;grid-template-columns:1fr .6fr 1fr;gap:10px;max-width:100%}
+.case{border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);color:#f3f3f3;padding:10px;cursor:pointer;text-align:center;min-height:74px;box-sizing:border-box;max-width:100%;overflow:hidden;
+  display: flex; flex-direction: column; align-items:center;}
+.case:hover{background:rgba(255,255,255,.06)}
+.case:disabled{opacity:.55;cursor:not-allowed}
+.case.active{border-color:rgba(255,255,255,.22);background:rgba(255,255,255,.06)}
+.case-label{font-size:.75rem;opacity:.7;letter-spacing:.12em;text-transform:uppercase}
+.case-value{margin-top:6px;font-weight:900;opacity:.92;min-width:0}
+.case--mid{text-align:center}
+.picked{display:flex;align-items:center;gap:10px;min-width:0}
+.picked-img{width:34px;height:34px;border-radius:12px;flex:0 0 auto}
+.picked-name{font-weight:900;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0; display: none}
+.picked-name.noImage{display: block}
+
+.panel{border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);padding:12px;box-sizing:border-box;min-width:0;max-width:100%;overflow:hidden}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;min-width:0}
+.panel-title{font-weight:900;opacity:.9;min-width:0}
+.panel-reset{border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#f3f3f3;padding:8px 10px;cursor:pointer;flex:0 0 auto}
+.panel-reset:hover{background:rgba(255,255,255,.06)}
+.panel-body{min-width:0;max-width:100%}
+.panel-body--scroll{max-height:360px;overflow:auto;padding-right:6px;box-sizing:border-box}
+
+.grid{display:grid;grid-template-columns:1fr;gap:10px;max-width:100%}
+.grid--keys{grid-template-columns:1fr}
+.grid--ops{grid-template-columns:repeat(3,1fr)}
+.big-item{width:100%;border-radius:14px;padding:14px 12px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);color:#f3f3f3;font-weight:900;cursor:pointer;box-sizing:border-box}
+.big-item:hover{background:rgba(255,255,255,.06)}
+
+.search{margin-bottom:10px}
+.search-input{width:100%;border-radius:14px;padding:10px 12px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.25);color:#f3f3f3;outline:none;box-sizing:border-box}
+
+.grid-item{cursor:pointer;min-width:0}
+.ref{border-radius:16px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);padding:12px;display:flex;align-items:center;gap:12px;cursor:pointer;box-sizing:border-box;min-width:0}
+.ref:hover{background:rgba(255,255,255,.05)}
+.ref-img{width:42px;height:42px;border-radius:12px;flex:0 0 auto;object-fit:cover}
+.ref-label{font-weight:900;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+
+.num{display:flex;gap:10px;min-width:0}
+.num-input{width:100%;border-radius:14px;padding:10px 12px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.25);color:#f3f3f3;outline:none;box-sizing:border-box}
+.num-btn{border-radius:14px;padding:10px 14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:#f3f3f3;font-weight:900;cursor:pointer;flex:0 0 auto}
+.num-btn:hover{background:rgba(255,255,255,.10)}
+.num-error{margin-top:10px;opacity:.9}
+
+.footer{display:flex;justify-content:flex-end}
+.submit{width:100%;border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:#f3f3f3;font-weight:900;cursor:pointer;box-sizing:border-box}
+.submit:hover{background:rgba(255,255,255,.10)}
+.submit:disabled{opacity:.55;cursor:not-allowed}
+
+.history{border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);padding:12px;box-sizing:border-box;min-width:0;max-width:100%;overflow:hidden}
+.history-title{font-weight:900;opacity:.9;margin-bottom:10px}
+.history-scroll{max-height:520px;overflow:auto;padding-right:6px;box-sizing:border-box}
+.history-list{display:flex;flex-direction:column;gap:8px;max-width:100%}
+.history-item{border-radius:14px;padding:10px 10px;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.18);box-sizing:border-box;max-width:100%;overflow:hidden}
+.history-item.item-ok{border-color:rgba(53,208,127,.35);background:rgba(53,208,127,.12)}
+.history-item.item-ko{border-color:rgba(255,77,77,.35);background:rgba(255,77,77,.12)}
+.history-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.meta-chip{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;opacity:.8;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);border-radius:999px;padding:4px 8px}
+.history-line{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-weight:900;max-width:100%}
+.h-val{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%}
+.h-picked{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%}
+.h-img{width:26px;height:26px;border-radius:8px;flex:0 0 auto}
+.h-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52vw;min-width:0}
+.h-res{margin-left:auto}
+
+.empty{opacity:.7;padding:10px;text-align:center}
+
+@media(min-width:720px){
+  .choices{grid-template-columns:1fr 1fr}
+  .grid{grid-template-columns:1fr 1fr}
+  .grid--keys{grid-template-columns:1fr 1fr}
+  .submit{width:auto;min-width:180px}
+  .panel-body--scroll{max-height:420px}
+  .h-txt{max-width:340px}
+  .whois{padding:0 14px}
+  .picked-name{display: block}
 }
 
-.whois-header {
-  width: 100%;
-  background: rgba(6, 8, 18, 0.92);
-  border-radius: 14px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 auto;
-}
-
-.title {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.mode {
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  font-size: 0.85rem;
-  opacity: 0.9;
-}
-
-.sub {
-  font-size: 0.95rem;
-  opacity: 0.85;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.card {
-  width: 100%;
-  background: rgba(6, 8, 18, 0.92);
-  border-radius: 14px;
-  padding: 16px 12px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.card-title {
-  font-size: 0.9rem;
-  opacity: 0.85;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.card-sub {
-  opacity: 0.85;
-  margin-bottom: 12px;
-  line-height: 1.3;
-}
-
-.choices {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
-.choice {
-  width: 100%;
-  text-align: left;
-  border-radius: 12px;
-  padding: 14px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.04);
-  color: #f3f3f3;
-  cursor: pointer;
-}
-
-.choice:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.choice-name {
-  font-weight: 800;
-  font-size: 1.05rem;
-}
-
-.choice-hint {
-  opacity: 0.8;
-  margin-top: 2px;
-  font-size: 0.9rem;
-}
-
-.history {
-  margin-bottom: 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 12px;
-}
-
-.history-title {
-  font-weight: 900;
-  opacity: 0.9;
-  margin-bottom: 10px;
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.history-item {
-  border-radius: 12px;
-  padding: 10px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.18);
-}
-
-.history-type {
-  font-size: 0.75rem;
-  opacity: 0.65;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-
-.history-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  font-weight: 800;
-}
-
-.h-res {
-  margin-left: auto;
-  opacity: 0.85;
-}
-
-.h-res.ok {
-  opacity: 1;
-}
-
-.cases {
-  display: grid;
-  grid-template-columns: 1fr 0.6fr 1fr;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.case {
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.04);
-  color: #f3f3f3;
-  padding: 10px;
-  cursor: pointer;
-  text-align: left;
-  min-height: 74px;
-}
-
-.case.active {
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.case-label {
-  font-size: 0.75rem;
-  opacity: 0.7;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.case-value {
-  margin-top: 6px;
-  font-weight: 900;
-  opacity: 0.92;
-}
-
-.case--mid {
-  text-align: center;
-}
-
-.picked {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.picked-img {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  flex: 0 0 auto;
-}
-
-.picked-name {
-  font-weight: 900;
-  line-height: 1.1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.panel {
-  margin-top: 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 12px;
-}
-
-.panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.panel-title {
-  font-weight: 900;
-  opacity: 0.9;
-}
-
-.panel-reset {
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
-  color: #f3f3f3;
-  padding: 8px 10px;
-  cursor: pointer;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
-.grid--keys {
-  grid-template-columns: 1fr;
-}
-
-.grid--ops {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.big-item {
-  width: 100%;
-  border-radius: 12px;
-  padding: 14px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.04);
-  color: #f3f3f3;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.big-item:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.search {
-  margin-bottom: 10px;
-}
-
-.search-input {
-  width: 100%;
-  border-radius: 12px;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(0, 0, 0, 0.25);
-  color: #f3f3f3;
-  outline: none;
-}
-
-.grid-item.disabled {
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-.ref {
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.ref-img {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  flex: 0 0 auto;
-}
-
-.ref-label {
-  font-weight: 900;
-  line-height: 1.1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.empty {
-  opacity: 0.7;
-  padding: 10px;
-  text-align: center;
-}
-
-.num {
-  display: flex;
-  gap: 10px;
-}
-
-.num-input {
-  width: 100%;
-  border-radius: 12px;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(0, 0, 0, 0.25);
-  color: #f3f3f3;
-  outline: none;
-}
-
-.num-btn {
-  border-radius: 12px;
-  padding: 10px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f3f3f3;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.footer {
-  margin-top: 12px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.submit {
-  width: 100%;
-  border-radius: 12px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f3f3f3;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.submit:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-@media (min-width: 720px) {
-  .choices {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .grid--keys {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .submit {
-    width: auto;
-    min-width: 180px;
-  }
-}
-
-@media (min-width: 980px) {
-  .grid {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
+@media(min-width:980px){
+  .card--layout{display:grid;grid-template-columns:1.05fr .95fr;gap:12px;align-items:stretch}
+  .history{height:100%}
+  .history-scroll{max-height:520px}
+  .right .history{position:sticky;top:12px}
+  .grid{grid-template-columns:1fr 1fr 1fr}
+  .panel-body--scroll{max-height:520px}
+  .picked-name{display: block}
 }
 </style>
