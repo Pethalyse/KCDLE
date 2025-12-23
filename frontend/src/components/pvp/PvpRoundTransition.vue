@@ -65,12 +65,18 @@ function shuffleOnce() {
   const a = Math.floor(Math.random() * cards.value.length)
   let b = Math.floor(Math.random() * cards.value.length)
   if (b === a) b = (b + 1) % cards.value.length
+
   const next = cards.value.slice()
-  const tmp = next[a]
-  next[a] = next[b]
-  next[b] = tmp
+
+  const itemA = next[a]
+  const itemB = next[b]
+  if (!itemA || !itemB) return
+
+  next[a] = itemB
+  next[b] = itemA
   cards.value = next
 }
+
 
 function startShuffle(durationMs: number, stepMs: number) {
   const steps = Math.max(1, Math.floor(durationMs / stepMs))
