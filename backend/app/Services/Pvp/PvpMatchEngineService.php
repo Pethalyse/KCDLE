@@ -5,6 +5,7 @@ namespace App\Services\Pvp;
 use App\Models\PvpMatch;
 use App\Models\PvpMatchPlayer;
 use App\Services\Pvp\Rounds\PvpRoundHandlerFactory;
+use App\Services\Pvp\Rounds\PvpRoundHandlerInterface;
 use App\Services\Pvp\Rounds\PvpRoundResult;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -250,15 +251,15 @@ readonly class PvpMatchEngineService
     /**
      * Ensure the round is initialized (only once per round) and chooser is set.
      *
-     * @param PvpMatch $match      Locked match instance.
-     * @param array    $state      Current match state.
-     * @param int      $roundIndex Current round index.
-     * @param string   $roundType  Current round type.
-     * @param mixed    $handler    Round handler.
+     * @param PvpMatch $match Locked match instance.
+     * @param array $state Current match state.
+     * @param int $roundIndex Current round index.
+     * @param string $roundType Current round type.
+     * @param PvpRoundHandlerInterface $handler Round handler.
      *
      * @return array
      */
-    private function ensureRoundInitialized(PvpMatch $match, array $state, int $roundIndex, string $roundType, mixed $handler): array
+    private function ensureRoundInitialized(PvpMatch $match, array $state, int $roundIndex, string $roundType, PvpRoundHandlerInterface $handler): array
     {
         if (isset($state['round_initialized']) && (int) $state['round_initialized'] === $roundIndex) {
             return $state;
@@ -287,21 +288,18 @@ readonly class PvpMatchEngineService
      * Handler contract (optional):
      * - tick(PvpMatch $match): array{statePatch?:array, events?:array}
      *
-     * @param PvpMatch $match   Locked match instance.
-     * @param mixed    $handler Round handler.
+     * @param PvpMatch $match Locked match instance.
+     * @param PvpRoundHandlerInterface $handler Round handler.
      *
      * @return array{statePatch?:array, events?:array}
      */
-    private function tickIfSupported(PvpMatch $match, mixed $handler): array
+    private function tickIfSupported(PvpMatch $match, PvpRoundHandlerInterface $handler): array
     {
         if (! method_exists($handler, 'tick')) {
             return [];
         }
 
         $res = $handler->tick($match);
-        if (! is_array($res)) {
-            return [];
-        }
 
         $statePatch = (array) ($res['statePatch'] ?? []);
         $events = (array) ($res['events'] ?? []);

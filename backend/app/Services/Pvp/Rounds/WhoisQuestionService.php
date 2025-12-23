@@ -2,50 +2,50 @@
 
 namespace App\Services\Pvp\Rounds;
 
-/**
- * Validates and evaluates Whois questions against a player wrapper.
- */
+use Illuminate\Support\Arr;
+
 readonly class WhoisQuestionService
 {
     public function __construct(private HintValueService $hints)
     {
     }
 
-    /**
-     * Validate a whois question payload.
-     *
-     * @param array $question Question payload.
-     *
-     * @return array{key:string, op:string, value:mixed}
-     */
-    public function validate(array $question): array
+    public function validate(array $question, string $game): array
     {
         $key = (string) ($question['key'] ?? '');
         $op = (string) ($question['op'] ?? '');
         $value = $question['value'] ?? null;
 
-        $allowedKeys = [
-            'country_code',
-            'role_id',
-            'game_id',
-            'current_team_id',
-            'previous_team_id',
-            'trophies_count',
-            'first_official_year',
-        ];
-
-        $allowedOps = ['eq', 'lt', 'gt'];
-
+        $allowedKeys = (array) config("pvp.whois.keys.{$game}", []);
         if (!in_array($key, $allowedKeys, true)) {
             abort(422, 'Invalid question key.');
         }
+
+        $meta = (array) config("pvp.whois.meta.{$key}", []);
+        $type = (string) Arr::get($meta, 'type', 'enum');
+        $allowedOps = (array) Arr::get($meta, 'ops', ['eq']);
 
         if (!in_array($op, $allowedOps, true)) {
             abort(422, 'Invalid question operator.');
         }
 
-        if ($op === 'eq' && $value === null) {
+        if ($value === null) {
             abort(422, 'Invalid question value.');
+        }
+
+        $cast = (string) Arr::get($meta, 'cast', 'string');
+        $value = $this->castValue($value, $cast);
+
+        if ($value === null) {
+            abort(422, 'Invalid question value.');
+        }
+
+        if ($type === 'number' && !is_numeric($value)) {
+            abort(422, 'Invalid question value.');
+        }
+
+        if ($type === 'enum' && ($op !== 'eq')) {
+            abort(422, 'Invalid question operator.');
         }
 
         return [
@@ -55,25 +55,29 @@ readonly class WhoisQuestionService
         ];
     }
 
-    /**
-     * Evaluate a question against a wrapper and return boolean.
-     *
-     * @param mixed  $wrapper Player wrapper model.
-     * @param string $key     Question key.
-     * @param string $op      Operator.
-     * @param mixed  $value   Value.
-     *
-     * @return bool
-     */
     public function evaluate(mixed $wrapper, string $key, string $op, mixed $value): bool
     {
+        $meta = (array) config("pvp.whois.meta.{$key}", []);
+        $cast = (string) Arr::get($meta, 'cast', 'string');
+
         $actual = $this->hints->readHintValue($wrapper, $key);
+        $actual = $this->castValue($actual, $cast);
 
         return match ($op) {
             'eq' => $actual === $value,
-            'lt' => is_numeric($actual) && is_numeric($value) && (float)$actual < (float)$value,
-            'gt' => is_numeric($actual) && is_numeric($value) && (float)$actual > (float)$value,
+            'lt' => is_numeric($actual) && is_numeric($value) && (float) $actual < (float) $value,
+            'gt' => is_numeric($actual) && is_numeric($value) && (float) $actual > (float) $value,
             default => false,
+        };
+    }
+
+    private function castValue(mixed $value, string $cast): mixed
+    {
+        return match ($cast) {
+            'int' => is_numeric($value) ? (int) $value : null,
+            'upper' => is_string($value) ? strtoupper(trim($value)) : null,
+            'string' => is_string($value) ? (string) $value : (is_numeric($value) ? (string) $value : null),
+            default => $value,
         };
     }
 }

@@ -9,6 +9,11 @@ use App\Http\Controllers\Api\GameGuessController;
 use App\Http\Controllers\Api\GamePlayerController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\Api\LegalController;
+use App\Http\Controllers\Api\Meta\CountryController;
+use App\Http\Controllers\Api\Meta\GameController;
+use App\Http\Controllers\Api\Meta\LolRoleController;
+use App\Http\Controllers\Api\Meta\RoleController;
+use App\Http\Controllers\Api\Meta\TeamController;
 use App\Http\Controllers\Api\PrivacyPolicyController;
 use App\Http\Controllers\Api\Pvp\PvpEventController;
 use App\Http\Controllers\Api\Pvp\PvpHeartbeatController;
@@ -55,6 +60,12 @@ Route::prefix('user')
 
 Route::get('leaderboards/{game}', [LeaderboardController::class, 'show']);
 Route::get('achievements', [AchievementController::class, 'index']);
+
+Route::get('countries', [CountryController::class, 'index']);
+Route::get('teams', [TeamController::class, 'index']);
+Route::get('games', [GameController::class, 'index']);
+Route::get('roles', [RoleController::class, 'index']);
+Route::get('lol-roles', [LolRoleController::class, 'index']);
 
 Route::prefix('friend-groups')
     ->middleware(['auth:sanctum'])

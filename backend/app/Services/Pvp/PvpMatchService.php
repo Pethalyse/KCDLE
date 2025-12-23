@@ -6,6 +6,7 @@ use App\Models\PvpActiveMatchLock;
 use App\Models\PvpMatch;
 use App\Models\PvpMatchEvent;
 use App\Models\PvpMatchPlayer;
+use Illuminate\Support\Arr;
 
 /**
  * Handles PvP match read operations for the network layer.
@@ -15,13 +16,13 @@ use App\Models\PvpMatchPlayer;
 class PvpMatchService
 {
     /**
-    * Ensure a given user is a participant of a match.
-    *
-    * @param int $matchId Match identifier.
-    * @param int $userId  User identifier.
-    *
-    * @return void
-    */
+     * Ensure a given user is a participant of a match.
+     *
+     * @param int $matchId Match identifier.
+     * @param int $userId  User identifier.
+     *
+     * @return void
+     */
     public function assertParticipant(int $matchId, int $userId): void
     {
         $isParticipant = PvpMatchPlayer::where('match_id', $matchId)
@@ -76,29 +77,31 @@ class PvpMatchService
     }
 
     /**
-    * Build the payload required by the frontend to load the match screen.
-    *
-    * @param PvpMatch $match  Match instance.
-    * @param int      $userId Authenticated user id.
-    *
-    * @return array{
-    *   id:int,
-    *   game:string,
-    *   status:string,
-    *   best_of:int,
-    *   current_round:int,
-    *   rounds:array<int, string>,
-    *   state:array|null,
-    *   players:array<int, array{seat:int, user_id:int, name:string|null, points:int, last_seen_at:mixed}>,
-    *   last_event_id:int
-    * }
-    */
+     * Build the payload required by the frontend to load the match screen.
+     *
+     * @param PvpMatch $match  Match instance.
+     * @param int      $userId Authenticated user id.
+     *
+     * @return array{
+     *   id:int,
+     *   game:string,
+     *   status:string,
+     *   best_of:int,
+     *   current_round:int,
+     *   rounds:array<int, string>,
+     *   state:array{round_type:mixed},
+     *   players:array<int, array{seat:int, user_id:int, name:string|null, points:int, last_seen_at:mixed}>,
+     *   last_event_id:int
+     * }
+     */
     public function buildBaseMatchPayload(PvpMatch $match, int $userId): array
     {
         $this->assertParticipant($match->id, $userId);
 
         $players = $match->players()->with('user:id,name')->orderBy('seat')->get();
         $lastEventId = $match->events()->max('id') ?? 0;
+
+        $state = is_array($match->state) ? $match->state : [];
 
         return [
             'id' => $match->id,
@@ -107,7 +110,9 @@ class PvpMatchService
             'best_of' => $match->best_of,
             'current_round' => $match->current_round,
             'rounds' => $match->rounds,
-            'state' => $match->state,
+            'state' => [
+                'round_type' => Arr::get($state, 'round_type'),
+            ],
             'players' => $players->map(fn (PvpMatchPlayer $p) => [
                 'seat' => $p->seat,
                 'user_id' => $p->user_id,
@@ -120,15 +125,15 @@ class PvpMatchService
     }
 
     /**
-    * Return new match events after a given event id.
-    *
-    * @param PvpMatch $match   Match instance.
-    * @param int      $userId  Authenticated user id.
-    * @param int      $afterId Last received event id (exclusive).
-    * @param int      $limit   Maximum number of events to return.
-    *
-    * @return array{events:array<int, array{id:int, type:string, payload:array|null, user_id:int|null, created_at:mixed}>}
-    */
+     * Return new match events after a given event id.
+     *
+     * @param PvpMatch $match   Match instance.
+     * @param int      $userId  Authenticated user id.
+     * @param int      $afterId Last received event id (exclusive).
+     * @param int      $limit   Maximum number of events to return.
+     *
+     * @return array{events:array<int, array{id:int, type:string, payload:array|null, user_id:int|null, created_at:mixed}>}
+     */
     public function pollEvents(PvpMatch $match, int $userId, int $afterId, int $limit = 200): array
     {
         $this->assertParticipant($match->id, $userId);
@@ -151,13 +156,13 @@ class PvpMatchService
     }
 
     /**
-    * Update the last seen timestamp for a match participant.
-    *
-    * @param PvpMatch $match  Match instance.
-    * @param int      $userId Authenticated user id.
-    *
-    * @return array{ok:bool}
-    */
+     * Update the last seen timestamp for a match participant.
+     *
+     * @param PvpMatch $match  Match instance.
+     * @param int      $userId Authenticated user id.
+     *
+     * @return array{ok:bool}
+     */
     public function heartbeat(PvpMatch $match, int $userId): array
     {
         $this->assertParticipant($match->id, $userId);

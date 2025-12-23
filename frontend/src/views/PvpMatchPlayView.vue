@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePvpStore } from '@/stores/pvp'
 import { useFlashStore } from '@/stores/flash'
 import { pvpGetMatch, pvpHeartbeat, pvpLeaveMatch, pvpPollEvents, pvpPostAction } from '@/api/pvpApi'
 import PvpClassicRound from '@/components/pvp/rounds/PvpClassicRound.vue'
+import PvpWhoisRound from '@/components/pvp/rounds/PvpWhoisRound.vue'
 import PvpScoreboard from '@/components/pvp/PvpScoreboard.vue'
 import PvpRoundResultOverlay from '@/components/pvp/PvpRoundResultOverlay.vue'
 
@@ -41,6 +42,8 @@ const scoreFromLeft = ref(0)
 const scoreFromRight = ref(0)
 const scoreToLeft = ref(0)
 const scoreToRight = ref(0)
+
+const whoisEvents = ref<any[]>([])
 
 let eventsTimer: number | null = null
 let heartbeatTimer: number | null = null
@@ -82,6 +85,34 @@ function goTransitionAfterDelay(ms: number) {
   }, ms)
 }
 
+function pushWhoisEvents(events: any[]) {
+  const allowed = new Set(['whois_question', 'whois_guess', 'whois_eliminated', 'whois_turn_chosen'])
+  const add = (events ?? []).filter(e => allowed.has(String(e?.type ?? '')))
+  if (add.length === 0) return
+  whoisEvents.value = [...whoisEvents.value, ...add].slice(-120)
+}
+
+async function hydrateWhoisEvents() {
+  if (!matchId.value) return
+  const targetLastId = typeof match.value?.last_event_id === 'number' ? match.value.last_event_id : null
+  if (!targetLastId || targetLastId <= 0) return
+
+  whoisEvents.value = []
+  let afterId = 0
+  let safety = 0
+
+  while (afterId < targetLastId && safety < 30) {
+    safety += 1
+    const res = await pvpPollEvents(matchId.value, afterId, 200)
+    if (!Array.isArray(res.events) || res.events.length === 0) break
+    pushWhoisEvents(res.events)
+    const next = Number(res.last_id ?? 0)
+    if (!Number.isFinite(next) || next <= afterId) break
+    afterId = next
+    if (afterId >= targetLastId) break
+  }
+}
+
 async function loadAll() {
   if (!matchId.value) return
   loading.value = true
@@ -97,6 +128,8 @@ async function loadAll() {
     } else {
       pvp.setLastEventId(0)
     }
+
+    await hydrateWhoisEvents()
   } catch {
     error.value = 'Impossible de charger le match.'
   } finally {
@@ -112,6 +145,7 @@ async function poll() {
     if (!Array.isArray(res.events) || res.events.length === 0) return
 
     pvp.setLastEventId(res.last_id)
+    pushWhoisEvents(res.events)
 
     const roundFinishedEv = res.events.find(ev => ev.type === 'round_finished')
     if (roundFinishedEv) {
@@ -143,7 +177,14 @@ async function poll() {
     }
 
     const m = await pvpGetMatch(matchId.value)
+    const prevRound = match.value?.current_round
     match.value = m
+
+    const nextRound = m?.current_round
+    if (prevRound !== nextRound) {
+      whoisEvents.value = []
+      await hydrateWhoisEvents()
+    }
 
     const finished = res.events.some(ev => ev.type === 'match_finished') || m?.status === 'finished'
     const forfeited = res.events.some(ev => ev.type === 'player_forfeited')
@@ -151,7 +192,7 @@ async function poll() {
       pvp.clearMatch()
       stopTimers()
       flash.info('Match terminé.', 'PvP', 3000)
-      await router.push({name: 'pvp'})
+      await router.push({ name: 'pvp' })
     }
   } catch {
   }
@@ -168,8 +209,7 @@ async function beat() {
 async function leave() {
   if (!matchId.value) return
 
-  if(confirm("Voulez-vous abandonner le match ?"))
-  {
+  if (confirm('Voulez-vous abandonner le match ?')) {
     try {
       await pvpLeaveMatch(matchId.value)
     } catch {
@@ -177,9 +217,8 @@ async function leave() {
     pvp.clearMatch()
     stopTimers()
     flash.info('Tu as quitté le match.', 'PvP', 3000)
-    await router.push({name: 'pvp'})
+    await router.push({ name: 'pvp' })
   }
-
 }
 
 async function onClassicGuess(playerId: number): Promise<boolean> {
@@ -193,10 +232,51 @@ async function onClassicGuess(playerId: number): Promise<boolean> {
   }
 }
 
+async function onWhoisChooseTurn(firstUserId: number): Promise<boolean> {
+  if (!matchId.value || navigating.value) return false
+  try {
+    await pvpPostAction(matchId.value, { type: 'choose_turn', first_player_user_id: firstUserId })
+    return true
+  } catch {
+    flash.error("Impossible d'envoyer le choix du tour.", 'PvP')
+    return false
+  }
+}
+
+async function onWhoisGuess(playerId: number): Promise<boolean> {
+  if (!matchId.value || navigating.value) return false
+  try {
+    await pvpPostAction(matchId.value, { type: 'guess', player_id: playerId })
+    return true
+  } catch {
+    flash.error("Impossible d'envoyer le guess.", 'PvP')
+    return false
+  }
+}
+
+async function onWhoisAsk(question: { key: string; op: string; value: any }): Promise<boolean> {
+  if (!matchId.value || navigating.value) return false
+  try {
+    await pvpPostAction(matchId.value, { type: 'ask', question })
+    return true
+  } catch {
+    flash.error("Impossible d'envoyer l'indice.", 'PvP')
+    return false
+  }
+}
+
+watch(
+  () => roundType.value,
+  async (t) => {
+    if (t !== 'whois') return
+    await hydrateWhoisEvents()
+  }
+)
+
 onMounted(async () => {
   if (!matchId.value) {
     flash.error('Match introuvable.', 'PvP')
-    await router.push({name: 'pvp'})
+    await router.push({ name: 'pvp' })
     return
   }
 
@@ -248,7 +328,18 @@ onBeforeUnmount(() => stopTimers())
           @guess="async (id: number) => { await onClassicGuess(id) }"
         />
 
-        <section v-else-if="!roundWinBanner && roundType !== 'classic'" class="card">
+        <PvpWhoisRound
+          v-else-if="!roundWinBanner && roundType === 'whois'"
+          :game="match.game"
+          :players="match.players"
+          :round="round"
+          :events="whoisEvents"
+          @chooseTurn="async (uid: number) => { await onWhoisChooseTurn(uid) }"
+          @guess="async (id: number) => { await onWhoisGuess(id) }"
+          @ask="async (q: any) => { await onWhoisAsk(q) }"
+        />
+
+        <section v-else-if="!roundWinBanner" class="card">
           <div class="card-title">Round</div>
           <div class="state">Ce type de round n’est pas encore intégré côté front.</div>
         </section>

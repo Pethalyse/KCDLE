@@ -9,9 +9,6 @@ use App\Services\Pvp\PvpParticipantService;
 use App\Services\Pvp\PvpSecretPlayerService;
 use Illuminate\Support\Arr;
 
-/**
- * Turn-based "Whois" round handler (PvP).
- */
 readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
 {
     public function __construct(
@@ -22,23 +19,11 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
     ) {
     }
 
-    /**
-     * Return the unique round type identifier handled by this implementation.
-     *
-     * @return string
-     */
     public function type(): string
     {
         return 'whois';
     }
 
-    /**
-     * Initialize round state when the round starts.
-     *
-     * @param PvpMatch $match Match instance.
-     *
-     * @return array
-     */
     public function initialize(PvpMatch $match): array
     {
         [$u1, $u2] = $this->participants->getTwoUserIds((int) $match->id);
@@ -66,14 +51,6 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
         ];
     }
 
-    /**
-     * Return the public round state for a participant.
-     *
-     * @param PvpMatch $match  Match instance.
-     * @param int      $userId Requesting user id.
-     *
-     * @return array
-     */
     public function publicState(PvpMatch $match, int $userId): array
     {
         $data = (array) Arr::get($match->state ?? [], 'round_data.whois', []);
@@ -83,12 +60,33 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
         $self = (array) ($players[$userId] ?? []);
         $opp = $this->opponentState($players, $userId);
 
-        $candidateIds = (array) ($data['candidate_ids'] ?? []);
+        $game = (string) $match->game;
+        $allowedKeys = (array) config("pvp.whois.keys.{$game}", []);
+        $availableKeys = [];
+
+        foreach ($allowedKeys as $k) {
+            $k = (string) $k;
+            if ($k === '') {
+                continue;
+            }
+
+            $meta = (array) config("pvp.whois.meta.{$k}", []);
+            $type = (string) Arr::get($meta, 'type', 'enum');
+            $ops = (array) Arr::get($meta, 'ops', ['eq']);
+
+            $availableKeys[] = [
+                'key' => $k,
+                'type' => $type,
+                'ops' => array_values(array_map('strval', $ops)),
+            ];
+        }
 
         return [
             'turn_user_id' => is_numeric($turnUserId) ? (int) $turnUserId : null,
             'can_choose_turn' => $this->canChooseTurn($match, $userId),
-            'remaining_count' => count($candidateIds),
+            'candidate_ids' => array_values(array_map('intval', (array) ($data['candidate_ids'] ?? []))),
+            'banned_ids' => array_values(array_map('intval', (array) ($data['banned_ids'] ?? []))),
+            'available_keys' => $availableKeys,
             'you' => [
                 'asked' => (int) ($self['asked'] ?? 0),
                 'wrong_guesses' => (int) ($self['wrong_guesses'] ?? 0),
@@ -100,15 +98,6 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
         ];
     }
 
-    /**
-     * Handle a participant action for this round.
-     *
-     * @param PvpMatch     $match  Match instance.
-     * @param int          $userId Acting user id.
-     * @param array $action Action payload.
-     *
-     * @return PvpRoundResult
-     */
     public function handleAction(PvpMatch $match, int $userId, array $action): PvpRoundResult
     {
         $type = (string) ($action['type'] ?? '');
@@ -131,15 +120,6 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
         };
     }
 
-    /**
-     * Handle chooser turn selection.
-     *
-     * @param PvpMatch     $match  Match instance.
-     * @param int          $userId Acting user id.
-     * @param array $action Action payload.
-     *
-     * @return PvpRoundResult
-     */
     private function handleChooseTurn(PvpMatch $match, int $userId, array $action): PvpRoundResult
     {
         $state = $match->state ?? [];
@@ -175,15 +155,6 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
         return PvpRoundResult::ongoing($patch, $events);
     }
 
-    /**
-     * Handle a yes/no question and eliminate candidates accordingly.
-     *
-     * @param PvpMatch     $match  Match instance.
-     * @param int          $userId Acting user id.
-     * @param array $action Action payload.
-     *
-     * @return PvpRoundResult
-     */
     private function handleAsk(PvpMatch $match, int $userId, array $action): PvpRoundResult
     {
         $state = $match->state ?? [];
@@ -194,7 +165,7 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
             abort(500, 'Round not initialized.');
         }
 
-        $q = $this->questions->validate((array) ($action['question'] ?? []));
+        $q = $this->questions->validate((array) ($action['question'] ?? []), (string) $match->game);
 
         $secretWrapper = Player::resolvePlayerModel((string) $match->game, $secretId);
         if (!$secretWrapper) {
@@ -257,15 +228,6 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
         return PvpRoundResult::ongoing($patch, $events);
     }
 
-    /**
-     * Handle a direct guess.
-     *
-     * @param PvpMatch     $match  Match instance.
-     * @param int          $userId Acting user id.
-     * @param array $action Action payload.
-     *
-     * @return PvpRoundResult
-     */
     private function handleGuess(PvpMatch $match, int $userId, array $action): PvpRoundResult
     {
         $state = $match->state ?? [];
@@ -279,6 +241,11 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
         $guessId = (int) ($action['player_id'] ?? 0);
         if ($guessId <= 0) {
             abort(422, 'Invalid player_id.');
+        }
+
+        $candidateIds = array_values(array_map('intval', (array) ($data['candidate_ids'] ?? [])));
+        if (!in_array($guessId, $candidateIds, true)) {
+            abort(409, 'Player already eliminated.');
         }
 
         $correct = $guessId === $secretId;
@@ -353,14 +320,6 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
         return PvpRoundResult::ongoing($patch, $events);
     }
 
-    /**
-     * Determine whether the current user can choose the first player.
-     *
-     * @param PvpMatch $match  Match instance.
-     * @param int      $userId Current user id.
-     *
-     * @return bool
-     */
     private function canChooseTurn(PvpMatch $match, int $userId): bool
     {
         $state = $match->state ?? [];
@@ -372,14 +331,6 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
         return $chooser > 0 && $chooser === $userId;
     }
 
-    /**
-     * Get the opponent state from players map.
-     *
-     * @param array $players Players state map.
-     * @param int          $userId  Current user id.
-     *
-     * @return array
-     */
     private function opponentState(array $players, int $userId): array
     {
         foreach ($players as $uid => $st) {

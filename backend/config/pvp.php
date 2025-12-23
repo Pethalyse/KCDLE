@@ -10,10 +10,49 @@ return [
     'default_best_of' => 5,
 
     'round_pool' => [
-        'classic',
         'whois',
+        'classic',
         'locked_infos',
         'draft',
         'reveal_race',
+    ],
+
+    'whois' => [
+        'keys' => [
+            'kcdle' => [
+                'country_code',
+                'role_id',
+                'game_id',
+                'current_team_id',
+                'previous_team_id',
+                'trophies_count',
+                'first_official_year',
+                'age',
+            ],
+            'lecdle' => [
+                'country_code',
+                'current_team_id',
+                'lol_role',
+                'age',
+            ],
+            'lfldle' => [
+                'country_code',
+                'current_team_id',
+                'lol_role',
+                'age',
+            ],
+        ],
+        'meta' => [
+            'country_code' => ['type' => 'enum', 'ops' => ['eq'], 'cast' => 'upper'],
+            'role_id' => ['type' => 'enum', 'ops' => ['eq'], 'cast' => 'int'],
+            'game_id' => ['type' => 'enum', 'ops' => ['eq'], 'cast' => 'int'],
+            'current_team_id' => ['type' => 'enum', 'ops' => ['eq'], 'cast' => 'int'],
+            'previous_team_id' => ['type' => 'enum', 'ops' => ['eq'], 'cast' => 'int'],
+            'lol_role' => ['type' => 'enum', 'ops' => ['eq'], 'cast' => 'upper'],
+            'trophies_count' => ['type' => 'number', 'ops' => ['eq', 'lt', 'gt'], 'cast' => 'int'],
+            'first_official_year' => ['type' => 'number', 'ops' => ['eq', 'lt', 'gt'], 'cast' => 'int'],
+            'age' => ['type' => 'number', 'ops' => ['eq', 'lt', 'gt'], 'cast' => 'int'],
+        ],
+        'lol_roles' => ['TOP', 'JNG', 'MID', 'BOT', 'SUP'],
     ],
 ];
