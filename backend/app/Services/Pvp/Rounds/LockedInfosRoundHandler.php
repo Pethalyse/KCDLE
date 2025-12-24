@@ -204,18 +204,22 @@ readonly class LockedInfosRoundHandler implements PvpRoundHandlerInterface
      */
     private function allowedKeys(string $game): array
     {
-        if ($game !== 'kcdle') {
-            return ['country_code', 'role_id', 'game_id'];
+        $keys = config('pvp.locked_infos.keys.' . $game);
+
+        if (!is_array($keys) || count($keys) < 2) {
+            $keys = config('pvp.whois.keys.' . $game);
         }
 
-        return [
-            'current_team_id',
-            'previous_team_id',
-            'trophies_count',
-            'first_official_year',
-            'country_code',
-            'role_id',
-            'game_id',
-        ];
+        if (!is_array($keys) || count($keys) < 2) {
+            abort(500, 'Locked infos keys are not configured for game: ' . $game);
+        }
+
+        $keys = array_values(array_unique(array_map('strval', $keys)));
+
+        if (count($keys) < 2) {
+            abort(500, 'Locked infos keys are invalid for game: ' . $game);
+        }
+
+        return $keys;
     }
 }

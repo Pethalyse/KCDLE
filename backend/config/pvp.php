@@ -10,9 +10,9 @@ return [
     'default_best_of' => 5,
 
     'round_pool' => [
+        'locked_infos',
         'whois',
         'classic',
-        'locked_infos',
         'draft',
         'reveal_race',
     ],
@@ -54,5 +54,32 @@ return [
             'age' => ['type' => 'number', 'ops' => ['eq', 'lt', 'gt'], 'cast' => 'int'],
         ],
         'lol_roles' => ['TOP', 'JNG', 'MID', 'BOT', 'SUP'],
+    ],
+
+    'locked_infos' => [
+        'keys' => [
+            'kcdle' => [
+                'country_code',
+                'role_id',
+                'game_id',
+                'current_team_id',
+                'previous_team_id',
+                'trophies_count',
+                'first_official_year',
+                'age',
+            ],
+            'lecdle' => [
+                'country_code',
+                'current_team_id',
+                'lol_role',
+                'age',
+            ],
+            'lfldle' => [
+                'country_code',
+                'current_team_id',
+                'lol_role',
+                'age',
+            ],
+        ],
     ],
 ];

@@ -5,6 +5,7 @@ import { usePvpStore } from '@/stores/pvp'
 import { useFlashStore } from '@/stores/flash'
 import { pvpGetMatch, pvpHeartbeat, pvpLeaveMatch, pvpPollEvents, pvpPostAction } from '@/api/pvpApi'
 import PvpClassicRound from '@/components/pvp/rounds/PvpClassicRound.vue'
+import PvpLockedInfosRound from '@/components/pvp/rounds/PvpLockedInfosRound.vue'
 import PvpWhoisRound from '@/components/pvp/rounds/PvpWhoisRound.vue'
 import PvpScoreboard from '@/components/pvp/PvpScoreboard.vue'
 import PvpRoundResultOverlay from '@/components/pvp/PvpRoundResultOverlay.vue'
@@ -321,6 +322,15 @@ onBeforeUnmount(() => stopTimers())
 
         <PvpClassicRound
           v-if="!roundWinBanner && roundType === 'classic'"
+          :match-id="matchId!"
+          :game="match.game"
+          :players="match.players"
+          :round="round"
+          @guess="async (id: number) => { await onClassicGuess(id) }"
+        />
+
+        <PvpLockedInfosRound
+          v-else-if="!roundWinBanner && roundType === 'locked_infos'"
           :match-id="matchId!"
           :game="match.game"
           :players="match.players"

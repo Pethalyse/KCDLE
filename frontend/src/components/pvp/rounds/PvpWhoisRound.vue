@@ -507,6 +507,169 @@ function caseRightImg(): string | null {
   return resolveEnumImage(selectedKey.value, selectedValue.value)
 }
 
+function pluralize(n: number, singular: string, plural: string): string {
+  return n === 1 ? singular : plural
+}
+
+function startsWithVowelSound(s: string): boolean {
+  const t = (s ?? '').trim().toLowerCase()
+  if (!t) return false
+  if(!t[0]) return false
+  const first = t[0]
+  if ('aeiouyàâäéèêëîïôöùûüœ'.includes(first)) return true
+  const hWords = ['honorable', 'honnête', 'honnêtes', 'honneur', 'histoire', 'histoires', 'héritier', 'héritière', 'héros']
+  for (const w of hWords) {
+    if (t.startsWith(w)) return true
+  }
+  return false
+}
+
+function artDe(label: string): string {
+  return startsWithVowelSound(label) ? `d’${label}` : `de ${label}`
+}
+
+function artAu(label: string): string {
+  return startsWithVowelSound(label) ? `à ${label}` : `au ${label}`
+}
+
+function artDansEquipe(label: string): string {
+  return startsWithVowelSound(label) ? `chez ${label}` : `chez ${label}`
+}
+
+const NATIONALITY_ADJ: Record<string, string> = {
+  FR: 'français',
+  BE: 'belge',
+  CH: 'suisse',
+  CA: 'canadien',
+  US: 'américain',
+  GB: 'britannique',
+  UK: 'britannique',
+  ES: 'espagnol',
+  PT: 'portugais',
+  IT: 'italien',
+  DE: 'allemand',
+  NL: 'néerlandais',
+  LU: 'luxembourgeois',
+  IE: 'irlandais',
+  PL: 'polonais',
+  RO: 'roumain',
+  HU: 'hongrois',
+  SE: 'suédois',
+  NO: 'norvégien',
+  DK: 'danois',
+  FI: 'finlandais',
+  GR: 'grec',
+  TR: 'turc',
+  RU: 'russe',
+  UA: 'ukrainien',
+  BR: 'brésilien',
+  AR: 'argentin',
+  MX: 'mexicain',
+  CO: 'colombien',
+  CL: 'chilien',
+  PE: 'péruvien',
+  CN: 'chinois',
+  JP: 'japonais',
+  KR: 'coréen',
+  VN: 'vietnamien',
+  TH: 'thaïlandais',
+  MA: 'marocain',
+  DZ: 'algérien',
+  TN: 'tunisien',
+  SN: 'sénégalais',
+  CI: 'ivoirien',
+  CM: 'camerounais',
+  NG: 'nigérian',
+  EG: 'égyptien',
+  ZA: 'sud-africain',
+  AU: 'australien',
+  NZ: 'néo-zélandais',
+}
+
+function nationalityAdjective(code: string, countryName: string): { m: string; f: string } {
+  const c = (code ?? '').toUpperCase()
+  const base = NATIONALITY_ADJ[c]
+  if (base) return { m: base, f: `${base}e` }
+  const n = (countryName ?? '').trim()
+  return { m: n, f: n }
+}
+
+function whoisSentenceForEnum(key: string, value: any, ok: boolean): string {
+  if (key === 'country_code') {
+    const code = String(value ?? '').toUpperCase()
+    const c = countriesByCode.value.get(code)
+    const name = String(c?.name ?? code)
+    const adj = nationalityAdjective(code, name)
+    return ok ? `Il est ${adj.m}.` : `Il n’est pas ${adj.m}.`
+  }
+  if (key === 'game_id') {
+    const label = resolveEnumLabel(key, value)
+    const chunk = artDe(label)
+    return ok ? `Il est un joueur ${chunk}.` : `Il n’est pas un joueur ${chunk}.`
+  }
+  if (key === 'current_team_id') {
+    const label = resolveEnumLabel(key, value)
+    const chunk = artDansEquipe(label)
+    return ok ? `Il est ${chunk}.` : `Il n’est pas ${chunk}.`
+  }
+  if (key === 'previous_team_id') {
+    const label = resolveEnumLabel(key, value)
+    const chunk = artDansEquipe(label)
+    return ok ? `Il a joué ${chunk} avant KC.` : `Il n’a pas joué ${chunk} avant KC.`
+  }
+  if (key === 'role_id') {
+    const label = resolveEnumLabel(key, value)
+    return ok ? `Il a le rôle de ${label}.` : `Il n’a pas le rôle de ${label}.`
+  }
+  if (key === 'lol_role') {
+    const label = resolveEnumLabel(key, value)
+    return ok ? `Il joue au poste de ${label}.` : `Il ne joue pas au poste de ${label}.`
+  }
+  const label = resolveEnumLabel(key, value)
+  return ok ? `Il correspond à ${label}.` : `Il ne correspond pas à ${label}.`
+}
+
+function whoisSentenceForNumber(key: string, op: string, value: any, ok: boolean): string {
+  const n = Number(value ?? 0)
+  if (key === 'first_official_year') {
+    const y = Math.trunc(n)
+    if (op === 'eq') return ok ? `Sa première année officielle chez KC est en ${y}.` : `Sa première année officielle chez KC n’est pas ${y}.`
+    if (op === 'gt') return ok ? `Sa première année officielle chez KC est après ${y}.` : `Sa première année officielle chez KC n’est pas après ${y}.`
+    if (op === 'lt') return ok ? `Sa première année officielle chez KC est avant ${y}.` : `Sa première année officielle chez KC n’est pas avant ${y}.`
+    return ok ? `Sa première année officielle chez KC correspond à ${y}.` : `Sa première année officielle chez KC ne correspond pas à ${y}.`
+  }
+
+  let unitSing = ''
+  let unitPlur = ''
+  if (key === 'trophies_count') {
+    unitSing = 'trophée'
+    unitPlur = 'trophées'
+  } else if (key === 'age') {
+    unitSing = 'an'
+    unitPlur = 'ans'
+  } else {
+    unitSing = 'unité'
+    unitPlur = 'unités'
+  }
+
+  const unit = pluralize(Math.trunc(n), unitSing, unitPlur)
+
+  if (op === 'gt') return ok ? `Il a plus de ${Math.trunc(n)} ${unit}.` : `Il n’a pas plus de ${Math.trunc(n)} ${unit}.`
+  if (op === 'lt') return ok ? `Il a moins de ${Math.trunc(n)} ${unit}.` : `Il n’a pas moins de ${Math.trunc(n)} ${unit}.`
+  if (op === 'eq') return ok ? `Il a ${Math.trunc(n)} ${unit}.` : `Il n’a pas ${Math.trunc(n)} ${unit}.`
+  return ok ? `Il correspond à ${Math.trunc(n)} ${unit}.` : `Il ne correspond pas à ${Math.trunc(n)} ${unit}.`
+}
+
+function historySentence(it: HistoryActionItem): string {
+  if (it.type === 'whois_guess') {
+    return it.ok ? `C’est ${it.playerLabel}.` : `Ce n’est pas ${it.playerLabel}.`
+  }
+  if (NUMERIC_KEYS.has(it.key)) {
+    return whoisSentenceForNumber(it.key, it.op, it.valueRaw, it.ok)
+  }
+  return whoisSentenceForEnum(it.key, it.valueRaw, it.ok)
+}
+
 type HistoryActionItem =
   | {
   actionIndex: number
@@ -515,6 +678,7 @@ type HistoryActionItem =
   op: string
   valueLabel: string
   valueImage: string | null
+  valueRaw: any
   ok: boolean
 }
   | {
@@ -575,6 +739,7 @@ const historyItems = computed<HistoryActionItem[]>(() => {
         op,
         valueLabel,
         valueImage,
+        valueRaw: value,
         ok,
       })
     } else if (type === 'whois_guess') {
@@ -651,8 +816,8 @@ watch(candidateIds, () => {
 
 watch(isMyTurn, (v, prev) => {
   if (canChooseTurn.value) return
-  if (v === true && prev === false) activePanel.value = 'keys'
-  else if (v === false) activePanel.value = null
+  if (v && !prev) activePanel.value = 'keys'
+  else if (!v) activePanel.value = null
 })
 
 watch(canInteract, (v) => {
@@ -820,33 +985,16 @@ onMounted(async () => {
                   <span class="meta-chip">Tour {{ it.actionIndex }}</span>
                 </div>
 
-                <div class="history-line" v-if="it.type === 'whois_question'">
-                  <span class="h-key">{{ keyLabel(it.key) }}</span>
-                  <span class="h-op">{{ opLabel(it.op) }}</span>
-
+                <div class="history-line">
                   <span class="h-val">
-                    <span class="h-picked" v-if="it.valueImage">
+                    <span class="h-picked" v-if="it.type === 'whois_question' && it.valueImage">
                       <SimpleImg class="h-img" :alt="it.valueLabel" :img="it.valueImage" />
-                      <span class="h-txt">{{ it.valueLabel }}</span>
                     </span>
-                    <span v-else>{{ it.valueLabel }}</span>
-                  </span>
-
-<!--                  <span class="h-res">{{ it.ok ? 'VRAI' : 'FAUX' }}</span>-->
-                </div>
-
-                <div class="history-line" v-else>
-                  <span class="h-key">Joueur</span>
-                  <span class="h-op">=</span>
-
-                  <span class="h-val">
-                    <span class="h-picked">
-                      <SimpleImg v-if="it.playerImage" class="h-img" :alt="it.playerLabel" :img="it.playerImage" />
-                      <span class="h-txt">{{ it.playerLabel }}</span>
+                    <span class="h-picked" v-else-if="it.type === 'whois_guess' && it.playerImage">
+                      <SimpleImg class="h-img" :alt="it.playerLabel" :img="it.playerImage" />
                     </span>
+                    <span class="h-txt">{{ historySentence(it) }}</span>
                   </span>
-
-<!--                  <span class="h-res">{{ it.ok ? 'JUSTE' : 'FAUX' }}</span>-->
                 </div>
               </div>
             </div>
@@ -940,7 +1088,7 @@ onMounted(async () => {
 .h-val{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%}
 .h-picked{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%}
 .h-img{width:26px;height:26px;border-radius:8px;flex:0 0 auto}
-.h-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52vw;min-width:0}
+.h-txt{overflow-x: scroll;white-space:nowrap;min-width:0}
 .h-res{margin-left:auto}
 
 .empty{opacity:.7;padding:10px;text-align:center}
@@ -951,7 +1099,6 @@ onMounted(async () => {
   .grid--keys{grid-template-columns:1fr 1fr}
   .submit{width:auto;min-width:180px}
   .panel-body--scroll{max-height:420px}
-  .h-txt{max-width:340px}
   .whois{padding:0 14px}
   .picked-name{display: block}
 }

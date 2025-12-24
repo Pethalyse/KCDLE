@@ -248,7 +248,7 @@ async function logout() {
 
 <style scoped>
 .header-wrapper {
-  position: fixed;
+  //position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -265,7 +265,7 @@ async function logout() {
 
   background: radial-gradient(circle at top, var(--header-color-main) 0, var(--header-color-dark) 70%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.16);
-  transform: translateY(calc(-100% + 26px));
+  //transform: translateY(calc(-100% + 26px));
   transition: transform 0.18s ease-out;
   pointer-events: auto;
   position: relative;

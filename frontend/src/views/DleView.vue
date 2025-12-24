@@ -5,7 +5,6 @@ import api from '@/api'
 import SimpleImg from '@/components/SimpleImg.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import PlayerTab from '@/components/PlayerTab.vue'
-import Credit from '@/components/Credit.vue'
 import PopupGg from '@/components/PopupGg.vue'
 import { trackEvent } from '@/analytics.ts'
 import AdSlot from '@/components/AdSlot.vue'
@@ -281,8 +280,6 @@ const guessedIds = computed<number[]>(() =>
         />
       </template>
     </div>
-
-    <Credit />
   </div>
 </template>
 
