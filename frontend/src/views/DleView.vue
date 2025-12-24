@@ -153,7 +153,7 @@ const nbTrouveText = computed(() => {
     ? "Personne n'a encore trouvé"
     : daily.value.solvers_count <= 1
       ? `${daily.value.solvers_count} personne a déjà trouvé`
-      : `${daily.value.solvers_count ?? 0} personnes ont déjà trouvés !`
+      : `${daily.value.solvers_count ?? 0} personnes ont déjà trouvé !`
 })
 
 
