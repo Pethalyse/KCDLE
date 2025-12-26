@@ -156,7 +156,7 @@ async function logout() {
                 v-else-if="hasMatch"
                 class="nav-item"
                 type="button"
-                :class="{ active: currentRouteName === 'pvp_match' }"
+                :class="{ active: currentRouteName === 'pvp_match' || currentRouteName === 'pvp_match_play' }"
                 @click="goMatch"
               >
                 Match en cours
@@ -378,6 +378,7 @@ async function logout() {
 }
 
 .group-label {
+  font-weight: 600;
   font-size: 0.74rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;

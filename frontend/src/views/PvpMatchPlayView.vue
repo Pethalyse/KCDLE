@@ -6,6 +6,7 @@ import { useFlashStore } from '@/stores/flash'
 import { pvpGetMatch, pvpHeartbeat, pvpLeaveMatch, pvpPollEvents, pvpPostAction } from '@/api/pvpApi'
 import PvpClassicRound from '@/components/pvp/rounds/PvpClassicRound.vue'
 import PvpLockedInfosRound from '@/components/pvp/rounds/PvpLockedInfosRound.vue'
+import PvpDraftRound from '@/components/pvp/rounds/PvpDraftRound.vue'
 import PvpWhoisRound from '@/components/pvp/rounds/PvpWhoisRound.vue'
 import PvpScoreboard from '@/components/pvp/PvpScoreboard.vue'
 import PvpRoundResultOverlay from '@/components/pvp/PvpRoundResultOverlay.vue'
@@ -233,6 +234,39 @@ async function onClassicGuess(playerId: number): Promise<boolean> {
   }
 }
 
+async function onDraftChooseOrder(firstPickerUserId: number): Promise<boolean> {
+  if (!matchId.value || navigating.value) return false
+  try {
+    await pvpPostAction(matchId.value, { type: 'choose_draft_order', first_picker_user_id: firstPickerUserId })
+    return true
+  } catch {
+    flash.error("Impossible d'envoyer le choix du draft.", 'PvP')
+    return false
+  }
+}
+
+async function onDraftPickHint(key: string): Promise<boolean> {
+  if (!matchId.value || navigating.value) return false
+  try {
+    await pvpPostAction(matchId.value, { type: 'pick_hint', key })
+    return true
+  } catch {
+    flash.error("Impossible d'envoyer l'indice.", 'PvP')
+    return false
+  }
+}
+
+async function onDraftGuess(playerId: number): Promise<boolean> {
+  if (!matchId.value || navigating.value) return false
+  try {
+    await pvpPostAction(matchId.value, { type: 'guess', player_id: playerId })
+    return true
+  } catch {
+    flash.error("Impossible d'envoyer le guess.", 'PvP')
+    return false
+  }
+}
+
 async function onWhoisChooseTurn(firstUserId: number): Promise<boolean> {
   if (!matchId.value || navigating.value) return false
   try {
@@ -336,6 +370,17 @@ onBeforeUnmount(() => stopTimers())
           :players="match.players"
           :round="round"
           @guess="async (id: number) => { await onClassicGuess(id) }"
+        />
+
+        <PvpDraftRound
+          v-else-if="!roundWinBanner && roundType === 'draft'"
+          :match-id="matchId!"
+          :game="match.game"
+          :players="match.players"
+          :round="round"
+          @chooseOrder="async (uid: number) => { await onDraftChooseOrder(uid) }"
+          @pickHint="async (k: string) => { await onDraftPickHint(k) }"
+          @guess="async (id: number) => { await onDraftGuess(id) }"
         />
 
         <PvpWhoisRound

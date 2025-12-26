@@ -207,17 +207,13 @@ readonly class LockedInfosRoundHandler implements PvpRoundHandlerInterface
         $keys = config('pvp.locked_infos.keys.' . $game);
 
         if (!is_array($keys) || count($keys) < 2) {
-            $keys = config('pvp.whois.keys.' . $game);
-        }
-
-        if (!is_array($keys) || count($keys) < 2) {
-            abort(500, 'Locked infos keys are not configured for game: ' . $game);
+            abort(500, 'Invalid keys.');
         }
 
         $keys = array_values(array_unique(array_map('strval', $keys)));
 
         if (count($keys) < 2) {
-            abort(500, 'Locked infos keys are invalid for game: ' . $game);
+            abort(500, 'Invalid keys.');
         }
 
         return $keys;

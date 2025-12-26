@@ -50,8 +50,19 @@ class DraftRoundHandlerTest extends TestCase
         $this->assertFalse($r4->roundEnded);
         $match->state = array_replace_recursive((array) $match->state, $r4->statePatch);
 
-        $state = $handler->publicState($match, (int) $u1->id);
-        $this->assertSame('guess', (string) ($state['phase'] ?? ''));
+        $stateU1 = $handler->publicState($match, (int) $u1->id);
+        $stateU2 = $handler->publicState($match, (int) $u2->id);
+
+        $this->assertSame('guess', (string) ($stateU1['phase'] ?? ''));
+        $this->assertSame('guess', (string) ($stateU2['phase'] ?? ''));
+
+        $h1 = array_keys((array) ($stateU1['revealed_hints'] ?? []));
+        $h2 = array_keys((array) ($stateU2['revealed_hints'] ?? []));
+        sort($h1);
+        sort($h2);
+
+        $this->assertSame([$k1, $k4], $h1);
+        $this->assertSame([$k2, $k3], $h2);
 
         $g1 = $handler->handleAction($match, (int) $u1->id, ['type' => 'guess', 'player_id' => $secretId]);
         $match->state = array_replace_recursive((array) $match->state, $g1->statePatch);

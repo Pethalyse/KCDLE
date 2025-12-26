@@ -5,11 +5,17 @@ namespace App\Services\Pvp\Rounds;
 use App\Models\KcdlePlayer;
 use App\Models\LoldlePlayer;
 use App\Models\Player;
+use App\Services\Pvp\PvpHintNormalizer;
 use Carbon\Carbon;
 use Throwable;
 
-class HintValueService
+readonly class HintValueService
 {
+
+    public function __construct(
+        private PvpHintNormalizer $normalizer,
+    ){}
+
     public function buildRevealed(string $game, int $secretId, array $keys): array
     {
         $wrapper = Player::resolvePlayerModel($game, $secretId);
@@ -23,7 +29,7 @@ class HintValueService
             $out[$k] = $this->readHintValue($wrapper, $k);
         }
 
-        return $out;
+        return $this->normalizer->normalize($out);
     }
 
     public function readHintValue(KcdlePlayer|LoldlePlayer $wrapper, string $key): mixed

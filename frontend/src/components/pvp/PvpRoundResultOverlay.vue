@@ -95,6 +95,11 @@ watch(
 </template>
 
 <style scoped>
+.overlay,
+.overlay * {
+  box-sizing: border-box;
+}
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -107,6 +112,7 @@ watch(
   opacity: 0;
   transform: scale(1.02);
   transition: opacity 260ms ease, transform 260ms ease;
+  overflow-x: hidden;
 }
 
 .overlay.is-visible {
@@ -116,6 +122,7 @@ watch(
 
 .panel {
   width: min(680px, 92vw);
+  max-width: calc(100vw - 24px);
   border-radius: 18px;
   padding: 18px 16px 16px;
   border: 1px solid rgba(255, 255, 255, 0.10);
@@ -123,6 +130,7 @@ watch(
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
   text-align: center;
   animation: pop 520ms ease both;
+  overflow: hidden;
 }
 
 @keyframes pop {
@@ -154,6 +162,8 @@ watch(
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.10);
   background: rgba(0, 0, 0, 0.22);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .name {
@@ -163,6 +173,8 @@ watch(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+  flex: 1 1 0;
 }
 
 .num {
@@ -170,11 +182,13 @@ watch(
   font-weight: 950;
   min-width: 22px;
   text-align: center;
+  flex: 0 0 auto;
 }
 
 .dash {
   opacity: 0.8;
   font-weight: 700;
+  flex: 0 0 auto;
 }
 
 .sub {

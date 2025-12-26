@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useFlashStore } from '@/stores/flash'
 import PlayerCard from '@/components/PlayerCard.vue'
 import SimpleImg from '@/components/SimpleImg.vue'
+import PvpChooseFirstPlayer from "@/components/pvp/PvpChooseFirstPlayer.vue";
 
 type GameCode = 'kcdle' | 'lecdle' | 'lfldle'
 type Panel = 'keys' | 'ops' | 'values' | null
@@ -843,22 +844,14 @@ onMounted(async () => {
       </div>
     </header>
 
-    <div class="card" v-if="canChooseTurn">
-      <div class="card-title">Choisir qui commence</div>
-      <div class="card-sub">Tu dois sélectionner le joueur qui aura le premier tour.</div>
-
-      <div class="choices">
-        <button class="choice" :disabled="submittingChoose" @click="choose(myUserId)">
-          <div class="choice-name">{{ myName }}</div>
-          <div class="choice-hint">Commencer</div>
-        </button>
-
-        <button class="choice" :disabled="submittingChoose || !opp" @click="opp && choose(Number(opp.user_id))">
-          <div class="choice-name">{{ oppName }}</div>
-          <div class="choice-hint">Laisser commencer</div>
-        </button>
-      </div>
-    </div>
+    <PvpChooseFirstPlayer
+      v-if="canChooseTurn"
+      :game="props.game"
+      :players="props.players"
+      :can-choose="canChooseTurn"
+      :disabled="submittingChoose"
+      @choose="choose"
+    />
 
     <div class="card card--layout" v-else>
       <div class="left">

@@ -21,7 +21,8 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
         private GuessRoundApplyService    $guessApply,
         private HintValueService          $hints,
         private PvpRoundTieBreakerService $tieBreaker
-    ) {
+    )
+    {
     }
 
     /**
@@ -43,7 +44,7 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
      */
     public function initialize(PvpMatch $match): array
     {
-        [$u1, $u2] = $this->participants->getTwoUserIds((int) $match->id);
+        [$u1, $u2] = $this->participants->getTwoUserIds((int)$match->id);
 
         $secretId = $this->secrets->pickSecretId($match);
 
@@ -56,12 +57,16 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
                 'draft' => [
                     'phase' => 'draft',
                     'secret_player_id' => $secretId,
-                    'allowed_keys' => $this->allowedKeys((string) $match->game),
+                    'allowed_keys' => $this->allowedKeys((string)$match->game),
                     'picked_keys' => [],
+                    'picked_keys_by_user' => [
+                        (string)$u1 => [],
+                        (string)$u2 => [],
+                    ],
                     'first_picker_user_id' => null,
                     'pick_plan' => [],
                     'pick_index' => 0,
-                    'revealed_hints' => [],
+                    'revealed_by_user' => [],
                     'players' => $players,
                 ],
             ],
@@ -71,37 +76,40 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
     /**
      * Return the public round state for a participant.
      *
-     * @param PvpMatch $match  Match instance.
-     * @param int      $userId Requesting user id.
+     * @param PvpMatch $match Match instance.
+     * @param int $userId Requesting user id.
      *
      * @return array<mixed>
      */
     public function publicState(PvpMatch $match, int $userId): array
     {
         $state = $match->state ?? [];
-        $data = (array) Arr::get($state, 'round_data.draft', []);
-        $phase = (string) ($data['phase'] ?? 'draft');
+        $data = (array)Arr::get($state, 'round_data.draft', []);
+        $phase = (string)($data['phase'] ?? 'draft');
 
         if ($phase === 'draft') {
             $turnUserId = Arr::get($state, 'turn_user_id');
 
             return [
                 'phase' => 'draft',
-                'turn_user_id' => is_numeric($turnUserId) ? (int) $turnUserId : null,
+                'turn_user_id' => is_numeric($turnUserId) ? (int)$turnUserId : null,
                 'can_choose_order' => $this->canChooseOrder($match, $data, $userId),
-                'allowed_keys' => array_values((array) ($data['allowed_keys'] ?? [])),
-                'picked_keys' => array_values((array) ($data['picked_keys'] ?? [])),
-                'pick_index' => (int) ($data['pick_index'] ?? 0),
-                'pick_plan' => array_values((array) ($data['pick_plan'] ?? [])),
+                'allowed_keys' => array_values((array)($data['allowed_keys'] ?? [])),
+                'picked_keys' => array_values((array)($data['picked_keys'] ?? [])),
+                'pick_index' => (int)($data['pick_index'] ?? 0),
+                'pick_plan' => array_values((array)($data['pick_plan'] ?? [])),
             ];
         }
 
-        $players = (array) ($data['players'] ?? []);
+        $players = (array)($data['players'] ?? []);
         $view = $this->guessState->buildPublicPlayers($players, $userId);
+
+        $revealedByUser = (array)($data['revealed_by_user'] ?? []);
+        $revealed = $revealedByUser[(string)$userId] ?? [];
 
         return [
             'phase' => 'guess',
-            'revealed_hints' => (array) ($data['revealed_hints'] ?? []),
+            'revealed' => (array)$revealed,
             'you' => $view['you'],
             'opponent' => $view['opponent'],
         ];
@@ -110,8 +118,8 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
     /**
      * Handle a participant action for this round.
      *
-     * @param PvpMatch     $match  Match instance.
-     * @param int          $userId Acting user id.
+     * @param PvpMatch $match Match instance.
+     * @param int $userId Acting user id.
      * @param array<mixed> $action Action payload.
      *
      * @return PvpRoundResult
@@ -119,9 +127,9 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
     public function handleAction(PvpMatch $match, int $userId, array $action): PvpRoundResult
     {
         $state = $match->state ?? [];
-        $data = (array) Arr::get($state, 'round_data.draft', []);
-        $phase = (string) ($data['phase'] ?? 'draft');
-        $type = (string) ($action['type'] ?? '');
+        $data = (array)Arr::get($state, 'round_data.draft', []);
+        $phase = (string)($data['phase'] ?? 'draft');
+        $type = (string)($action['type'] ?? '');
 
         if ($phase === 'draft') {
             return $this->handleDraftPhase($match, $userId, $action, $data, $type);
@@ -137,11 +145,11 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
     /**
      * Handle actions during the draft phase.
      *
-     * @param PvpMatch     $match  Match instance.
-     * @param int          $userId Acting user id.
-     * @param array $action Action payload.
-     * @param array $data   Draft round data.
-     * @param string       $type   Action type.
+     * @param PvpMatch $match Match instance.
+     * @param int $userId Acting user id.
+     * @param array<mixed> $action Action payload.
+     * @param array<mixed> $data Draft round data.
+     * @param string $type Action type.
      *
      * @return PvpRoundResult
      */
@@ -153,7 +161,7 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
 
         $turnUserId = Arr::get($match->state ?? [], 'turn_user_id');
 
-        if (!is_numeric($turnUserId) || (int) $turnUserId !== $userId) {
+        if (!is_numeric($turnUserId) || (int)$turnUserId !== $userId) {
             abort(409, 'Not your turn.');
         }
 
@@ -167,11 +175,11 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
     /**
      * Handle actions during the guess phase.
      *
-     * @param PvpMatch     $match  Match instance.
-     * @param int          $userId Acting user id.
-     * @param array $action Action payload.
-     * @param array $data   Draft round data.
-     * @param string       $type   Action type.
+     * @param PvpMatch $match Match instance.
+     * @param int $userId Acting user id.
+     * @param array<mixed> $action Action payload.
+     * @param array<mixed> $data Draft round data.
+     * @param string $type Action type.
      *
      * @return PvpRoundResult
      */
@@ -179,7 +187,7 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
     {
         $playerId = $this->guessPayload->requireGuessPlayerId($action);
 
-        $secretId = (int) ($data['secret_player_id'] ?? 0);
+        $secretId = (int)($data['secret_player_id'] ?? 0);
         if ($secretId <= 0) {
             abort(500, 'Secret missing.');
         }
@@ -230,9 +238,9 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
 
             $winner = $this->tieBreaker->resolve(
                 $uids[0],
-                (array) $players[$uids[0]],
+                (array)$players[$uids[0]],
                 $uids[1],
-                (array) $players[$uids[1]]
+                (array)$players[$uids[1]]
             );
 
             $events[] = [
@@ -252,10 +260,10 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
     /**
      * Handle chooser selecting who picks first.
      *
-     * @param PvpMatch     $match  Match instance.
-     * @param int          $userId Acting user id.
-     * @param array $action Action payload.
-     * @param array $data   Draft round data.
+     * @param PvpMatch $match Match instance.
+     * @param int $userId Acting user id.
+     * @param array<mixed> $action Action payload.
+     * @param array<mixed> $data Draft round data.
      *
      * @return PvpRoundResult
      */
@@ -267,13 +275,13 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
             abort(409, 'Draft already started.');
         }
 
-        $chooser = (int) (($state['chooser_user_id'] ?? 0));
+        $chooser = (int)(($state['chooser_user_id'] ?? 0));
         if ($chooser <= 0 || $chooser !== $userId) {
             abort(403, 'Only the chooser can decide order.');
         }
 
-        $firstPicker = (int) ($action['first_picker_user_id'] ?? 0);
-        [$u1, $u2] = $this->participants->getTwoUserIds((int) $match->id);
+        $firstPicker = (int)($action['first_picker_user_id'] ?? 0);
+        [$u1, $u2] = $this->participants->getTwoUserIds((int)$match->id);
 
         if ($firstPicker !== $u1 && $firstPicker !== $u2) {
             abort(422, 'Invalid first_picker_user_id.');
@@ -307,39 +315,47 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
     /**
      * Handle a hint key pick during draft.
      *
-     * @param PvpMatch     $match  Match instance.
-     * @param int          $userId Acting user id.
-     * @param array $action Action payload.
-     * @param array $data   Draft round data.
+     * @param PvpMatch $match Match instance.
+     * @param int $userId Acting user id.
+     * @param array<mixed> $action Action payload.
+     * @param array<mixed> $data Draft round data.
      *
      * @return PvpRoundResult
      */
     private function handlePickHint(PvpMatch $match, int $userId, array $action, array $data): PvpRoundResult
     {
-        $key = (string) ($action['key'] ?? '');
+        $key = (string)($action['key'] ?? '');
         if ($key === '') {
             abort(422, 'Invalid key.');
         }
 
-        $allowed = (array) ($data['allowed_keys'] ?? []);
+        $allowed = (array)($data['allowed_keys'] ?? []);
         if (!in_array($key, $allowed, true)) {
             abort(422, 'Key not allowed.');
         }
 
-        $picked = array_values((array) ($data['picked_keys'] ?? []));
+        $picked = array_values((array)($data['picked_keys'] ?? []));
         if (in_array($key, $picked, true)) {
             abort(409, 'Key already picked.');
         }
 
-        $pickPlan = (array) ($data['pick_plan'] ?? []);
-        $idx = (int) ($data['pick_index'] ?? 0);
+        $pickPlan = (array)($data['pick_plan'] ?? []);
+        $idx = (int)($data['pick_index'] ?? 0);
 
-        if (!isset($pickPlan[$idx]) || (int) $pickPlan[$idx] !== $userId) {
+        if (!isset($pickPlan[$idx]) || (int)$pickPlan[$idx] !== $userId) {
             abort(409, 'Not your pick.');
         }
 
+        $pickedByUser = (array)($data['picked_keys_by_user'] ?? []);
+        if (!array_key_exists((string)$userId, $pickedByUser)) {
+            abort(500, 'Invalid draft state.');
+        }
+
         $picked[] = $key;
+        $pickedByUser[(string)$userId] = array_values(array_merge((array)$pickedByUser[(string)$userId], [$key]));
+
         $data['picked_keys'] = $picked;
+        $data['picked_keys_by_user'] = $pickedByUser;
         $data['pick_index'] = $idx + 1;
 
         $events = [[
@@ -353,10 +369,26 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
         ]];
 
         if (count($picked) >= 4) {
-            $revealed = $this->hints->buildRevealed((string) $match->game, (int) $data['secret_player_id'], $picked);
+            [$u1, $u2] = $this->participants->getTwoUserIds((int)$match->id);
+            $secretId = (int)($data['secret_player_id'] ?? 0);
+            if ($secretId <= 0) {
+                abort(500, 'Secret missing.');
+            }
+
+            $keysU1 = array_values((array)($pickedByUser[(string)$u1] ?? []));
+            $keysU2 = array_values((array)($pickedByUser[(string)$u2] ?? []));
+
+            if (count($keysU1) !== 2 || count($keysU2) !== 2) {
+                abort(500, 'Invalid draft picks.');
+            }
+
+            $revealedByUser = [
+                (string)$u1 => $this->hints->buildRevealed((string)$match->game, $secretId, $keysU1),
+                (string)$u2 => $this->hints->buildRevealed((string)$match->game, $secretId, $keysU2),
+            ];
 
             $data['phase'] = 'guess';
-            $data['revealed_hints'] = $revealed;
+            $data['revealed_by_user'] = $revealedByUser;
 
             $patch = [
                 'turn_user_id' => null,
@@ -370,14 +402,13 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
                 'user_id' => null,
                 'payload' => [
                     'picked_keys' => $picked,
-                    'revealed_hints' => $revealed,
                 ],
             ];
 
             return PvpRoundResult::ongoing($patch, $events);
         }
 
-        $nextTurn = (int) (($pickPlan[$data['pick_index']] ?? 0));
+        $nextTurn = (int)(($pickPlan[$data['pick_index']] ?? 0));
         if ($nextTurn <= 0) {
             abort(500, 'Invalid pick plan.');
         }
@@ -395,9 +426,9 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
     /**
      * Determine whether the current user can choose the draft order.
      *
-     * @param PvpMatch     $match  Match instance.
-     * @param array<mixed> $data   Draft round data.
-     * @param int          $userId Current user id.
+     * @param PvpMatch $match Match instance.
+     * @param array<mixed> $data Draft round data.
+     * @param int $userId Current user id.
      *
      * @return bool
      */
@@ -413,7 +444,7 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
             return false;
         }
 
-        $chooser = (int) (($state['chooser_user_id'] ?? 0));
+        $chooser = (int)(($state['chooser_user_id'] ?? 0));
         return $chooser > 0 && $chooser === $userId;
     }
 
@@ -426,18 +457,19 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
      */
     private function allowedKeys(string $game): array
     {
-        if ($game !== 'kcdle') {
-            return ['country_code', 'role_id'];
+        $keys = config('pvp.draft.keys.' . $game);
+
+        if (!is_array($keys) || count($keys) < 2) {
+            abort(500, 'Invalid keys.');
         }
 
-        return [
-            'current_team_id',
-            'previous_team_id',
-            'trophies_count',
-            'first_official_year',
-            'country_code',
-            'role_id',
-            'game_id',
-        ];
+        $keys = array_values(array_unique(array_map('strval', $keys)));
+
+        if (count($keys) < 2) {
+            abort(500, 'Invalid keys.');
+        }
+
+        return $keys;
     }
 }
+
