@@ -16,3 +16,7 @@ Schedule::command('kcdle:purge-pending-guesses')
 
 Schedule::command('pvp:afk-sweep')
     ->everyMinute();
+
+Schedule::command('pvp:passive-tick')
+    ->everySecond()
+    ->withoutOverlapping();

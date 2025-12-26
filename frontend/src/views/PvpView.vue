@@ -155,7 +155,7 @@ async function leaveQueue() {
 }
 
 .pvp-card {
-  width: 100%;
+  //width: 100%;
   background: rgba(6, 8, 18, 0.92);
   border-radius: 14px;
   padding: 16px 12px 18px;

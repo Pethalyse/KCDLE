@@ -8,6 +8,7 @@ import PvpClassicRound from '@/components/pvp/rounds/PvpClassicRound.vue'
 import PvpLockedInfosRound from '@/components/pvp/rounds/PvpLockedInfosRound.vue'
 import PvpDraftRound from '@/components/pvp/rounds/PvpDraftRound.vue'
 import PvpWhoisRound from '@/components/pvp/rounds/PvpWhoisRound.vue'
+import PvpRevealRaceRound from '@/components/pvp/rounds/PvpRevealRaceRound.vue'
 import PvpScoreboard from '@/components/pvp/PvpScoreboard.vue'
 import PvpRoundResultOverlay from '@/components/pvp/PvpRoundResultOverlay.vue'
 
@@ -50,6 +51,55 @@ const whoisEvents = ref<any[]>([])
 let eventsTimer: number | null = null
 let heartbeatTimer: number | null = null
 
+const revealRaceLastRevealedSig = ref<string>('')
+
+function revealedSignature(r: any): string {
+  const obj = r?.revealed
+  if (!obj || typeof obj !== 'object') return ''
+  const keys = Object.keys(obj).sort()
+  return keys.join('|')
+}
+
+async function smoothRevealRaceTick(): Promise<void> {
+  if (!matchId.value || navigating.value) return
+
+  const beforeSig = revealedSignature(match.value?.round ?? null)
+  revealRaceLastRevealedSig.value = beforeSig
+
+  const delays = [0, 300, 800, 1500]
+  for (const d of delays) {
+    if (navigating.value) return
+    if (d > 0) {
+      await new Promise(resolve => window.setTimeout(resolve, d))
+    }
+
+    try {
+      const res = await pvpPollEvents(matchId.value, pvp.lastEventId, 50)
+      if (Array.isArray(res.events) && res.events.length > 0) {
+        pvp.setLastEventId(res.last_id)
+      }
+
+      const m2 = await pvpGetMatch(matchId.value)
+      match.value = m2
+
+      const afterSig = revealedSignature(m2?.round ?? null)
+      if (afterSig !== beforeSig) {
+        return
+      }
+
+      const gotRevealEvent = Array.isArray(res.events)
+        ? res.events.some((e: any) => String(e?.type ?? '').startsWith('reveal_race_'))
+        : false
+
+      if (gotRevealEvent) {
+        return
+      }
+    } catch {
+    }
+  }
+}
+
+
 function stopTimers() {
   if (eventsTimer !== null) {
     window.clearInterval(eventsTimer)
@@ -73,6 +123,8 @@ function extractScore(m: any) {
   const b = list[1] ?? {}
 
   return {
+    leftUserId: Number(a?.user_id ?? 0),
+    rightUserId: Number(b?.user_id ?? 0),
     leftName: a?.name ?? 'J1',
     rightName: b?.name ?? 'J2',
     leftPts: Number(a?.points ?? 0),
@@ -115,6 +167,38 @@ async function hydrateWhoisEvents() {
   }
 }
 
+function hasRevealRaceEvents(events: any[]): boolean {
+  return (events ?? []).some((e: any) => String(e?.type ?? '').startsWith('reveal_race_'))
+}
+
+function inferWinnerFromScore(before: any, after: any): number {
+  const dl = Number(after?.leftPts ?? 0) - Number(before?.leftPts ?? 0)
+  const dr = Number(after?.rightPts ?? 0) - Number(before?.rightPts ?? 0)
+
+  if (dl > 0 && dr <= 0) return Number(after?.leftUserId ?? 0)
+  if (dr > 0 && dl <= 0) return Number(after?.rightUserId ?? 0)
+  return 0
+}
+
+function showOverlayFromScores(before: any, after: any, winnerUserId: number) {
+  navigating.value = true
+  stopTimers()
+
+  scoreLeftName.value = after.leftName
+  scoreRightName.value = after.rightName
+  scoreFromLeft.value = before.leftPts
+  scoreFromRight.value = before.rightPts
+  scoreToLeft.value = after.leftPts
+  scoreToRight.value = after.rightPts
+
+  roundWinBanner.value = {
+    winnerUserId,
+    winnerName: winnerUserId > 0 ? winnerNameFromMatch(winnerUserId) : 'Résultat du round',
+  }
+
+  goTransitionAfterDelay(overlayDurationMs.value)
+}
+
 async function loadAll() {
   if (!matchId.value) return
   loading.value = true
@@ -139,57 +223,73 @@ async function loadAll() {
   }
 }
 
+let revealRaceIdleRefreshTick = 0
+
 async function poll() {
   if (!matchId.value || navigating.value) return
 
   try {
     const res = await pvpPollEvents(matchId.value, pvp.lastEventId, 50)
-    if (!Array.isArray(res.events) || res.events.length === 0) return
+    const events = Array.isArray(res.events) ? res.events : []
+
+    if (events.length === 0) {
+      if (roundType.value === 'reveal_race' || roundType.value === 'reveal_face') {
+        revealRaceIdleRefreshTick += 1
+        if (revealRaceIdleRefreshTick >= 3) {
+          revealRaceIdleRefreshTick = 0
+          const m0 = await pvpGetMatch(matchId.value)
+          match.value = m0
+        }
+      }
+      return
+    }
+
+    revealRaceIdleRefreshTick = 0
 
     pvp.setLastEventId(res.last_id)
-    pushWhoisEvents(res.events)
+    pushWhoisEvents(events)
 
-    const roundFinishedEv = res.events.find(ev => ev.type === 'round_finished')
+    const roundFinishedEv = events.find(ev => ev.type === 'round_finished')
     if (roundFinishedEv) {
       navigating.value = true
       stopTimers()
 
       const before = extractScore(match.value)
-
       const m = await pvpGetMatch(matchId.value)
       match.value = m
-
       const after = extractScore(m)
 
-      scoreLeftName.value = after.leftName
-      scoreRightName.value = after.rightName
-      scoreFromLeft.value = before.leftPts
-      scoreFromRight.value = before.rightPts
-      scoreToLeft.value = after.leftPts
-      scoreToRight.value = after.rightPts
-
       const wid = Number(roundFinishedEv?.payload?.winner_user_id ?? 0)
-      roundWinBanner.value = {
-        winnerUserId: wid,
-        winnerName: wid > 0 ? winnerNameFromMatch(wid) : 'Résultat du round',
-      }
-
-      goTransitionAfterDelay(overlayDurationMs.value)
+      showOverlayFromScores(before, after, wid)
       return
     }
 
-    const m = await pvpGetMatch(matchId.value)
-    const prevRound = match.value?.current_round
-    match.value = m
+    const beforeRound = match.value?.current_round
+    const beforeScore = extractScore(match.value)
 
-    const nextRound = m?.current_round
-    if (prevRound !== nextRound) {
-      whoisEvents.value = []
-      await hydrateWhoisEvents()
+    if (hasRevealRaceEvents(events) || true) {
+      const m2 = await pvpGetMatch(matchId.value)
+      match.value = m2
     }
 
-    const finished = res.events.some(ev => ev.type === 'match_finished') || m?.status === 'finished'
-    const forfeited = res.events.some(ev => ev.type === 'player_forfeited')
+    const afterRound = match.value?.current_round
+    const afterScore = extractScore(match.value)
+
+    if (beforeRound !== afterRound) {
+      whoisEvents.value = []
+      await hydrateWhoisEvents()
+
+      const winnerFromDelta = inferWinnerFromScore(beforeScore, afterScore)
+      const scoreChanged = beforeScore.leftPts !== afterScore.leftPts || beforeScore.rightPts !== afterScore.rightPts
+
+      if (scoreChanged && !roundWinBanner.value) {
+        showOverlayFromScores(beforeScore, afterScore, winnerFromDelta)
+        return
+      }
+    }
+
+    const finished = events.some(ev => ev.type === 'match_finished') || match.value?.status === 'finished'
+    const forfeited = events.some(ev => ev.type === 'player_forfeited')
     if (finished || forfeited) {
       pvp.clearMatch()
       stopTimers()
@@ -300,6 +400,21 @@ async function onWhoisAsk(question: { key: string; op: string; value: any }): Pr
   }
 }
 
+async function onRevealRaceGuess(playerId: number): Promise<boolean> {
+  if (!matchId.value || navigating.value) return false
+  try {
+    await pvpPostAction(matchId.value, { type: 'guess', player_id: playerId })
+    return true
+  } catch {
+    flash.error("Impossible d'envoyer le guess.", 'PvP')
+    return false
+  }
+}
+
+async function onRevealRaceTick(): Promise<void> {
+  await smoothRevealRaceTick()
+}
+
 watch(
   () => roundType.value,
   async (t) => {
@@ -392,6 +507,16 @@ onBeforeUnmount(() => stopTimers())
           @chooseTurn="async (uid: number) => { await onWhoisChooseTurn(uid) }"
           @guess="async (id: number) => { await onWhoisGuess(id) }"
           @ask="async (q: any) => { await onWhoisAsk(q) }"
+        />
+
+        <PvpRevealRaceRound
+          v-else-if="!roundWinBanner && (roundType === 'reveal_race' || roundType === 'reveal_face')"
+          :match-id="matchId!"
+          :game="match.game"
+          :players="match.players"
+          :round="round"
+          @guess="async (id: number) => { await onRevealRaceGuess(id) }"
+          @tick="onRevealRaceTick"
         />
 
         <section v-else-if="!roundWinBanner" class="card">

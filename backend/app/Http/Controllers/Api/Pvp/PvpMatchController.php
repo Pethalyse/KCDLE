@@ -19,7 +19,6 @@ use Throwable;
 class PvpMatchController extends Controller
 {
     public function __construct(
-        private readonly PvpMatchService $matches,
         private readonly PvpMatchLifecycleService $lifecycle,
         private readonly PvpMatchEngineService $engine
     ) {
@@ -42,75 +41,6 @@ class PvpMatchController extends Controller
         }
 
         return response()->json($this->engine->buildMatchPayload($match, (int) $user->id));
-    }
-
-    /**
-     * Poll events emitted by the match after a given event id.
-     *
-     * Optional:
-     * - include_state=1 -> also returns the canonical match payload (engine buildMatchPayload).
-     *
-     * @param PvpMatch $match Route-bound match model.
-     * @param Request $request Current HTTP request.
-     *
-     * @return JsonResponse List of new events or {events,state}.
-     * @throws Throwable
-     */
-    public function events(PvpMatch $match, Request $request): JsonResponse
-    {
-        $user = $request->user();
-        if (! $user) {
-            abort(401);
-        }
-
-        $uid = (int) $user->id;
-        $afterId = (int) $request->query('after_id', 0);
-
-        $events = $this->matches->pollEvents($match, $uid, $afterId);
-
-        $includeState = $request->boolean('include_state', false);
-        if (! $includeState) {
-            return response()->json($events);
-        }
-
-        return response()->json([
-            'events' => $events,
-            'state' => $this->engine->buildMatchPayload($match, $uid),
-        ]);
-    }
-
-    /**
-     * Update the participant heartbeat for AFK detection.
-     *
-     * Optional:
-     * - include_state=1 -> also returns the canonical match payload (engine buildMatchPayload).
-     *
-     * @param PvpMatch $match Route-bound match model.
-     * @param Request $request Current HTTP request.
-     *
-     * @return JsonResponse Acknowledgement payload or {heartbeat,state}.
-     * @throws Throwable
-     */
-    public function heartbeat(PvpMatch $match, Request $request): JsonResponse
-    {
-        $user = $request->user();
-        if (! $user) {
-            abort(401);
-        }
-
-        $uid = (int) $user->id;
-
-        $heartbeat = $this->matches->heartbeat($match, $uid);
-
-        $includeState = $request->boolean('include_state', false);
-        if (! $includeState) {
-            return response()->json($heartbeat);
-        }
-
-        return response()->json([
-            'heartbeat' => $heartbeat,
-            'state' => $this->engine->buildMatchPayload($match, $uid),
-        ]);
     }
 
     /**
