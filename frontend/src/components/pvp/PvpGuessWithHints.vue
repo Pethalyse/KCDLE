@@ -34,6 +34,9 @@ const inputLocked = ref(false)
 const joueurs = ref<any[]>([])
 const pendingGuessedIds = ref<Set<number>>(new Set())
 
+const inFlightGuessId = ref<number | null>(null)
+let inFlightTimer: number | null = null
+
 const playersById = computed(() => {
   const map = new Map<number, any>()
   for (const j of joueurs.value) {
@@ -104,13 +107,40 @@ watch(
   { immediate: true },
 )
 
+function clearInFlight() {
+  inFlightGuessId.value = null
+  if (inFlightTimer !== null) {
+    window.clearTimeout(inFlightTimer)
+    inFlightTimer = null
+  }
+}
+
 function handleClickCard(joueurWrapper: any) {
   const id = Number(joueurWrapper?.id ?? 0)
   if (!id) return
   if (inputLocked.value) return
+  if (inFlightGuessId.value !== null) return
   if (guessedIdsEffective.value.includes(id)) return
+
+  inFlightGuessId.value = id
+  inputLocked.value = true
   pendingGuessedIds.value.add(id)
   emit('guess', id)
+
+  if (inFlightTimer !== null) window.clearTimeout(inFlightTimer)
+  inFlightTimer = window.setTimeout(() => {
+    const inflight = inFlightGuessId.value
+    if (inflight === null) return
+
+    const confirmed = guessedIds.value.includes(inflight)
+    if (!confirmed) {
+      pendingGuessedIds.value.delete(inflight)
+      clearInFlight()
+      if (!backendYouSolved.value) {
+        inputLocked.value = false
+      }
+    }
+  }, 900)
 }
 
 watch(
@@ -118,6 +148,14 @@ watch(
   () => {
     for (const id of Array.from(pendingGuessedIds.value)) {
       if (guessedIds.value.includes(id)) pendingGuessedIds.value.delete(id)
+    }
+
+    const inflight = inFlightGuessId.value
+    if (inflight !== null && guessedIds.value.includes(inflight)) {
+      clearInFlight()
+      if (!backendYouSolved.value) {
+        inputLocked.value = false
+      }
     }
   },
   { immediate: true },
@@ -137,7 +175,6 @@ const countriesByCode = computed(() => {
   }
   return m
 })
-
 const teamsById = computed(() => {
   const m = new Map<number, any>()
   for (const t of teams.value) {
@@ -146,16 +183,6 @@ const teamsById = computed(() => {
   }
   return m
 })
-
-const teamsBySlug = computed(() => {
-  const m = new Map<string, any>()
-  for (const t of teams.value) {
-    const slug = String(t?.slug ?? '').toLowerCase()
-    if (slug) m.set(slug, t)
-  }
-  return m
-})
-
 const gamesById = computed(() => {
   const m = new Map<number, any>()
   for (const g of games.value) {
@@ -164,7 +191,6 @@ const gamesById = computed(() => {
   }
   return m
 })
-
 const rolesById = computed(() => {
   const m = new Map<number, any>()
   for (const r of roles.value) {
@@ -173,7 +199,6 @@ const rolesById = computed(() => {
   }
   return m
 })
-
 const lolRolesByCode = computed(() => {
   const m = new Map<string, any>()
   for (const r of lolRoles.value) {
@@ -214,74 +239,54 @@ function keyLabel(key: string): string {
 
 function resolveEnumLabel(key: string, value: any): string {
   if (key === 'country_code') {
-    const raw = String(value ?? '').toUpperCase().trim()
-    const code = raw ? raw : 'NN'
+    const code = String(value ?? '').toUpperCase()
     const c = countriesByCode.value.get(code)
     return c ? String(c?.name ?? code) : code
   }
-
   if (key === 'current_team_id' || key === 'previous_team_id') {
     const id = Number(value ?? 0)
-    if (!Number.isFinite(id) || id <= 0) {
-      const none = teamsBySlug.value.get('none')
-      if (none) return String(none?.display_name ?? none?.short_name ?? none?.slug ?? 'none')
-      return 'none'
-    }
     const t = teamsById.value.get(id)
     return t ? String(t?.display_name ?? t?.short_name ?? t?.slug ?? id) : String(id)
   }
-
   if (key === 'game_id') {
     const id = Number(value ?? 0)
     const g = gamesById.value.get(id)
     return g ? String(g?.name ?? g?.code ?? id) : String(id)
   }
-
   if (key === 'role_id') {
     const id = Number(value ?? 0)
     const r = rolesById.value.get(id)
     return r ? String(r?.label ?? r?.code ?? id) : String(id)
   }
-
   if (key === 'lol_role') {
     const code = String(value ?? '').toUpperCase()
     const r = lolRolesByCode.value.get(code)
     return r ? String(r?.label ?? code) : code
   }
-
   return value === null || value === undefined ? '—' : String(value)
 }
 
 function resolveEnumImage(key: string, value: any): string | null {
   if (key === 'country_code') {
-    const raw = String(value ?? '').toUpperCase().trim()
-    const code = raw ? raw : 'NN'
+    const code = String(value ?? '').toUpperCase()
     const c = countriesByCode.value.get(code)
     return c?.flag_url ?? null
   }
-
   if (key === 'current_team_id' || key === 'previous_team_id') {
     const id = Number(value ?? 0)
-    if (!Number.isFinite(id) || id <= 0) {
-      const none = teamsBySlug.value.get('none')
-      return none?.logo_url ?? null
-    }
     const t = teamsById.value.get(id)
     return t?.logo_url ?? null
   }
-
   if (key === 'game_id') {
     const id = Number(value ?? 0)
     const g = gamesById.value.get(id)
     return g?.logo_url ?? null
   }
-
   if (key === 'lol_role') {
     const code = String(value ?? '').toUpperCase()
     const r = lolRolesByCode.value.get(code)
     return r?.icon_url ?? null
   }
-
   return null
 }
 
@@ -523,6 +528,8 @@ onMounted(async () => {
   margin-top: 50px;
   padding: 12px;
   border-radius: 14px;
+  //border: 1px solid rgba(255, 255, 255, 0.06);
+  //background: rgba(6, 8, 18, 0.72);
   position: relative;
   z-index: 1;
 }

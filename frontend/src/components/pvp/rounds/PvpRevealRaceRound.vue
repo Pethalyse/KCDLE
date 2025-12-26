@@ -109,9 +109,67 @@ const blockedText = computed(() => {
 
 const isBlocked = computed(() => blockedMsUi.value > 0)
 
-function onGuess(id: number) {
-  if (isBlocked.value) return
-  emit('guess', id)
+const backendSolved = computed(() => !!props.round?.you?.solved_at)
+const guessCount = computed(() => {
+  const list = Array.isArray(props.round?.you?.guesses) ? props.round.you.guesses : []
+  return list.length
+})
+
+const optimisticLock = ref(false)
+const optimisticGuessId = ref<number | null>(null)
+let optimisticSafety: number | null = null
+
+function clearOptimistic() {
+  optimisticLock.value = false
+  optimisticGuessId.value = null
+  if (optimisticSafety !== null) {
+    window.clearTimeout(optimisticSafety)
+    optimisticSafety = null
+  }
+}
+
+watch(
+  () => blockedMsBackend.value,
+  (b) => {
+    if (Number(b ?? 0) > 0) {
+      clearOptimistic()
+    }
+  }
+)
+
+watch(
+  () => backendSolved.value,
+  (s) => {
+    if (s) {
+      clearOptimistic()
+    }
+  }
+)
+
+watch(
+  () => guessCount.value,
+  (n, p) => {
+    if (n > p) {
+      clearOptimistic()
+    }
+  }
+)
+
+const isUiLocked = computed(() => optimisticLock.value || isBlocked.value)
+
+function onGuess(playerId: number) {
+  if (isUiLocked.value) return
+  optimisticLock.value = true
+  optimisticGuessId.value = playerId
+  emit('guess', playerId)
+
+  if (optimisticSafety !== null) window.clearTimeout(optimisticSafety)
+  optimisticSafety = window.setTimeout(() => {
+    if (!optimisticLock.value) return
+    if (isBlocked.value) return
+    if (backendSolved.value) return
+    clearOptimistic()
+  }, 4000)
 }
 </script>
 
@@ -119,7 +177,7 @@ function onGuess(id: number) {
   <div class="reveal-wrap">
     <div v-if="timerText" class="reveal-timer">{{ timerText }}</div>
 
-    <div class="guess-zone" :class="{ 'guess-zone--blocked': isBlocked }">
+    <div class="guess-zone" :class="{ 'guess-zone--blocked': isUiLocked }">
       <PvpGuessWithHints
         :match-id="matchId"
         :game="game"
@@ -128,10 +186,16 @@ function onGuess(id: number) {
         @guess="onGuess"
       />
 
-      <div v-if="isBlocked" class="blocked-overlay">
+      <div v-if="isUiLocked" class="blocked-overlay">
         <div class="blocked-badge">
-          <div class="blocked-title">Mauvais guess</div>
-          <div class="blocked-sub">{{ blockedText }}</div>
+          <template v-if="isBlocked">
+            <div class="blocked-title">Mauvais guess</div>
+            <div class="blocked-sub">{{ blockedText }}</div>
+          </template>
+          <template v-else>
+            <div class="blocked-title">Envoi du guess…</div>
+            <div class="blocked-sub">Patiente une seconde.</div>
+          </template>
         </div>
       </div>
     </div>
