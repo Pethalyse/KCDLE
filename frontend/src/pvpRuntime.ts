@@ -49,10 +49,10 @@ function cancelQueueOnClose(game: PvpGame) {
   try {
     fetch(url, {
       method: 'POST',
-      headers: { Authorization: token },
+      headers: {Authorization: token},
       keepalive: true,
-    })
-  } catch {
+    }).then()
+   } catch {
   }
 }
 
@@ -73,7 +73,7 @@ async function resumeOnce(router: Router) {
       const mid = router.currentRoute.value.params.matchId
       const onMatchRoute = name === 'pvp_match' || name === 'pvp_match_play'
       if (!onMatchRoute || String(mid) !== String(res.match_id)) {
-        router.push({ name: 'pvp_match', params: { matchId: res.match_id } })
+        await router.push({name: 'pvp_match', params: {matchId: res.match_id}})
       }
     } else {
       if (pvp.isInMatch) {
@@ -96,7 +96,7 @@ export function initPvpRuntime(router: Router) {
 
   router.beforeEach((to) => {
     if (pvp.isInMatch && pvp.matchId !== null) {
-      const allowed = to.name === 'pvp_match' || to.name === 'pvp_match_play'
+      const allowed = to.name === 'pvp_match' || to.name === 'pvp_match_play' || to.name === 'pvp_match_end'
       const sameMatch = String(to.params.matchId ?? '') === String(pvp.matchId)
 
       if (!allowed || !sameMatch) {
@@ -132,8 +132,8 @@ export function initPvpRuntime(router: Router) {
       pvp.setRedirecting(true)
       flash.success('Un match a été trouvé. Redirection...', 'PvP', 3000)
       window.setTimeout(() => {
-        router.push({ name: 'pvp_match', params: { matchId } })
-      }, 3000)
+        router.push({name: 'pvp_match', params: {matchId}}).then()
+       }, 3000)
     }
   }
 
@@ -205,12 +205,12 @@ export function initPvpRuntime(router: Router) {
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      resumeOnce(router)
+      resumeOnce(router).then()
     }
   })
 
   window.addEventListener('online', () => {
-    resumeOnce(router)
+    resumeOnce(router).then()
   })
 
   window.addEventListener('beforeunload', (e) => {
@@ -240,18 +240,10 @@ export function initPvpRuntime(router: Router) {
         stopQueueLoop()
         stopQueuedResumeLoop()
         clearQueueFlash()
-        if (pvp.queue) {
-          const game = pvp.queue.game
-          pvp.clearQueue()
-          cancelQueueBestEffort(game)
-        }
-        if (pvp.isInMatch) {
-          pvp.clearMatch()
-        }
+        if (pvp.queue) pvp.clearQueue()
+        if (pvp.isInMatch) pvp.clearMatch()
       }
       return Promise.reject(err)
     },
   )
-
-  resumeOnce(router)
 }

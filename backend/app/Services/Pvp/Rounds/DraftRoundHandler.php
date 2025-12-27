@@ -35,6 +35,11 @@ readonly class DraftRoundHandler implements PvpRoundHandlerInterface
         return 'draft';
     }
 
+    public function name(): string
+    {
+        return 'Draft';
+    }
+
     /**
      * Initialize round state when the round starts.
      *

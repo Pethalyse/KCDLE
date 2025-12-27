@@ -89,9 +89,13 @@ class PvpMatchService
      *   best_of:int,
      *   current_round:int,
      *   rounds:array<int, string>,
+     *   started_at:string|null,
      *   state:array{round_type:mixed},
      *   players:array<int, array{seat:int, user_id:int, name:string|null, points:int, last_seen_at:mixed}>,
-     *   last_event_id:int
+     *   last_event_id:int,
+     *   finished_at?:string|null,
+     *   result?:array{winner_user_id:int|null, ended_reason:string|null, forfeiting_user_id:int|null},
+     *   round_history?:array<int, array{round:int, round_type:string, winner_user_id:int}>
      * }
      */
     public function buildBaseMatchPayload(PvpMatch $match, int $userId): array
@@ -103,13 +107,14 @@ class PvpMatchService
 
         $state = is_array($match->state) ? $match->state : [];
 
-        return [
+        $payload = [
             'id' => $match->id,
             'game' => $match->game,
             'status' => $match->status,
             'best_of' => $match->best_of,
             'current_round' => $match->current_round,
             'rounds' => $match->rounds,
+            'started_at' => $match->started_at?->toISOString(),
             'state' => [
                 'round_type' => Arr::get($state, 'round_type'),
             ],
@@ -122,5 +127,35 @@ class PvpMatchService
             ])->all(),
             'last_event_id' => $lastEventId,
         ];
+
+        if ($match->status === 'finished') {
+            $payload['finished_at'] = $match->finished_at?->toISOString();
+            $payload['result'] = [
+                'winner_user_id' => Arr::get($state, 'winner_user_id'),
+                'ended_reason' => Arr::get($state, 'ended_reason'),
+                'forfeiting_user_id' => Arr::get($state, 'forfeiting_user_id'),
+            ];
+
+            $roundEvents = PvpMatchEvent::query()
+                ->where('match_id', $match->id)
+                ->where('type', 'round_finished')
+                ->orderBy('id')
+                ->get(['payload']);
+
+            $payload['round_history'] = $roundEvents
+                ->map(function (PvpMatchEvent $e) {
+                    $p = is_array($e->payload) ? $e->payload : [];
+                    return [
+                        'round' => (int) ($p['round'] ?? 0),
+                        'round_type' => (string) ($p['round_type'] ?? ''),
+                        'winner_user_id' => (int) ($p['winner_user_id'] ?? 0),
+                    ];
+                })
+                ->filter(fn (array $x) => $x['round'] > 0 && $x['round_type'] !== '' && $x['winner_user_id'] > 0)
+                ->values()
+                ->all();
+        }
+
+        return $payload;
     }
 }

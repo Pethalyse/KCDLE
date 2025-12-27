@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { usePvpStore } from '@/stores/pvp'
-import { useFlashStore } from '@/stores/flash'
-import { pvpGetMatch, pvpHeartbeat, pvpLeaveMatch, pvpPollEvents, pvpPostAction } from '@/api/pvpApi'
+import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import {usePvpStore} from '@/stores/pvp'
+import {useFlashStore} from '@/stores/flash'
+import {pvpGetMatch, pvpHeartbeat, pvpLeaveMatch, pvpPollEvents, pvpPostAction} from '@/api/pvpApi'
 import PvpClassicRound from '@/components/pvp/rounds/PvpClassicRound.vue'
 import PvpLockedInfosRound from '@/components/pvp/rounds/PvpLockedInfosRound.vue'
 import PvpDraftRound from '@/components/pvp/rounds/PvpDraftRound.vue'
@@ -98,7 +98,6 @@ async function smoothRevealRaceTick(): Promise<void> {
     }
   }
 }
-
 
 function stopTimers() {
   if (eventsTimer !== null) {
@@ -209,6 +208,13 @@ async function loadAll() {
     match.value = m
     pvp.setMatch(matchId.value)
 
+    if (m?.status === 'finished') {
+      navigating.value = true
+      stopTimers()
+      await router.replace({ name: 'pvp_match_end', params: { matchId: matchId.value } })
+      return
+    }
+
     if (typeof m?.last_event_id === 'number') {
       pvp.setLastEventId(m.last_event_id)
     } else {
@@ -237,8 +243,7 @@ async function poll() {
         revealRaceIdleRefreshTick += 1
         if (revealRaceIdleRefreshTick >= 3) {
           revealRaceIdleRefreshTick = 0
-          const m0 = await pvpGetMatch(matchId.value)
-          match.value = m0
+          match.value = await pvpGetMatch(matchId.value)
         }
       }
       return
@@ -268,8 +273,7 @@ async function poll() {
     const beforeScore = extractScore(match.value)
 
     if (hasRevealRaceEvents(events) || true) {
-      const m2 = await pvpGetMatch(matchId.value)
-      match.value = m2
+      match.value = await pvpGetMatch(matchId.value)
     }
 
     const afterRound = match.value?.current_round
@@ -291,10 +295,8 @@ async function poll() {
     const finished = events.some(ev => ev.type === 'match_finished') || match.value?.status === 'finished'
     const forfeited = events.some(ev => ev.type === 'player_forfeited')
     if (finished || forfeited) {
-      pvp.clearMatch()
       stopTimers()
-      flash.info('Match terminé.', 'PvP', 3000)
-      await router.push({ name: 'pvp' })
+      await router.replace({ name: 'pvp_match_end', params: { matchId: matchId.value } })
     }
   } catch {
   }
@@ -316,10 +318,8 @@ async function leave() {
       await pvpLeaveMatch(matchId.value)
     } catch {
     }
-    pvp.clearMatch()
     stopTimers()
-    flash.info('Tu as quitté le match.', 'PvP', 3000)
-    await router.push({ name: 'pvp' })
+    await router.replace({ name: 'pvp_match_end', params: { matchId: matchId.value } })
   }
 }
 
@@ -432,6 +432,10 @@ onMounted(async () => {
 
   await loadAll()
 
+  if (navigating.value) {
+    return
+  }
+
   eventsTimer = window.setInterval(poll, 1200)
   heartbeatTimer = window.setInterval(beat, 25000)
 })
@@ -452,6 +456,7 @@ onBeforeUnmount(() => stopTimers())
             :best-of="match.best_of"
             :current-round="match.current_round"
             :players="match.players || []"
+            :show-leave="true"
             @leave="leave"
           />
         </div>

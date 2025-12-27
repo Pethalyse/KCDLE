@@ -20,6 +20,13 @@ interface PvpRoundHandlerInterface
     public function type(): string;
 
     /**
+     * Return the round name handled by this implementation.
+     *
+     * @return string Round type identifier.
+     */
+    public function name() : string;
+
+    /**
      * Initialize round state when the round starts.
      *
      * @param PvpMatch $match Match instance (locked by engine transaction).

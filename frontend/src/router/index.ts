@@ -14,6 +14,7 @@ import FriendGroupsView from '@/views/FriendGroupsView.vue'
 import PvpView from '@/views/PvpView.vue'
 import PvpMatchView from '@/views/PvpMatchView.vue'
 import PvpMatchPlayView from '@/views/PvpMatchPlayView.vue'
+import PvpMatchEndView from '@/views/PvpMatchEndView.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: HomeView },
@@ -26,6 +27,7 @@ const routes: RouteRecordRaw[] = [
 
   { path: '/pvp/matches/:matchId', name: 'pvp_match', component: PvpMatchView, props: true },
   { path: '/pvp/matches/:matchId/play', name: 'pvp_match_play', component: PvpMatchPlayView, props: true },
+  { path: '/pvp/matches/:matchId/end', name: 'pvp_match_end', component: PvpMatchEndView, props: true },
 
   { path: '/credits', name: 'credits', component: CreditsView },
   { path: '/privacy', name: 'privacy', component: PrivacyPolicyView },

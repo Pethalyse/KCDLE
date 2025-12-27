@@ -59,6 +59,12 @@ async function load() {
     match.value = m
     pvp.setMatch(matchId.value)
 
+    if (m?.status === 'finished') {
+      showTransition.value = false
+      await router.replace({name: 'pvp_match_end', params: {matchId: matchId.value}})
+      return
+    }
+
     roundNumber.value = Number(m?.current_round ?? 1)
 
     const rounds = Array.isArray(m?.rounds) ? m.rounds.filter((x: any) => typeof x === 'string') : []
@@ -69,7 +75,7 @@ async function load() {
     const key = seenKey(matchId.value, roundNumber.value)
     if (sessionStorage.getItem(key) === '1') {
       showTransition.value = false
-      router.replace({ name: 'pvp_match_play', params: { matchId: matchId.value } })
+      await router.replace({name: 'pvp_match_play', params: {matchId: matchId.value}})
       return
     }
 
@@ -92,7 +98,7 @@ function done() {
 onMounted(async () => {
   if (!matchId.value) {
     flash.error('Match introuvable.', 'PvP')
-    router.push({ name: 'pvp' })
+    await router.push({name: 'pvp'})
     return
   }
   await load()

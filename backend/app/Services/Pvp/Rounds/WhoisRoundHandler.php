@@ -24,6 +24,11 @@ readonly class WhoisRoundHandler implements PvpRoundHandlerInterface
         return 'whois';
     }
 
+    public function name(): string
+    {
+        return 'Qui est-ce ?';
+    }
+
     public function initialize(PvpMatch $match): array
     {
         [$u1, $u2] = $this->participants->getTwoUserIds((int) $match->id);

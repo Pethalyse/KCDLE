@@ -37,6 +37,11 @@ readonly class RevealRaceRoundHandler implements PvpRoundHandlerInterface
         return 'reveal_race';
     }
 
+    public function name(): string
+    {
+        return 'Course contre la montre';
+    }
+
     /**
      * Initialize round state when the round starts.
      *

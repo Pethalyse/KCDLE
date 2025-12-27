@@ -34,6 +34,11 @@ readonly class LockedInfosRoundHandler implements PvpRoundHandlerInterface
         return 'locked_infos';
     }
 
+    public function name(): string
+    {
+        return "Informations limitées";
+    }
+
     /**
      * Initialize round state when the round starts.
      *

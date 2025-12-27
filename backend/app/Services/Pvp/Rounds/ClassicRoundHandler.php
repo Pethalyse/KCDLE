@@ -31,6 +31,11 @@ readonly class ClassicRoundHandler implements PvpRoundHandlerInterface
         return 'classic';
     }
 
+    public function name(): string
+    {
+        return 'Classique';
+    }
+
     public function initialize(PvpMatch $match): array
     {
         [$u1, $u2] = $this->participants->getTwoUserIds((int) $match->id);

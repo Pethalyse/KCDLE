@@ -7,6 +7,7 @@ const props = defineProps<{
   bestOf: number
   currentRound: number
   players: Array<{ user_id: number; name?: string | null; points: number }>
+  showLeave?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -45,7 +46,7 @@ const metaLine = computed(() => {
       <div class="name opp" :title="oppName">{{ oppName }}</div>
     </div>
 
-    <div class="row">
+    <div v-if="props.showLeave" class="row">
       <button type="button" class="btn danger" @click="emit('leave')">Abandonner</button>
     </div>
   </div>
