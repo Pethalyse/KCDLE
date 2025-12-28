@@ -53,7 +53,7 @@ function choose(id: number) {
 
 <style scoped>
 .choose-card {
-  width: 100%;
+  //width: 100%;
   background: rgba(6, 8, 18, 0.92);
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);

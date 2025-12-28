@@ -126,6 +126,7 @@ readonly class LockedInfosRoundHandler implements PvpRoundHandlerInterface
             'user_id' => null,
             'payload' => [
                 'actor_user_id' => $userId,
+                'player_id' => $playerId,
                 'guess_order' => $guessCount,
                 'correct' => $correct,
             ],

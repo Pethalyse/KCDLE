@@ -95,7 +95,8 @@ class PvpMatchService
      *   last_event_id:int,
      *   finished_at?:string|null,
      *   result?:array{winner_user_id:int|null, ended_reason:string|null, forfeiting_user_id:int|null},
-     *   round_history?:array<int, array{round:int, round_type:string, winner_user_id:int}>
+     *   round_history?:array<int, array{round:int, round_type:string, winner_user_id:int}>,
+     *   round_recaps?:array<int, array{round:int, round_type:string, timeline:array<int, array{id:int, type:string, created_at:string|null, payload:array|null}>}>
      * }
      */
     public function buildBaseMatchPayload(PvpMatch $match, int $userId): array
@@ -154,8 +155,100 @@ class PvpMatchService
                 ->filter(fn (array $x) => $x['round'] > 0 && $x['round_type'] !== '' && $x['winner_user_id'] > 0)
                 ->values()
                 ->all();
+
+            $payload['round_recaps'] = $this->buildRoundRecaps($match);
         }
 
         return $payload;
+    }
+
+    /**
+     * Build grouped per-round timelines from persistent match events.
+     *
+     * @param PvpMatch $match Finished match instance.
+     *
+     * @return array<int, array{round:int, round_type:string, timeline:array<int, array{id:int, type:string, created_at:string|null, payload:array|null}>}>
+     */
+    private function buildRoundRecaps(PvpMatch $match): array
+    {
+        $roundHistory = Arr::get($this->buildBaseRoundHistory($match), 'round_history', []);
+
+        $historyByRound = [];
+        foreach ($roundHistory as $h) {
+            $r = (int) ($h['round'] ?? 0);
+            $t = (string) ($h['round_type'] ?? '');
+            if ($r > 0 && $t !== '') {
+                $historyByRound[$r] = $t;
+            }
+        }
+
+        $events = PvpMatchEvent::query()
+            ->where('match_id', $match->id)
+            ->orderBy('id')
+            ->get(['id', 'type', 'payload', 'created_at']);
+
+        $grouped = [];
+        foreach ($events as $e) {
+            $p = is_array($e->payload) ? $e->payload : null;
+            $round = is_array($p) ? (int) ($p['round'] ?? 0) : 0;
+            if ($round <= 0) {
+                continue;
+            }
+
+            $roundType = is_array($p) ? (string) ($p['round_type'] ?? '') : '';
+            if ($roundType === '' && isset($historyByRound[$round])) {
+                $roundType = (string) $historyByRound[$round];
+            }
+
+            if (!isset($grouped[$round])) {
+                $grouped[$round] = [
+                    'round' => $round,
+                    'round_type' => $roundType,
+                    'timeline' => [],
+                ];
+            }
+
+            $grouped[$round]['timeline'][] = [
+                'id' => (int) $e->id,
+                'type' => (string) $e->type,
+                'created_at' => $e->created_at?->toISOString(),
+                'payload' => $p,
+            ];
+        }
+
+        ksort($grouped);
+
+        return array_values($grouped);
+    }
+
+    /**
+     * Build only the base round history array for internal reuse.
+     *
+     * @param PvpMatch $match Finished match instance.
+     *
+     * @return array{round_history:array<int, array{round:int, round_type:string, winner_user_id:int}>}
+     */
+    private function buildBaseRoundHistory(PvpMatch $match): array
+    {
+        $roundEvents = PvpMatchEvent::query()
+            ->where('match_id', $match->id)
+            ->where('type', 'round_finished')
+            ->orderBy('id')
+            ->get(['payload']);
+
+        $roundHistory = $roundEvents
+            ->map(function (PvpMatchEvent $e) {
+                $p = is_array($e->payload) ? $e->payload : [];
+                return [
+                    'round' => (int) ($p['round'] ?? 0),
+                    'round_type' => (string) ($p['round_type'] ?? ''),
+                    'winner_user_id' => (int) ($p['winner_user_id'] ?? 0),
+                ];
+            })
+            ->filter(fn (array $x) => $x['round'] > 0 && $x['round_type'] !== '' && $x['winner_user_id'] > 0)
+            ->values()
+            ->all();
+
+        return ['round_history' => $roundHistory];
     }
 }

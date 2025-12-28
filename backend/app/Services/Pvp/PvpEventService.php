@@ -2,6 +2,7 @@
 
 namespace App\Services\Pvp;
 
+use App\Models\PvpMatch;
 use App\Models\PvpMatchEvent;
 
 /**
@@ -21,12 +22,29 @@ class PvpEventService
      */
     public function emitMany(int $matchId, array $events): void
     {
+        $match = PvpMatch::query()->find($matchId);
+        $round = (int) ($match?->current_round ?? 0);
+        $state = is_array($match?->state) ? (array) $match->state : [];
+        $roundType = (string) ($state['round_type'] ?? ($match?->rounds[($round - 1)] ?? ''));
+
         foreach ($events as $event) {
+            $payload = $event['payload'] ?? null;
+
+            if (is_array($payload)) {
+                if (!array_key_exists('round', $payload) && $round > 0) {
+                    $payload['round'] = $round;
+                }
+
+                if (!array_key_exists('round_type', $payload) && $roundType !== '') {
+                    $payload['round_type'] = $roundType;
+                }
+            }
+
             PvpMatchEvent::create([
                 'match_id' => $matchId,
                 'user_id' => $event['user_id'] ?? null,
                 'type' => $event['type'],
-                'payload' => $event['payload'] ?? null,
+                'payload' => $payload,
                 'created_at' => now(),
             ]);
         }
