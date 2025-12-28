@@ -39,7 +39,7 @@ class Player extends Model
 
     public function getCountryDefaultUrlAttribute(): string
     {
-        return asset('storage/countries/default.png');
+        return asset('storage/countries/NN.png');
     }
 
     public function role(): BelongsTo

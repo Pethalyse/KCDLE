@@ -298,8 +298,8 @@ body,
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  display: flex;
-  justify-content: center;
+  display: block;
+  padding-inline: 8px;
 }
 
 .infoNom{
@@ -308,6 +308,9 @@ body,
   padding-top: 15px;
   flex-wrap: nowrap;
   gap: 4px;
+
+  width: fit-content;
+  margin-inline: auto;
 }
 
 .divInfo
@@ -837,20 +840,22 @@ p{
         width: 100%;
     }
 
-    .infoNom{
-        display: flex;
-        justify-content: center;
-    }
-
     .playerTabScroll{
       width: 100%;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
+      display: block;
+      padding-inline: 8px;
     }
 
     .infoNom{
-      width: max-content;
+      display: flex;
       justify-content: flex-start;
+      flex-wrap: nowrap;
+      gap: 4px;
+
+      width: fit-content;
+      margin-inline: auto;
       white-space: nowrap;
     }
 

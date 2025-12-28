@@ -291,9 +291,6 @@ const guessedIds = computed<number[]>(() =>
 }
 
 .dle_body {
-  flex: 1;
-  width: 100%;
-  margin: 0 auto;
   padding: 12px 8px 24px;
 }
 
