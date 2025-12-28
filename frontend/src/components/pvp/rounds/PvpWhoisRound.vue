@@ -587,6 +587,14 @@ const NATIONALITY_ADJ: Record<string, string> = {
   NZ: 'néo-zélandais',
 }
 
+const ROLE: Record<string, string> = {
+  SUP: 'support',
+  TOP: 'toplaner',
+  BOT: 'adc',
+  JNG: 'jungler',
+  MID: 'midlaner'
+}
+
 function nationalityAdjective(code: string, countryName: string): { m: string; f: string } {
   const c = (code ?? '').toUpperCase()
   const base = NATIONALITY_ADJ[c]
@@ -624,7 +632,8 @@ function whoisSentenceForEnum(key: string, value: any, ok: boolean): string {
   }
   if (key === 'lol_role') {
     const label = resolveEnumLabel(key, value)
-    return ok ? `Il joue au poste de ${label}.` : `Il ne joue pas au poste de ${label}.`
+    const label_role = ROLE[label];
+    return ok ? `Il joue au poste de ${label_role}.` : `Il ne joue pas au poste de ${label_role}.`
   }
   const label = resolveEnumLabel(key, value)
   return ok ? `Il correspond à ${label}.` : `Il ne correspond pas à ${label}.`
