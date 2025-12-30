@@ -28,6 +28,10 @@ interface InfoCol {
   type: 'eq' | 'cmp'
 }
 
+const emit = defineEmits<{
+  (e: 'endAnimaiton'): void
+}>()
+
 const infoBar = computed<InfoCol[]>(() => {
   if (props.game === 'kcdle') {
     return [
@@ -76,6 +80,9 @@ function blackTextStyle(option: number) {
 
 function fadeStyle(infoIndex: number) {
   const delay = infoIndex * 0.4
+  if(infoIndex === infoBar.value.length-1) {
+    setTimeout(() => emit("endAnimaiton"), (delay+0.5)*1000)
+  }
   return {
     animationDelay: `${delay}s`,
   }

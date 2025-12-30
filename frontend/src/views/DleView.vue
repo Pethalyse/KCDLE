@@ -11,7 +11,7 @@ import AdSlot from '@/components/AdSlot.vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { sendGuess, fetchTodayGuessState } from '@/api/gameGuessApi'
-import type { GameCode, StoredGuess, TodayGuessResult } from '@/types/gameGuess'
+import type {GameCode, GuessResponse, StoredGuess, TodayGuessResult} from '@/types/gameGuess'
 import {useFlashStore} from "@/stores/flash.ts";
 
 const props = defineProps<{
@@ -37,7 +37,8 @@ const winKey = computed(() => `${dleCode.value}_win`)
 const lastClearKey = computed(() => `${dleCode.value}_lastClearTime`)
 
 const hasWon = computed(() => guesses.value.some(g => g.correct === true))
-
+const wonData = ref<GuessResponse>();
+const wonDataAnimationFinished = ref<boolean>(false)
 
 function clearLocalStorageDaily(): boolean {
   const now = new Date()
@@ -184,7 +185,20 @@ async function makeGuess(joueurWrapper: any) {
 
   guesses.value.unshift(guess)
 
-  if (data.correct === true) {
+  if(data.correct === true) wonData.value = data;
+
+  if (daily.value && data.stats) {
+    daily.value.solvers_count = data.stats.solvers_count
+    daily.value.total_guesses = data.stats.total_guesses
+    daily.value.average_guesses = data.stats.average_guesses
+  }
+
+  saveGuessesToStorage()
+}
+
+function handleEndTabPlayerAnimation() {
+  const data = wonData.value;
+  if (data?.correct) {
     if (Array.isArray(data.unlocked_achievements) && data.unlocked_achievements.length > 0) {
       data.unlocked_achievements.forEach((achievement: any) => {
         if (!achievement || !achievement.name) return
@@ -201,23 +215,18 @@ async function makeGuess(joueurWrapper: any) {
       localStorage.setItem(winKey.value, 'true')
       trackEvent('dle_win', {
         game: dleCode.value,
-        tries: guess.stats.solvers_count,
+        tries: data.stats.solvers_count,
         date: new Date(),
       })
     } catch (e) {
       console.error('Erreur lors de la sauvegarde du flag de victoire :', e)
     }
+    wonDataAnimationFinished.value = true
   }
-
-  if (daily.value && data.stats) {
-    daily.value.solvers_count = data.stats.solvers_count
-    daily.value.total_guesses = data.stats.total_guesses
-    daily.value.average_guesses = data.stats.average_guesses
+  else if(hasWon) {
+    wonDataAnimationFinished.value = true
   }
-
-  saveGuessesToStorage()
 }
-
 
 const guessedIds = computed<number[]>(() =>
   guesses.value
@@ -243,7 +252,7 @@ const guessedIds = computed<number[]>(() =>
       </div>
 
       <SearchBar
-        v-if="!hasWon"
+        v-if="!hasWon || !wonDataAnimationFinished"
         class="containt-name"
         :dle="dleCode"
         :joueurs="joueurs"
@@ -267,6 +276,7 @@ const guessedIds = computed<number[]>(() =>
         <PlayerTab
           :game="game"
           :guesses="guesses"
+          @endAnimaiton="handleEndTabPlayerAnimation"
         />
 
         <section class="dle-ad-under-grid">
@@ -274,7 +284,7 @@ const guessedIds = computed<number[]>(() =>
         </section>
 
         <PopupGg
-          v-if="hasWon"
+          v-if="hasWon && wonDataAnimationFinished"
           :dle-code="dleCode"
           :guesses="guesses"
         />
