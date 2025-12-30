@@ -183,21 +183,9 @@ function onGuess(playerId: number) {
         :game="game"
         :players="players"
         :round="round"
+        :unwrittable="isBlocked"
         @guess="onGuess"
       />
-
-      <div v-if="isUiLocked" class="blocked-overlay">
-        <div class="blocked-badge">
-          <template v-if="isBlocked">
-            <div class="blocked-title">Mauvais guess</div>
-            <div class="blocked-sub">{{ blockedText }}</div>
-          </template>
-          <template v-else>
-            <div class="blocked-title">Envoi du guess…</div>
-            <div class="blocked-sub">Patiente une seconde.</div>
-          </template>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -225,58 +213,5 @@ function onGuess(playerId: number) {
 .guess-zone {
   position: relative;
   width: 100%;
-}
-
-.blocked-overlay {
-  position: absolute;
-  inset: 0;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(2px);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 12px;
-  box-sizing: border-box;
-  pointer-events: all;
-}
-
-.blocked-badge {
-  width: 100%;
-  max-width: 520px;
-  box-sizing: border-box;
-  padding: 12px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(0, 0, 0, 0.35);
-  text-align: center;
-}
-
-.blocked-title {
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.blocked-sub {
-  margin-top: 4px;
-  opacity: 0.92;
-}
-
-.guess-zone--blocked :deep(input),
-.guess-zone--blocked :deep(textarea),
-.guess-zone--blocked :deep(select) {
-  display: none !important;
-}
-
-.guess-zone--blocked :deep([role="search"]),
-.guess-zone--blocked :deep(.search),
-.guess-zone--blocked :deep(.searchbar),
-.guess-zone--blocked :deep(.search-tab),
-.guess-zone--blocked :deep(.searchTab),
-.guess-zone--blocked :deep(.search-wrap),
-.guess-zone--blocked :deep(.searchWrap),
-.guess-zone--blocked :deep(.search-container),
-.guess-zone--blocked :deep(.searchContainer) {
-  display: none !important;
 }
 </style>

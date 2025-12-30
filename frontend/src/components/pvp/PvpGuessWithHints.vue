@@ -13,6 +13,7 @@ const props = defineProps<{
   game: GameCode
   players: Array<{ user_id: number; name?: string | null; points: number }>
   round: any
+  unwrittable?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -373,7 +374,7 @@ onMounted(async () => {
             class="containt-name"
             :dle="dleCode"
             :joueurs="joueurs"
-            :unwrittable="inputLocked"
+            :unwrittable="inputLocked || unwrittable"
             :guessed-ids="guessedIdsEffective"
             @click_card="handleClickCard"
           />
