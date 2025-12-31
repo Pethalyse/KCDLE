@@ -6,13 +6,15 @@ import { useFlashStore } from '@/stores/flash'
 import type { BestOf, PvpGame } from '@/types/pvp'
 import { pvpLeaveQueue } from '@/api/pvpApi'
 import SimpleImg from '@/components/SimpleImg.vue'
+import {useRoute} from "vue-router";
 
+const route = useRoute()
 const auth = useAuthStore()
 const pvp = usePvpStore()
 const flash = useFlashStore()
 
-const selectedGame = ref<PvpGame>('kcdle')
-const selectedBestOf = ref<BestOf>(3)
+const selectedGame = ref<PvpGame>(route.query.game as PvpGame ?? 'kcdle')
+const selectedBestOf = ref<BestOf>(route.query.bo ? Number(route.query.bo) as BestOf : 3)
 
 const isAuth = computed(() => auth.isAuthenticated)
 const isQueued = computed(() => pvp.isQueued)

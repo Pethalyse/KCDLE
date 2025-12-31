@@ -478,7 +478,7 @@ async function load() {
 }
 
 function backToPvp() {
-  router.push({ name: 'pvp' })
+  router.push({ name: 'pvp', query: {game: game.value, bo: bestOf.value} })
 }
 
 function replay() {
@@ -490,7 +490,7 @@ function replay() {
   pvp.clearMatch()
   pvp.setQueued(game.value, bestOf.value)
   flash.info(`File relancée sur ${formatGame(game.value)} (BO${bestOf.value}).`, 'PvP', 3000)
-  router.push({ name: 'pvp' })
+  router.push({ name: 'pvp', query: {game: game.value, bo: bestOf.value} })
 }
 
 onMounted(async () => {
