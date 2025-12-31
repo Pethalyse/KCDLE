@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { loadPlausible } from '@/analytics'
 import { loadAds } from '@/ads'
+import {handleError} from "@/utils/handleError.ts";
 
 interface Consent {
   essential: true
@@ -41,7 +42,7 @@ function initIfNeeded() {
       loadAds()
     }
   } catch (e) {
-    console.error('Erreur de lecture du consentement cookies :', e)
+    handleError(e, 'Erreur de lecture du consentement cookies :')
     visible.value = true
   }
 }

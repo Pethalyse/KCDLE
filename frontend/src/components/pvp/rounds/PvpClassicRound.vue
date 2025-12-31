@@ -6,6 +6,7 @@ import PlayerTab from '@/components/PlayerTab.vue'
 import SimpleImg from '@/components/SimpleImg.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useFlashStore } from '@/stores/flash'
+import {handleError} from "@/utils/handleError.ts";
 
 type GameCode = 'kcdle' | 'lecdle' | 'lfldle'
 
@@ -160,8 +161,8 @@ function handleClickCard(joueurWrapper: any) {
 onMounted(async () => {
   try {
     await loadPlayers()
-  } catch {
-    flash.error('Impossible de charger la liste des joueurs.', 'PvP')
+  } catch (e) {
+    handleError(e, 'Impossible de charger la liste des joueurs.')
   }
 
   if (backendYouSolved.value) {

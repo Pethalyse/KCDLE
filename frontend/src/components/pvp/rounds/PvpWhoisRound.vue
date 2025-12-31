@@ -6,6 +6,7 @@ import { useFlashStore } from '@/stores/flash'
 import PlayerCard from '@/components/PlayerCard.vue'
 import SimpleImg from '@/components/SimpleImg.vue'
 import PvpChooseFirstPlayer from "@/components/pvp/PvpChooseFirstPlayer.vue";
+import {handleError} from "@/utils/handleError.ts";
 
 type GameCode = 'kcdle' | 'lecdle' | 'lfldle'
 type Panel = 'keys' | 'ops' | 'values' | null
@@ -800,8 +801,8 @@ async function loadRefs() {
     games.value = g.data.games ?? []
     roles.value = r.data.roles ?? []
     lolRoles.value = lr.data.lol_roles ?? []
-  } catch {
-    flash.error('Impossible de charger les références.', 'PvP')
+  } catch (e) {
+    handleError(e, 'Impossible de charger les références.')
   }
 }
 
@@ -809,8 +810,8 @@ async function loadPlayers() {
   try {
     const { data } = await api.get(`/games/${props.game}/players`, { params: { active: 1 } })
     joueurs.value = data.players ?? []
-  } catch {
-    flash.error('Impossible de charger les joueurs.', 'PvP')
+  } catch (e) {
+    handleError(e, 'Impossible de charger les joueurs.')
   }
 }
 

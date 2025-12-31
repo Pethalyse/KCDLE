@@ -4,6 +4,7 @@ import SimpleImg from '@/components/SimpleImg.vue'
 import GameButton from "@/components/GameButton.vue";
 import {trackEvent} from "@/analytics.ts";
 import AdSlot from "@/components/AdSlot.vue";
+import {handleError} from "@/utils/handleError.ts";
 
 interface dle {
   dle : string,
@@ -82,7 +83,7 @@ async function copyText() {
   try {
     await navigator.clipboard.writeText(fullText.value)
   } catch (e) {
-    console.error(e)
+    handleError(e)
   }
 }
 

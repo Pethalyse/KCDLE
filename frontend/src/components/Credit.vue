@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import SimpleImg from '@/components/SimpleImg.vue'
 import api from '@/api'
+import {handleError} from "@/utils/handleError.ts";
 
 interface Contributor {
   name: string
@@ -21,7 +22,7 @@ onMounted(async () => {
     const { data } = await api.get('/credits')
     contributors.value = data.contributors
   } catch (e: any) {
-    console.error(e)
+    handleError(e)
     error.value = 'Impossible de charger les crédits.'
   } finally {
     loading.value = false

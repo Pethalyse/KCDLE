@@ -1,3 +1,5 @@
+import {handleError} from "@/utils/handleError.ts";
+
 export type AdsProvider = 'ethical' | 'adsense' | 'none'
 
 let currentProvider: AdsProvider = 'none'
@@ -66,7 +68,7 @@ function renderEthicalSlot(slotId: string, options?: Record<string, any>) {
   try {
     w.ethicalads.load_placements()
   } catch (e) {
-    console.error('[KCDLE] Error while loading EthicalAds placements:', e)
+    handleError('[KCDLE] Error while loading EthicalAds placements:' + e)
   }
 }
 
@@ -91,6 +93,6 @@ function renderAdsenseSlot(slotId: string, options?: Record<string, any>) {
   try {
     w.adsbygoogle.push({})
   } catch (e) {
-    console.error('[KCDLE] Error while loading AdSense ads:', e)
+    handleError('[KCDLE] Error while loading AdSense ads:' + e)
   }
 }

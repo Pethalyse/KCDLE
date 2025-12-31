@@ -5,6 +5,7 @@ import SearchBar from '@/components/SearchBar.vue'
 import SimpleImg from '@/components/SimpleImg.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useFlashStore } from '@/stores/flash'
+import {handleError} from "@/utils/handleError.ts";
 
 type GameCode = 'kcdle' | 'lecdle' | 'lfldle'
 
@@ -323,8 +324,8 @@ const guessHistory = computed(() => {
 onMounted(async () => {
   try {
     await Promise.all([loadRefs(), loadPlayers()])
-  } catch {
-    flash.error('Impossible de charger les données.', 'PvP')
+  } catch (e) {
+    handleError(e, 'Impossible de charger les données.')
   }
 
   if (backendYouSolved.value) {

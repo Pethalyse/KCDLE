@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import api from '@/api'
 import { useFlashStore } from '@/stores/flash'
 import { usePvpStore } from '@/stores/pvp'
+import {handleError} from "@/utils/handleError.ts";
 
 const router = useRouter()
 const route = useRoute()
@@ -63,7 +64,8 @@ function goMatch() {
 async function logout() {
   try {
     await api.post('/auth/logout')
-  } catch (_) {
+  } catch (e) {
+    handleError(e)
   }
   auth.logout()
   await router.push({ name: 'home' })
