@@ -213,15 +213,10 @@ watch(
         :guessed-ids="guessedIdsEffective"
         @click_card="handleClickCard"
       />
-
-<!--      <div v-else class="waiting-banner" :class="opponentSolved ? 'done' : 'wait'">-->
-<!--        <template v-if="!opponentSolved">Trouvé. En attente de l’adversaire…</template>-->
-<!--        <template v-else>Les deux joueurs ont trouvé. Résolution du round…</template>-->
-<!--      </div>-->
     </header>
 
     <div class="classic-body" :class="dleCode">
-      <PlayerTab :game="game" :guesses="guesses" />
+      <PlayerTab :game="game" :guesses="guesses"/>
     </div>
   </div>
 </template>
@@ -270,26 +265,6 @@ watch(
 
 .pvp-indicator.ok .dot {
   background: rgba(80, 220, 140, 0.95);
-}
-
-.waiting-banner {
-  margin-top: 10px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.25);
-  color: rgba(255, 255, 255, 0.92);
-  text-align: center;
-}
-
-.waiting-banner.wait {
-  border-color: rgba(255, 210, 92, 0.32);
-  background: rgba(255, 210, 92, 0.08);
-}
-
-.waiting-banner.done {
-  border-color: rgba(80, 220, 140, 0.32);
-  background: rgba(80, 220, 140, 0.08);
 }
 
 .classic-body {
