@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import SimpleImg from '@/components/SimpleImg.vue'
 
 const props = defineProps<{
   winnerName: string
@@ -11,6 +12,7 @@ const props = defineProps<{
   toRight: number
   delayMs?: number
   scoreAnimMs?: number
+  secretPlayer?: { id: number; name: string; image_url: string | null } | null
 }>()
 
 const visible = ref(false)
@@ -74,6 +76,14 @@ watch(
     <div class="panel">
       <div class="kicker">Résultat du round</div>
       <div class="title">{{ winnerName }} remporte le round</div>
+
+      <div v-if="props.secretPlayer" class="secret">
+        <div class="secret-kicker">Joueur à trouver</div>
+        <div class="secret-row">
+          <SimpleImg class="secret-img" :img="props.secretPlayer.image_url" :alt="props.secretPlayer.name"/>
+          <div class="secret-name">{{ props.secretPlayer.name }}</div>
+        </div>
+      </div>
 
       <div class="scoreboard">
         <div class="name left" :title="leftName">{{ leftName }}</div>
@@ -211,6 +221,47 @@ watch(
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.85);
   animation: bounce 900ms infinite ease-in-out;
+}
+
+.secret {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.secret-kicker {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.secret-row {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.secret-img {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.secret-name {
+  font-weight: 900;
+  font-size: 1.05rem;
+  max-width: 55vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dot:nth-child(2) { animation-delay: 120ms; }

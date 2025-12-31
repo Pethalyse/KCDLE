@@ -2,10 +2,12 @@
 
 namespace App\Services\Pvp;
 
+use App\Models\Player;
 use App\Models\PvpMatch;
 use App\Models\PvpMatchPlayer;
 use App\Services\Pvp\Rounds\PvpRoundHandlerFactory;
 use App\Services\Pvp\Rounds\PvpRoundHandlerInterface;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -156,10 +158,15 @@ readonly class PvpMatchEngineService
             $state = $match->state ?? [];
             $state['last_round_winner_user_id'] = $result->roundWinnerUserId;
 
+            $secretId = (int) Arr::get($match->state ?? [], "round_data.$roundType.secret_player_id", 0);
+            $secretPlayer = $this->buildSecretPlayerSnapshot((string) $match->game, $secretId);
+
             $this->events->emit($match->id, 'round_finished', [
                 'round' => $roundIndex,
                 'round_type' => $roundType,
                 'winner_user_id' => $result->roundWinnerUserId,
+                'secret_player_id' => $secretId,
+                'secret_player' => $secretPlayer,
             ]);
 
             $matchFinished = $this->isMatchFinished($match->id, (int) $match->best_of);
@@ -440,5 +447,33 @@ readonly class PvpMatchEngineService
         PvpMatchPlayer::where('match_id', $matchId)
             ->where('user_id', $userId)
             ->update(['last_action_at' => now()]);
+    }
+
+    /**
+     * Build a minimal snapshot of the secret player for UI display.
+     *
+     * @param string $game
+     * @param int    $secretId
+     *
+     * @return array|null
+     */
+    private function buildSecretPlayerSnapshot(string $game, int $secretId): ?array
+    {
+        if ($secretId <= 0) {
+            return null;
+        }
+
+        $model = Player::resolvePlayerModel($game, $secretId);
+        if ($model === null || ! isset($model->player)) {
+            return null;
+        }
+
+        $p = $model->player;
+
+        return [
+            'id' => $secretId,
+            'name' => (string) ($p->display_name ?? ''),
+            'image_url' => $p->image_url,
+        ];
     }
 }

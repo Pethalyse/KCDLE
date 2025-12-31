@@ -37,7 +37,11 @@ const navigating = ref(false)
 
 const overlayDurationMs = ref(4500)
 const overlayAnimationMs = ref(1000)
-const roundWinBanner = ref<{ winnerUserId: number; winnerName: string } | null>(null)
+const roundWinBanner = ref<{
+  winnerUserId: number
+  winnerName: string
+  secretPlayer: { id: number; name: string; image_url: string | null } | null
+} | null>(null)
 
 const scoreLeftName = ref('J1')
 const scoreRightName = ref('J2')
@@ -179,7 +183,12 @@ function inferWinnerFromScore(before: any, after: any): number {
   return 0
 }
 
-function showOverlayFromScores(before: any, after: any, winnerUserId: number) {
+function showOverlayFromScores(
+  before: any,
+  after: any,
+  winnerUserId: number,
+  secretPlayer: { id: number; name: string; image_url: string | null } | null,
+) {
   navigating.value = true
   stopTimers()
 
@@ -193,6 +202,7 @@ function showOverlayFromScores(before: any, after: any, winnerUserId: number) {
   roundWinBanner.value = {
     winnerUserId,
     winnerName: winnerUserId > 0 ? winnerNameFromMatch(winnerUserId) : 'Résultat du round',
+    secretPlayer,
   }
 
   goTransitionAfterDelay(overlayDurationMs.value)
@@ -265,7 +275,12 @@ async function poll() {
       const after = extractScore(m)
 
       const wid = Number(roundFinishedEv?.payload?.winner_user_id ?? 0)
-      showOverlayFromScores(before, after, wid)
+      const sp = (roundFinishedEv?.payload?.secret_player ?? null) as any
+      const secretPlayer =
+        sp && typeof sp === 'object'
+          ? { id: Number(sp.id ?? 0), name: String(sp.name ?? ''), image_url: (sp.image_url ?? null) as string | null }
+          : null
+      showOverlayFromScores(before, after, wid, secretPlayer)
       return
     }
 
@@ -287,7 +302,7 @@ async function poll() {
       const scoreChanged = beforeScore.leftPts !== afterScore.leftPts || beforeScore.rightPts !== afterScore.rightPts
 
       if (scoreChanged && !roundWinBanner.value) {
-        showOverlayFromScores(beforeScore, afterScore, winnerFromDelta)
+        showOverlayFromScores(beforeScore, afterScore, winnerFromDelta, null)
         return
       }
     }
@@ -464,6 +479,7 @@ onBeforeUnmount(() => stopTimers())
         <PvpRoundResultOverlay
           v-if="roundWinBanner"
           :winner-name="roundWinBanner.winnerName"
+          :secret-player="roundWinBanner.secretPlayer"
           :left-name="scoreLeftName"
           :right-name="scoreRightName"
           :from-left="scoreFromLeft"

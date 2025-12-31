@@ -16,7 +16,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <PvpGuessWithHints :game="props.game" :players="props.players" :round="props.round" @guess="(id) => emit('guess', id)" />
+  <PvpGuessWithHints :matchId="matchId" :game="props.game" :players="props.players" :round="props.round" @guess="(id) => emit('guess', id)" />
 </template>
 
 <style scoped>

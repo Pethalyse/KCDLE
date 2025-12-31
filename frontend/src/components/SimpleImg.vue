@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 const props = defineProps<{
-  img: string
+  img: string | null
   alt?: string
 }>()
 
