@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Meta\TeamController;
 use App\Http\Controllers\Api\PrivacyPolicyController;
 use App\Http\Controllers\Api\Pvp\PvpEventController;
 use App\Http\Controllers\Api\Pvp\PvpHeartbeatController;
+use App\Http\Controllers\Api\Pvp\PvpLobbyController;
 use App\Http\Controllers\Api\Pvp\PvpMatchController;
 use App\Http\Controllers\Api\Pvp\PvpQueueController;
 use App\Http\Controllers\Api\Pvp\PvpRoundController;
@@ -97,8 +98,21 @@ Route::prefix('pvp')
         Route::post('matches/{match}/heartbeat', [PvpHeartbeatController::class, 'store']);
 
         Route::get('resume', [PvpQueueController::class, 'resume']);
-    });
 
+        Route::post('lobbies', [PvpLobbyController::class, 'store']);
+        Route::get('lobbies/code/{code}', [PvpLobbyController::class, 'showByCode']);
+        Route::post('lobbies/code/{code}/join', [PvpLobbyController::class, 'joinByCode']);
+        Route::post('lobbies/{lobby}/start', [PvpLobbyController::class, 'start']);
+        Route::get('lobbies/me', [PvpLobbyController::class, 'me']);
+        Route::post('lobbies/{lobby}/leave', [PvpLobbyController::class, 'leave']);
+        Route::post('lobbies/{lobby}/close', [PvpLobbyController::class, 'close']);
+        Route::get('lobbies/{lobby}', [PvpLobbyController::class, 'show']);
+        Route::get('lobbies/{lobby}/events', [PvpLobbyController::class, 'events']);
+    });
+Route::prefix('pvp')
+    ->group(function () {
+        Route::get('pvp/lobbies/code/{code}/peek', [PvpLobbyController::class, 'peekByCode']);
+    });
 
 Route::get('/credits', [CreditController::class, 'show']);
 Route::get('/privacy-policy', [PrivacyPolicyController::class, 'show']);
