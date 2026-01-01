@@ -111,7 +111,7 @@ Route::prefix('pvp')
     });
 Route::prefix('pvp')
     ->group(function () {
-        Route::get('pvp/lobbies/code/{code}/peek', [PvpLobbyController::class, 'peekByCode']);
+        Route::get('lobbies/code/{code}/peek', [PvpLobbyController::class, 'peekByCode']);
     });
 
 Route::get('/credits', [CreditController::class, 'show']);

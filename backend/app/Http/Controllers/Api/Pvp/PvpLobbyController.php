@@ -9,19 +9,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
 
-/**
- * PvP private lobby endpoints.
- */
 class PvpLobbyController extends Controller
 {
-    public function __construct(private readonly PvpLobbyService $lobbies)
-    {
-    }
+    public function __construct(
+        private readonly PvpLobbyService $lobbies
+    ) {}
 
-    /**
-     * @param Request $request
-     * @return JsonResponse
-     */
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -32,7 +25,9 @@ class PvpLobbyController extends Controller
         $lobby = $this->lobbies->findMyOpenLobby($user);
 
         if (! $lobby) {
-            return response()->json(['status' => 'none']);
+            return response()->json([
+                'status' => 'none',
+            ]);
         }
 
         return response()->json([
@@ -58,18 +53,24 @@ class PvpLobbyController extends Controller
 
         $lobby = $this->lobbies->createLobby($user, $game, $bestOf);
 
-        return $this->getLobbyJson($lobby);
+        return $this->getLobbyJson($lobby, (int) $user->id);
     }
 
     /**
      * @param string $code
+     * @param Request $request
      * @return JsonResponse
      */
-    public function showByCode(string $code): JsonResponse
+    public function showByCode(string $code, Request $request): JsonResponse
     {
+        $user = $request->user();
+        if (! $user) {
+            abort(401);
+        }
+
         $lobby = $this->lobbies->getByCode($code);
 
-        return $this->getLobbyJson($lobby);
+        return $this->getLobbyJson($lobby, (int) $user->id);
     }
 
     /**
@@ -87,7 +88,7 @@ class PvpLobbyController extends Controller
 
         $lobby = $this->lobbies->joinLobby($user, $code);
 
-        return $this->getLobbyJson($lobby);
+        return $this->getLobbyJson($lobby, (int) $user->id);
     }
 
     /**
@@ -105,7 +106,7 @@ class PvpLobbyController extends Controller
 
         $lobby = $this->lobbies->leaveLobby($user, $lobby);
 
-        return $this->getLobbyJson($lobby);
+        return response()->json($lobby);
     }
 
     /**
@@ -123,7 +124,7 @@ class PvpLobbyController extends Controller
 
         $lobby = $this->lobbies->closeLobby($user, $lobby);
 
-        return $this->getLobbyJson($lobby);
+        return response()->json($lobby);
     }
 
     /**
@@ -207,22 +208,8 @@ class PvpLobbyController extends Controller
         ]);
     }
 
-    /**
-     * @param PvpLobby $lobby
-     * @return JsonResponse
-     */
-    private function getLobbyJson(PvpLobby $lobby): JsonResponse
+    private function getLobbyJson(PvpLobby $lobby, int $userId): JsonResponse
     {
-        return response()->json([
-            'id' => (int)$lobby->id,
-            'code' => $lobby->code,
-            'game' => $lobby->game,
-            'best_of' => (int)$lobby->best_of,
-            'status' => $lobby->status,
-            'host' => $lobby->host(),
-            'guest' => $lobby->guest(),
-            'match' => $lobby->match(),
-        ]);
+        return response()->json($this->lobbies->buildLobbyPayload($lobby, $userId));
     }
-
 }

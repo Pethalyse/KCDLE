@@ -24,8 +24,13 @@ const fieldErrors = reactive<{
 const generalError = ref<string | null>(null)
 const submitting = ref(false)
 
-const redirectTo =
-  (route.query.redirect as string | undefined) || '/'
+function getSafeRedirect(v: unknown): string {
+  if (typeof v !== 'string') return '/'
+  if (!v.startsWith('/')) return '/'
+  return v
+}
+
+const redirectTo = getSafeRedirect(route.query.redirect)
 
 function resetErrors() {
   fieldErrors.email = undefined
@@ -159,8 +164,10 @@ function goHome() {
 
         <p class="auth-footer-text">
           Pas encore de compte ?
-          <RouterLink :to="{ name: 'register', query: { redirect: redirectTo } }">
-            Crée un compte
+          <RouterLink
+            :to="{ name: 'register', query: route.query.redirect ? { redirect: route.query.redirect } : {} }"
+          >
+            Créer un compte
           </RouterLink>
         </p>
       </section>

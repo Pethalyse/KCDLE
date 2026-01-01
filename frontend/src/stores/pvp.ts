@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { BestOf, PvpGame } from '@/types/pvp'
+import type { PvpLobby } from '@/types/pvp'
 
 type QueueState = {
   game: PvpGame
@@ -14,6 +15,7 @@ type MatchState = {
 
 const QUEUE_STORAGE_KEY = 'kcdle_pvp_queue'
 const MATCH_STORAGE_KEY = 'kcdle_pvp_match'
+const LOBBY_STORAGE_KEY = 'kcdle_pvp_lobby'
 
 function readJson<T>(key: string): T | null {
   try {
@@ -29,17 +31,22 @@ export const usePvpStore = defineStore('pvp', {
   state: () => ({
     queue: readJson<QueueState>(QUEUE_STORAGE_KEY) as QueueState | null,
     match: readJson<MatchState>(MATCH_STORAGE_KEY) as MatchState | null,
+    lobby: readJson<PvpLobby>(LOBBY_STORAGE_KEY) as PvpLobby | null,
     queueFlashId: null as number | null,
     lastEventId: 0,
     redirecting: false,
+    lobbyLastEventId: 0,
+    lobbyFlashId: null as number | null,
   }),
 
   getters: {
     isQueued: state => state.queue !== null,
     isInMatch: state => state.match !== null,
+    isInLobby: state => state.lobby !== null,
     queuedGame: state => state.queue?.game ?? null,
     queuedBestOf: state => state.queue?.bestOf ?? null,
     matchId: state => state.match?.matchId ?? null,
+    lobbyId: state => state.lobby?.id ?? null,
   },
 
   actions: {
@@ -67,12 +74,32 @@ export const usePvpStore = defineStore('pvp', {
       localStorage.removeItem(MATCH_STORAGE_KEY)
     },
 
+    setLobby(lobby: PvpLobby) {
+      this.lobby = lobby
+      this.lobbyLastEventId = 0
+      localStorage.setItem(LOBBY_STORAGE_KEY, JSON.stringify(lobby))
+    },
+
+    clearLobby() {
+      this.lobby = null
+      this.lobbyLastEventId = 0
+      localStorage.removeItem(LOBBY_STORAGE_KEY)
+    },
+
     setQueueFlashId(id: number | null) {
       this.queueFlashId = id
     },
 
     setLastEventId(id: number) {
       this.lastEventId = id
+    },
+
+    setLobbyLastEventId(id: number) {
+      this.lobbyLastEventId = id
+    },
+
+    setLobbyFlashId(id: number | null) {
+      this.lobbyFlashId = id
     },
 
     setRedirecting(v: boolean) {
