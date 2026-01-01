@@ -171,7 +171,6 @@ function goHome() {
           </RouterLink>
         </p>
       </section>
-      <Credit />
     </main>
   </div>
 </template>
