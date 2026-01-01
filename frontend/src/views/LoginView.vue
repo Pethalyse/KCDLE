@@ -198,7 +198,6 @@ function goHome() {
 }
 
 .auth-card {
-  width: 100%;
   max-width: 420px;
   margin-top: 10px;
 
