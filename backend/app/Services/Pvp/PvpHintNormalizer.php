@@ -1,22 +1,15 @@
 <?php
-
 namespace App\Services\Pvp;
 
 use App\Models\Team;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Normalise les valeurs d’indices PvP afin d’éviter les nulls incohérents côté frontend.
  */
 final class PvpHintNormalizer
 {
-    private int $noneTeamId;
-
-    public function __construct()
-    {
-        $this->noneTeamId = (int) Team::query()
-            ->where('slug', 'none')
-            ->value('id');
-    }
+    private ?int $noneTeamId = null;
 
     /**
      * @param array<string, mixed> $hints
@@ -38,13 +31,29 @@ final class PvpHintNormalizer
 
     private function normalizeCountry(mixed $value): string
     {
-        $code = strtoupper((string) $value);
+        $code = strtoupper((string)$value);
         return $code !== '' ? $code : 'NN';
     }
 
     private function normalizeTeam(mixed $value): int
     {
-        $id = (int) $value;
-        return $id > 0 ? $id : $this->noneTeamId;
+        $id = (int)$value;
+        return $id > 0 ? $id : $this->getNoneTeamId();
+    }
+
+    private function getNoneTeamId(): int
+    {
+        if ($this->noneTeamId !== null) {
+            return $this->noneTeamId;
+        }
+
+        if (!Schema::hasTable('teams')) {
+            $this->noneTeamId = 0;
+            return $this->noneTeamId;
+        }
+
+        $this->noneTeamId = (int)(Team::query()->where('slug', 'none')->value('id') ?? 0);
+
+        return $this->noneTeamId;
     }
 }

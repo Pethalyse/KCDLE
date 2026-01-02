@@ -15,11 +15,13 @@ class PvpMatchEvent extends Model
         'type',
         'payload',
         'created_at',
+        'updated_at',
     ];
 
     protected $casts = [
         'payload' => 'array',
         'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**

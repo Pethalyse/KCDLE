@@ -9,11 +9,11 @@ use App\Services\Pvp\PvpHintNormalizer;
 use Carbon\Carbon;
 use Throwable;
 
-readonly class HintValueService
+class HintValueService
 {
 
     public function __construct(
-        private PvpHintNormalizer $normalizer,
+        private readonly PvpHintNormalizer $normalizer,
     ){}
 
     public function buildRevealed(string $game, int $secretId, array $keys): array
