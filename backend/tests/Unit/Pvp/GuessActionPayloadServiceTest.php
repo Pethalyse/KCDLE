@@ -4,10 +4,13 @@ namespace Tests\Unit\Pvp;
 
 use App\Services\Pvp\Rounds\GuessActionPayloadService;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\Support\PvpTestHelper;
 use Tests\TestCase;
 
 class GuessActionPayloadServiceTest extends TestCase
 {
+    use PvpTestHelper;
+
     public function test_require_guess_player_id_ok(): void
     {
         $svc = app(GuessActionPayloadService::class);

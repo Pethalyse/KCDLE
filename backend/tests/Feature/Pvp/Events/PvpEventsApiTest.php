@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Feature\Pvp\Events;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,7 +18,7 @@ class PvpEventsApiTest extends TestCase
         Config::set('pvp.round_pool', ['classic']);
         $this->pvpSeedMinimalKcdlePlayer();
 
-        [$match, $u1, $u2] = $this->pvpCreateMatch('kcdle', 'classic');
+        [$match] = $this->pvpCreateMatch('kcdle', 'classic');
 
         $this->getJson("/api/pvp/matches/{$match->id}/events?after_id=0")->assertStatus(401);
     }
@@ -28,7 +28,7 @@ class PvpEventsApiTest extends TestCase
         Config::set('pvp.round_pool', ['classic']);
         $this->pvpSeedMinimalKcdlePlayer();
 
-        [$match, $u1, $u2] = $this->pvpCreateMatch('kcdle', 'classic');
+        [$match] = $this->pvpCreateMatch('kcdle', 'classic');
         $u3 = User::factory()->create();
 
         $this->actingAs($u3, 'sanctum')
@@ -41,7 +41,7 @@ class PvpEventsApiTest extends TestCase
         Config::set('pvp.round_pool', ['classic']);
         $this->pvpSeedMinimalKcdlePlayer();
 
-        [$match, $u1, $u2] = $this->pvpCreateMatch('kcdle', 'classic');
+        [$match, $u1] = $this->pvpCreateMatch('kcdle', 'classic');
 
         $res = $this->actingAs($u1, 'sanctum')
             ->getJson("/api/pvp/matches/{$match->id}/events?after_id=0")
@@ -83,7 +83,7 @@ class PvpEventsApiTest extends TestCase
         Config::set('pvp.round_pool', ['classic']);
         $this->pvpSeedMinimalKcdlePlayer();
 
-        [$match, $u1, $u2] = $this->pvpCreateMatch('kcdle', 'classic');
+        [$match, $u1] = $this->pvpCreateMatch('kcdle', 'classic');
 
         $this->actingAs($u1, 'sanctum')
             ->getJson("/api/pvp/matches/{$match->id}/events?after_id=abc")

@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Feature\Pvp;
 
 use App\Models\PvpLobby;
 use App\Models\PvpLobbyEvent;

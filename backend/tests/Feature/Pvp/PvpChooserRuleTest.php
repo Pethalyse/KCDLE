@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Feature\Pvp;
 
 use App\Models\PvpMatch;
 use App\Models\PvpMatchPlayer;
@@ -18,6 +18,7 @@ class PvpChooserRuleTest extends TestCase
     public function test_round_two_chooser_is_last_round_winner(): void
     {
         Config::set('pvp.allowed_best_of', [1, 3, 5]);
+        Config::set('pvp.disable_shuffle', true);
         Config::set('pvp.round_pool', ['classic', 'draft', 'locked_infos']);
 
         $idA = $this->pvpSeedMinimalKcdlePlayer('a', 'A');
@@ -34,6 +35,7 @@ class PvpChooserRuleTest extends TestCase
 
         $match = PvpMatch::findOrFail($matchId);
         $this->assertSame(1, (int) $match->current_round);
+        $this->assertSame('classic', (string) ($match->state['round_type'] ?? ''));
 
         $this->actingAs($u1, 'sanctum')->getJson("/api/pvp/matches/{$matchId}/round")->assertOk();
 

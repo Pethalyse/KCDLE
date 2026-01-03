@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Feature\Pvp;
 
 use App\Models\PvpMatch;
 use App\Models\PvpMatchPlayer;
@@ -60,6 +60,28 @@ class PvpQueueApiTest extends TestCase
         $this->actingAs($u1, 'sanctum')->postJson('/api/pvp/games/kcdle/queue/join', ['best_of' => 1])->assertOk();
 
         $res = $this->actingAs($u2, 'sanctum')->postJson('/api/pvp/games/kcdle/queue/join', ['best_of' => 1])->assertOk()->json();
+
+        $matchId = (int) ($res['match_id'] ?? 0);
+        $this->assertGreaterThan(0, $matchId);
+
+        $this->assertSame(0, PvpQueueEntry::count());
+        $this->assertSame(1, PvpMatch::whereKey($matchId)->count());
+        $this->assertSame(2, PvpMatchPlayer::where('match_id', $matchId)->count());
+    }
+
+    public function test_two_users_get_matched_and_queue_is_cleared_lecdle(): void
+    {
+        Config::set('pvp.allowed_best_of', [1, 3, 5]);
+        Config::set('pvp.round_pool', ['classic']);
+
+        $this->pvpSeedMinimalLoldlePlayer();
+
+        $u1 = User::factory()->create();
+        $u2 = User::factory()->create();
+
+        $this->actingAs($u1, 'sanctum')->postJson('/api/pvp/games/lecdle/queue/join', ['best_of' => 1])->assertOk();
+
+        $res = $this->actingAs($u2, 'sanctum')->postJson('/api/pvp/games/lecdle/queue/join', ['best_of' => 1])->assertOk()->json();
 
         $matchId = (int) ($res['match_id'] ?? 0);
         $this->assertGreaterThan(0, $matchId);

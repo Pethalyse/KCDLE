@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Feature\Pvp;
 
 use App\Models\PvpMatch;
 use App\Models\User;
@@ -19,7 +19,7 @@ class PvpHeartbeatApiTest extends TestCase
         Config::set('pvp.round_pool', ['classic']);
         $this->pvpSeedMinimalKcdlePlayer();
 
-        [$match, $u1, $u2] = $this->pvpCreateMatch('kcdle', 'classic');
+        [$match] = $this->pvpCreateMatch('kcdle', 'classic');
 
         $this->postJson("/api/pvp/matches/{$match->id}/heartbeat")->assertStatus(401);
     }
@@ -29,7 +29,7 @@ class PvpHeartbeatApiTest extends TestCase
         Config::set('pvp.round_pool', ['classic']);
         $this->pvpSeedMinimalKcdlePlayer();
 
-        [$match, $u1, $u2] = $this->pvpCreateMatch('kcdle', 'classic');
+        [$match] = $this->pvpCreateMatch('kcdle', 'classic');
         $u3 = User::factory()->create();
 
         $this->actingAs($u3, 'sanctum')
@@ -42,7 +42,7 @@ class PvpHeartbeatApiTest extends TestCase
         Config::set('pvp.round_pool', ['classic']);
         $this->pvpSeedMinimalKcdlePlayer();
 
-        [$match, $u1, $u2] = $this->pvpCreateMatch('kcdle', 'classic');
+        [$match, $u1] = $this->pvpCreateMatch('kcdle', 'classic');
 
         $res = $this->actingAs($u1, 'sanctum')
             ->postJson("/api/pvp/matches/{$match->id}/heartbeat")
@@ -59,7 +59,7 @@ class PvpHeartbeatApiTest extends TestCase
         Config::set('pvp.round_pool', ['classic']);
         $this->pvpSeedMinimalKcdlePlayer();
 
-        [$match, $u1, $u2] = $this->pvpCreateMatch('kcdle', 'classic');
+        [$match, $u1] = $this->pvpCreateMatch('kcdle', 'classic');
 
         $this->actingAs($u1, 'sanctum')
             ->postJson("/api/pvp/matches/{$match->id}/heartbeat?include_state=1")
@@ -75,7 +75,7 @@ class PvpHeartbeatApiTest extends TestCase
         Config::set('pvp.round_pool', ['classic']);
         $this->pvpSeedMinimalKcdlePlayer();
 
-        [$match, $u1, $u2] = $this->pvpCreateMatch('kcdle', 'classic');
+        [$match, $u1] = $this->pvpCreateMatch('kcdle', 'classic');
 
         $m = PvpMatch::findOrFail($match->id);
         $m->status = 'finished';

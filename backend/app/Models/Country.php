@@ -5,6 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property string $code
+ * @property string $name
+ * @property string $flag_url
+ */
 class Country extends Model
 {
     use HasFactory;

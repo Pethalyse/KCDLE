@@ -7,13 +7,14 @@ use App\Services\Pvp\Rounds\WhoisQuestionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Mockery;
-use stdClass;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\Support\PvpTestHelper;
 use Tests\TestCase;
 
 class WhoisQuestionServiceTest extends TestCase
 {
     use RefreshDatabase;
+    use PvpTestHelper;
 
     protected function tearDown(): void
     {
@@ -61,12 +62,16 @@ class WhoisQuestionServiceTest extends TestCase
     {
         Config::set('pvp.whois.meta.age', ['cast' => 'int']);
 
+        $player = $this->pvpCreatePlayer('p_age', 'P Age');
+        $wrapper = $this->pvpCreateKcdleWrapper($player);
+
         $hints = Mockery::mock(HintValueService::class);
-        $hints->shouldReceive('readHintValue')->once()->andReturn(25);
+        $hints->shouldReceive('readHintValue')->once()->with($wrapper, 'age')->andReturn(25);
+        $this->app->instance(HintValueService::class, $hints);
 
         $svc = app(WhoisQuestionService::class);
 
-        $ok = $svc->evaluate(new stdClass(), 'age', 'gt', 18);
+        $ok = $svc->evaluate($wrapper, 'age', 'gt', 18);
         $this->assertTrue($ok);
     }
 
@@ -74,12 +79,16 @@ class WhoisQuestionServiceTest extends TestCase
     {
         Config::set('pvp.whois.meta.country_code', ['cast' => 'upper']);
 
+        $player = $this->pvpCreatePlayer('p_cc', 'P CC');
+        $wrapper = $this->pvpCreateKcdleWrapper($player);
+
         $hints = Mockery::mock(HintValueService::class);
-        $hints->shouldReceive('readHintValue')->once()->andReturn('fr');
+        $hints->shouldReceive('readHintValue')->once()->with($wrapper, 'country_code')->andReturn('fr');
+        $this->app->instance(HintValueService::class, $hints);
 
         $svc = app(WhoisQuestionService::class);
 
-        $ok = $svc->evaluate(new stdClass(), 'country_code', 'eq', 'FR');
+        $ok = $svc->evaluate($wrapper, 'country_code', 'eq', 'FR');
         $this->assertTrue($ok);
     }
 }

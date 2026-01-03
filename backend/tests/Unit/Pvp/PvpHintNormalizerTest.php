@@ -2,18 +2,19 @@
 
 namespace Tests\Unit\Pvp;
 
-use App\Models\Team;
 use App\Services\Pvp\PvpHintNormalizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\PvpTestHelper;
 use Tests\TestCase;
 
 class PvpHintNormalizerTest extends TestCase
 {
     use RefreshDatabase;
+    use PvpTestHelper;
 
     public function test_normalize_country_and_teams(): void
     {
-        $none = Team::create(['slug' => 'none', 'display_name' => 'None']);
+        $none = $this->pvpSeedNoneTeam();
 
         $n = app(PvpHintNormalizer::class);
 

@@ -3,16 +3,13 @@
 namespace Tests\Unit\Pvp;
 
 use App\Services\Pvp\PvpRoundTieBreakerService;
-use Illuminate\Contracts\Container\BindingResolutionException;
-use Illuminate\Contracts\Container\CircularDependencyException;
+use Tests\Support\PvpTestHelper;
 use Tests\TestCase;
 
 class PvpRoundTieBreakerServiceTest extends TestCase
 {
-    /**
-     * @throws CircularDependencyException
-     * @throws BindingResolutionException
-     */
+    use PvpTestHelper;
+
     public function test_fewer_guesses_wins(): void
     {
         $svc = app(PvpRoundTieBreakerService::class);
@@ -27,10 +24,6 @@ class PvpRoundTieBreakerServiceTest extends TestCase
         $this->assertSame(20, $winner);
     }
 
-    /**
-     * @throws CircularDependencyException
-     * @throws BindingResolutionException
-     */
     public function test_equal_guesses_faster_solve_wins(): void
     {
         $svc = app(PvpRoundTieBreakerService::class);
@@ -45,10 +38,6 @@ class PvpRoundTieBreakerServiceTest extends TestCase
         $this->assertSame(20, $winner);
     }
 
-    /**
-     * @throws CircularDependencyException
-     * @throws BindingResolutionException
-     */
     public function test_equal_guesses_and_time_lowest_user_id_wins(): void
     {
         $svc = app(PvpRoundTieBreakerService::class);
@@ -63,10 +52,6 @@ class PvpRoundTieBreakerServiceTest extends TestCase
         $this->assertSame(10, $winner);
     }
 
-    /**
-     * @throws CircularDependencyException
-     * @throws BindingResolutionException
-     */
     public function test_invalid_timestamps_fall_back_to_lowest_user_id(): void
     {
         $svc = app(PvpRoundTieBreakerService::class);

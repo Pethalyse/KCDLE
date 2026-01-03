@@ -80,36 +80,7 @@ class PvpLobbyServiceTest extends TestCase
 
         $this->pvpSeedMinimalKcdlePlayer();
 
-        $host = User::factory()->create();
-        $opponent = User::factory()->create();
-
-        $match = PvpMatch::create([
-            'game' => 'kcdle',
-            'status' => 'active',
-            'best_of' => 1,
-            'current_round' => 1,
-            'rounds' => ['classic'],
-            'state' => ['round' => 1, 'round_type' => 'classic'],
-            'started_at' => now(),
-        ]);
-
-        PvpMatchPlayer::create([
-            'match_id' => (int) $match->id,
-            'user_id' => (int) $host->id,
-            'seat' => 1,
-            'points' => 0,
-            'last_seen_at' => now(),
-            'last_action_at' => now(),
-        ]);
-
-        PvpMatchPlayer::create([
-            'match_id' => (int) $match->id,
-            'user_id' => (int) $opponent->id,
-            'seat' => 2,
-            'points' => 0,
-            'last_seen_at' => now(),
-            'last_action_at' => now(),
-        ]);
+        [$match, $host, $opponent] = $this->pvpCreateMatch('kcdle', 'classic');
 
         PvpActiveMatchLock::create([
             'user_id' => (int) $host->id,

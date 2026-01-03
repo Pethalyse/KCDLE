@@ -1,10 +1,7 @@
 <?php
 
-namespace Tests\Feature;
+namespace Feature\Pvp\Rounds;
 
-use App\Models\PvpMatch;
-use App\Models\PvpMatchPlayer;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Tests\Support\PvpTestHelper;
@@ -25,55 +22,28 @@ class PvpWhoisMatchFlowApiTest extends TestCase
 
     public function test_whois_round_choose_turn_then_guess_secret_finishes_match_best_of_one(): void
     {
-        $secretId = $this->pvpSeedMinimalKcdlePlayer();
+        $this->pvpSeedMinimalKcdlePlayer();
 
-        $u1 = User::factory()->create();
-        $u2 = User::factory()->create();
-
-        $match = PvpMatch::create([
-            'game' => 'kcdle',
-            'status' => 'active',
-            'best_of' => 1,
-            'current_round' => 1,
-            'rounds' => ['whois'],
-            'state' => [
-                'round' => 1,
-                'round_type' => 'whois',
-                'chooser_rule' => 'random_first_then_last_winner',
-                'chooser_user_id' => (int) $u1->id,
-                'last_round_winner_user_id' => null,
-                'source' => 'queue',
-            ],
-            'started_at' => now(),
+        [$match, $u1, $u2] = $this->pvpCreateMatch('kcdle', 'whois');
+        $match->state = array_replace_recursive((array) $match->state, [
+            'chooser_user_id' => (int) $u1->id,
         ]);
-
-        PvpMatchPlayer::create([
-            'match_id' => (int) $match->id,
-            'user_id' => (int) $u1->id,
-            'seat' => 1,
-            'points' => 0,
-            'last_seen_at' => now(),
-            'last_action_at' => now(),
-        ]);
-
-        PvpMatchPlayer::create([
-            'match_id' => (int) $match->id,
-            'user_id' => (int) $u2->id,
-            'seat' => 2,
-            'points' => 0,
-            'last_seen_at' => now(),
-            'last_action_at' => now(),
-        ]);
+        $match->save();
 
         $matchId = (int) $match->id;
 
-        $this->actingAs($u1, 'sanctum')
+        $r = $this->actingAs($u1, 'sanctum')
             ->getJson("/api/pvp/matches/{$matchId}/round")
             ->assertOk()
             ->assertJsonPath('round_type', 'whois')
-            ->assertJsonPath('public.phase', 'whois')
-            ->assertJsonPath('public.can_choose_turn', true)
-            ->assertJsonPath('public.turn_user_id', null);
+            ->assertJsonPath('round.can_choose_turn', true)
+            ->assertJsonPath('round.turn_user_id', null)
+            ->json();
+
+        $candidateIds = (array) ($r['round']['candidate_ids'] ?? []);
+        $this->assertCount(1, $candidateIds);
+        $secretId = (int) $candidateIds[0];
+        $this->assertGreaterThan(0, $secretId);
 
         $this->actingAs($u2, 'sanctum')
             ->postJson("/api/pvp/matches/{$matchId}/round/action", [
