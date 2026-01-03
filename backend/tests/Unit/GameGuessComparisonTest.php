@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Http\Controllers\Api\GameGuessController;
 use App\Services\AchievementService;
 use App\Services\AnonKeyService;
+use App\Services\Dle\PlayerComparisonService;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use ReflectionException;
 use ReflectionMethod;
@@ -23,6 +24,7 @@ class GameGuessComparisonTest extends TestCase
         $this->controller = new GameGuessController(
             $this->app->make(AchievementService::class),
             $this->app->make(AnonKeyService::class),
+            $this->app->make(PlayerComparisonService::class),
         );
     }
 

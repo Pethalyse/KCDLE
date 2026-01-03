@@ -4,6 +4,7 @@ import {useRouter} from 'vue-router'
 import {useAuthStore} from '@/stores/auth'
 import {fetchUserProfile} from '@/api/userProfileApi'
 import type {UserProfileGameStats, UserProfileResponse} from '@/types/userProfile'
+import {handleError} from "@/utils/handleError.ts";
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -51,7 +52,7 @@ onMounted(async () => {
     loading.value = true
     profile.value = await fetchUserProfile()
   } catch (e: any) {
-    console.error(e)
+    handleError(e)
     error.value = "Impossible de charger ton profil."
   } finally {
     loading.value = false

@@ -16,6 +16,7 @@ class TeamsTableSeeder extends Seeder
         $now = now();
 
         $teams = [
+            ['slug' => 'none',               'display_name' => 'None',               'short_name' => null,   'country_code' => 'NN', 'is_karmine_corp' => false],
             ['slug' => 'aegis',              'display_name' => 'Aegis',              'short_name' => null,   'country_code' => null, 'is_karmine_corp' => false],
             ['slug' => 'barca_esport',       'display_name' => 'BarcaEsport',        'short_name' => null,   'country_code' => null, 'is_karmine_corp' => false],
             ['slug' => 'bds',                'display_name' => 'BDS',                'short_name' => 'BDS',  'country_code' => null, 'is_karmine_corp' => false],

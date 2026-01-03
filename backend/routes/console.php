@@ -13,3 +13,10 @@ Schedule::command('kcdle:generate-daily-games')
 
 Schedule::command('kcdle:purge-pending-guesses')
     ->dailyAt('00:00');
+
+Schedule::command('pvp:afk-sweep')
+    ->everyMinute();
+
+Schedule::command('pvp:passive-tick')
+    ->everySecond()
+    ->withoutOverlapping();

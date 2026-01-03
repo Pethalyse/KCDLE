@@ -204,6 +204,7 @@ class CountriesTableSeeder extends Seeder
             ['code' => 'YE', 'name' => 'Yemen'],
             ['code' => 'ZM', 'name' => 'Zambia'],
             ['code' => 'ZW', 'name' => 'Zimbabwe'],
+            ['code' => 'NN', 'name' => 'None'],
         ];
 
         foreach ($countries as $country) {

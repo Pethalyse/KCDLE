@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import GameButton from '@/components/GameButton.vue'
-import Credit from '@/components/Credit.vue'
 import AdSlot from "@/components/AdSlot.vue";
 
 const data = [
@@ -37,8 +36,6 @@ const data = [
 
       <AdSlot id="dle-bottom-1" kind="banner" />
     </main>
-
-    <Credit />
   </div>
 </template>
 

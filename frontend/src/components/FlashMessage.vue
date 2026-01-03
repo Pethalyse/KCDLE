@@ -121,7 +121,6 @@ function onClose(id: number) {
   }
 
   .flash {
-    width: 100%;
     max-width: none;
   }
 }

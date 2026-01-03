@@ -1,36 +1,35 @@
 <script setup lang="ts">
-import {ref, computed, onMounted} from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/api'
 import { useFlashStore } from '@/stores/flash'
+import { usePvpStore } from '@/stores/pvp'
+import {handleError} from "@/utils/handleError.ts";
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const flash = useFlashStore()
+const pvp = usePvpStore()
 
 const isOpen = ref(false)
 const navOpen = ref(false)
 
 const currentRouteName = computed(() => route.name?.toString() ?? '')
 const isAuthenticated = computed(() => auth.isAuthenticated)
+
 const currentTheme = computed<'kcdle' | 'lecdle' | 'lfldle' | 'default'>(() => {
   const name = currentRouteName.value
 
-  if (name === 'lecdle') {
-    return 'lecdle'
-  }
-  if (name === 'lfldle') {
-    return 'lfldle'
-  }
-  if (name === 'kcdle') {
-    return 'kcdle'
-  }
-
+  if (name === 'lecdle') return 'lecdle'
+  if (name === 'lfldle') return 'lfldle'
+  if (name === 'kcdle') return 'kcdle'
   return 'default'
 })
 
+const hasQueue = computed(() => pvp.isQueued)
+const hasMatch = computed(() => pvp.isInMatch && pvp.matchId !== null)
 
 function handleMouseEnter() {
   isOpen.value = true
@@ -48,15 +47,25 @@ function closeMenus() {
   navOpen.value = false
 }
 
-function go(name: string, query: any = null) {
-  router.push({ name, ...(query ? { query } : {}) })
+function go(name: string, params: any = null, query: any = null) {
+  router.push({ name, ...(params ? { params } : {}), ...(query ? { query } : {}) })
   closeMenus()
+}
+
+function goPvp() {
+  go('pvp')
+}
+
+function goMatch() {
+  if (!pvp.matchId) return
+  go('pvp_match', { matchId: pvp.matchId })
 }
 
 async function logout() {
   try {
     await api.post('/auth/logout')
-  } catch (_) {
+  } catch (e) {
+    handleError(e)
   }
   auth.logout()
   await router.push({ name: 'home' })
@@ -84,7 +93,6 @@ async function logout() {
             class="logo-img"
           />
         </div>
-
 
         <button
           type="button"
@@ -127,6 +135,34 @@ async function logout() {
               >
                 LFLDLE
               </button>
+              <button
+                v-if="!hasQueue && !hasMatch"
+                class="nav-item"
+                :class="{ active: currentRouteName === 'pvp' }"
+                @click="goPvp"
+              >
+                PvP
+              </button>
+
+              <button
+                v-else-if="hasQueue"
+                class="nav-item"
+                type="button"
+                :class="{ active: currentRouteName === 'pvp' }"
+                @click="goPvp"
+              >
+                En queue
+              </button>
+
+              <button
+                v-else-if="hasMatch"
+                class="nav-item"
+                type="button"
+                :class="{ active: currentRouteName === 'pvp_match' || currentRouteName === 'pvp_match_play' }"
+                @click="goMatch"
+              >
+                Match en cours
+              </button>
             </div>
           </div>
 
@@ -156,7 +192,8 @@ async function logout() {
               >
                 LFLDLE
               </button>
-              <button v-if="isAuthenticated"
+              <button
+                v-if="isAuthenticated"
                 class="nav-item"
                 :class="{ active: currentRouteName === 'friends' }"
                 @click="go('friends')"
@@ -213,7 +250,7 @@ async function logout() {
 
 <style scoped>
 .header-wrapper {
-  position: fixed;
+  //position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -230,7 +267,7 @@ async function logout() {
 
   background: radial-gradient(circle at top, var(--header-color-main) 0, var(--header-color-dark) 70%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.16);
-  transform: translateY(calc(-100% + 26px));
+  //transform: translateY(calc(-100% + 26px));
   transition: transform 0.18s ease-out;
   pointer-events: auto;
   position: relative;
@@ -288,7 +325,6 @@ async function logout() {
   filter: drop-shadow(0 0 4px rgba(0,0,0,0.3));
 }
 
-
 .burger-button {
   display: none;
   width: 34px;
@@ -344,6 +380,7 @@ async function logout() {
 }
 
 .group-label {
+  font-weight: 600;
   font-size: 0.74rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;

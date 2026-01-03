@@ -286,10 +286,40 @@ body,
 /*    background-repeat: repeat;*/
 /*}*/
 
+.theBody
+{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.playerTabScroll{
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  display: block;
+  padding-inline: 8px;
+}
+
 .infoNom{
-    display: flex;
-    justify-content: center;
-  	padding-top: 15px;
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 15px;
+  flex-wrap: nowrap;
+  gap: 4px;
+
+  width: fit-content;
+  margin-inline: auto;
+}
+
+.divInfo
+{
+  margin-inline: 2px;
+  margin-top: 15px;
+  margin-bottom: 2px;
+  width: 102px;
+  flex: 0 0 102px;
 }
 
 .divInfo
@@ -460,7 +490,7 @@ footer a
 }
 
 .btn-game:hover {
-    transform: scale(1.03); /* Échelle de 1.2 (20% d'agrandissement) au survol */
+    transform: scale(1.03);
 }
 
 .btn-home .logo:hover, .x_logo:hover{
@@ -689,55 +719,6 @@ p{
     margin: 0;
 }
 
-#admin_header{
-    display: flex;
-    flex-direction: column;
-    padding-block: 30px;
-    gap: 10px;
-    background-color: dimgray;
-}
-
-#admin_header>div{
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-}
-
-#admin_header button {
-    display: inline-block;
-    padding: 10px 20px;
-    font-size: 16px;
-    font-weight: bold;
-    text-align: center;
-    text-decoration: none;
-    cursor: pointer;
-    border: none;
-    border-radius: 8px;
-    transition: all 0.3s ease-in-out;
-}
-
-#admin_body{
-    background-color: lightslategray;
-    flex-grow: 1;
-
-}
-
-#admin_body .clickable_elements{
-    display: grid;
-    grid-template-columns: repeat(5, 1fr); /* 5 éléments par ligne */
-    gap: 10px; /* Espacement entre les éléments */
-    margin-top: 20px;
-}
-
-#admin_body .clickable_elements div{
-    cursor: pointer;
-}
-
-#admin_body img{
-    width: 100px;
-    height: 100px;
-}
-
 .ageContainer {
   position: relative;
   width: 100%;
@@ -840,19 +821,15 @@ p{
         flex-direction: column;
         text-align: center;
 
-        /* Assurez-vous que le corps occupe tout l'écran pour que l'image de fond soit visible partout */
         margin: 0;
         padding: 0;
         /*height: 100%;*/
 
-
-        /* Définir l'image de fond et ses propriétés */
-
-        background-size: cover; /* Ajuster la taille de l'image pour couvrir l'ensemble de l'arrière-plan */
+        background-size: cover;
         background-repeat: no-repeat;
         background-position: center;
-        /*background-position: center; /* Centrer l'image de fond */
-        background-attachment: fixed; /* Fixer l'image de fond, elle ne bougera pas lors du défilement */
+        /*background-position: center; */
+        background-attachment: fixed;
 
         color: white;
 
@@ -863,36 +840,36 @@ p{
         width: 100%;
     }
 
+    .playerTabScroll{
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      display: block;
+      padding-inline: 8px;
+    }
+
     .infoNom{
-        display: flex;
-        justify-content: center;
-    }
+      display: flex;
+      justify-content: flex-start;
+      flex-wrap: nowrap;
+      gap: 4px;
 
-    .dle_body.KCDLE .infoNom{
-        width: 1%;
-        overflow-x: auto;
-        white-space: nowrap;
-        margin-left: -2.5vw;
-        padding-left: 95vw;
-    }
-
-    .dle_body .infoNom{
-        width: 80%;
-        overflow-x: auto;
-        white-space: nowrap;
-        margin-left: -8.5vw;
-        padding-left: 30vw;
+      width: fit-content;
+      margin-inline: auto;
+      white-space: nowrap;
     }
 
     .divInfo
     {
-        margin-inline: 2px;
-        margin-top: 15px;
-        margin-bottom: 2px;
-        flex: 1;
+      margin-inline: 2px;
+      margin-top: 12px;
+      margin-bottom: 2px;
+      width: 92px;
+      flex: 0 0 92px;
     }
 
-    .divText{
+
+  .divText{
         font-size: 70%;
     }
 
@@ -950,36 +927,35 @@ p{
 
     .nationalite, .age, .role, .equipe, .joueur, .jeu, .arrivee, .titres, .avantkc, .maintenant
     {
-        display: flex;
-        flex-direction: column;
-        width: 20vw;
-        height: 100%;
-        align-items: center;
+      display: flex;
+      flex-direction: column;
+      width: auto;
+      height: 100%;
+      align-items: center;
     }
 
     .divInfoJoueur
     {
-        max-height: 80px;
-        max-width: 80px;
+      width: 72px;
+      height: 72px;
+      max-width: 72px;
+      max-height: 72px;
 
-        border: 1px solid black;
-        box-shadow: inset 0 0 6px #000;
+      border: 1px solid black;
+      box-shadow: inset 0 0 6px #000;
 
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
 
-        margin-top: 4px;
+      margin: 2px;
 
-        opacity: 0;
-        transform: translateY(-20px);
-        transition: opacity 1s, transform 1s;
-        flex: 1;
-
-        width: 100%;
-        height: 100%;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: opacity 1s, transform 1s;
     }
+
 
     .arrow{
         scale: 0.05;
@@ -1111,7 +1087,7 @@ p{
     }
 
     .btn-home{
-        height: 10vh;
+        /*height: 10vh;*/
         padding-top: 30px;
     }
 

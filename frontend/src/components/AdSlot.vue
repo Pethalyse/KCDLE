@@ -71,9 +71,12 @@ watch(slotId, (newVal) => {
 
 <style scoped>
 .ad-slot {
+  width: 100%;
   display: flex;
   justify-content: center;
   margin: 12px 0;
+  padding: 0 10px;
+  box-sizing: border-box;
 }
 
 .ad-slot[data-kind='inline'] {
@@ -93,6 +96,9 @@ watch(slotId, (newVal) => {
   max-width: 420px;
   padding: 10px 12px;
   border-radius: 10px;
+
+  box-sizing: border-box;
+  min-width: 0;
 
   background: radial-gradient(
     circle at top left,
@@ -169,7 +175,6 @@ watch(slotId, (newVal) => {
   transition: all 120ms ease-out;
 }
 
-
 .ad-placeholder .fake-title {
   font-weight: 600;
   margin-bottom: 2px;
@@ -178,4 +183,22 @@ watch(slotId, (newVal) => {
   opacity: 0.7;
   font-size: 0.75rem;
 }
+
+.ad-content {
+  margin-top: 4px;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ad-content :deep(iframe),
+.ad-content :deep(img),
+.ad-content :deep(ins),
+.ad-content :deep(div) {
+  max-width: 100% !important;
+}
+
 </style>
