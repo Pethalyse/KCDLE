@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import {computed, onMounted, ref} from 'vue'
-import {useRouter} from 'vue-router'
-import {useAuthStore} from '@/stores/auth'
-import {fetchUserProfile} from '@/api/userProfileApi'
-import type {UserProfileGameStats, UserProfileResponse} from '@/types/userProfile'
-import {handleError} from "@/utils/handleError.ts";
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { fetchUserProfile } from '@/api/userProfileApi'
+import type { UserProfileGameStats, UserProfileResponse } from '@/types/userProfile'
+import { handleError } from '@/utils/handleError'
+
+type TabKey = 'games' | 'pvp' | 'groups'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -13,6 +15,9 @@ const profile = ref<UserProfileResponse | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 
+const tab = ref<TabKey>('games')
+const showAllPrivateOpponents = ref(false)
+
 const hasProfile = computed(() => !!profile.value)
 
 const gamesEntries = computed(() => {
@@ -20,22 +25,28 @@ const gamesEntries = computed(() => {
   return Object.entries(profile.value.games) as [string, UserProfileGameStats][]
 })
 
+const achievementsPct = computed(() => {
+  if (!profile.value) return 0
+  const total = profile.value.achievements.total || 0
+  const unlocked = profile.value.achievements.unlocked || 0
+  if (total <= 0) return 0
+  return Math.round((unlocked / total) * 100)
+})
+
+const privateOpponentsVisible = computed(() => {
+  if (!profile.value) return []
+  const all = profile.value.pvp?.private_opponents ?? []
+  return showAllPrivateOpponents.value ? all : all.slice(0, 5)
+})
+
 function formatDate(dateIso: string | null) {
   if (!dateIso) return '—'
   try {
     const d = new Date(dateIso)
-    return d.toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-    })
+    return d.toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: '2-digit' })
   } catch {
     return dateIso
   }
-}
-
-function goHome() {
-  router.push({ name: 'home' })
 }
 
 function goAchievements() {
@@ -44,7 +55,7 @@ function goAchievements() {
 
 onMounted(async () => {
   if (!auth.isAuthenticated) {
-    goHome();
+    router.push({ name: 'home' })
     return
   }
 
@@ -53,7 +64,7 @@ onMounted(async () => {
     profile.value = await fetchUserProfile()
   } catch (e: any) {
     handleError(e)
-    error.value = "Impossible de charger ton profil."
+    error.value = 'Impossible de charger ton profil.'
   } finally {
     loading.value = false
   }
@@ -62,161 +73,269 @@ onMounted(async () => {
 
 <template>
   <div class="profile-page">
-    <header class="profile-header">
-      <div>
-        <h1>Mon profil</h1>
-      </div>
-    </header>
-
     <main class="profile-main">
-      <div v-if="loading">
-        Chargement du profil...
-      </div>
+      <div v-if="loading">Chargement du profil...</div>
 
-      <div
-        v-else-if="error"
-        class="profile-error"
-      >
+      <div v-else-if="error" class="profile-error">
         {{ error }}
       </div>
 
-      <div
-        v-else-if="hasProfile && profile"
-        class="profile-grid"
-      >
-        <section class="profile-card">
-          <h2>Informations du compte</h2>
-          <ul class="profile-list">
-            <li>
-              <span class="label">Pseudo</span>
-              <span class="value">{{ profile.user.name }}</span>
-            </li>
-            <li>
-              <span class="label">Email</span>
-              <span class="value">{{ profile.user.email }}</span>
-            </li>
-            <li>
-              <span class="label">Inscription</span>
-              <span class="value">{{ formatDate(profile.user.created_at) }}</span>
-            </li>
-          </ul>
-        </section>
+      <div v-else-if="hasProfile && profile" class="profile-layout">
+        <header class="profile-overview">
+          <section class="profile-card profile-identity">
+            <div class="identity-top">
+              <div class="identity-main">
+                <h1 class="profile-title">Mon profil</h1>
+                <div class="identity-meta">
+                  <div class="meta-line">
+                    <span class="meta-label">Pseudo</span>
+                    <span class="meta-value">{{ profile.user.name }}</span>
+                  </div>
+                  <div class="meta-line">
+                    <span class="meta-label">Email</span>
+                    <span class="meta-value">{{ profile.user.email }}</span>
+                  </div>
+                  <div class="meta-line">
+                    <span class="meta-label">Inscription</span>
+                    <span class="meta-value">{{ formatDate(profile.user.created_at) }}</span>
+                  </div>
+                </div>
+              </div>
 
-        <section class="profile-card">
-          <h2>Stats globales</h2>
-          <ul class="profile-list">
-            <li>
-              <span class="label">Victoires totales</span>
-              <span class="value">{{ profile.global_stats.total_wins }}</span>
-            </li>
-            <li>
-              <span class="label">Jours joués</span>
-              <span class="value">{{ profile.global_stats.distinct_days_played }}</span>
-            </li>
-            <li>
-              <span class="label">Moyenne de coups</span>
-              <span class="value">
-                {{
-                  profile.global_stats.global_average_guesses !== null
-                    ? profile.global_stats.global_average_guesses
-                    : '—'
-                }}
-              </span>
-            </li>
-            <li>
-              <span class="label">Première victoire</span>
-              <span class="value">{{ formatDate(profile.global_stats.first_win_at) }}</span>
-            </li>
-            <li>
-              <span class="label">Dernière victoire</span>
-              <span class="value">{{ formatDate(profile.global_stats.last_win_at) }}</span>
-            </li>
-          </ul>
-        </section>
+              <div class="identity-achievements">
+                <div class="ach-title">Succès</div>
+                <div class="ach-kpi">
+                  <span class="ach-big">{{ profile.achievements.unlocked }}</span>
+                  <span class="ach-sep">/</span>
+                  <span class="ach-small">{{ profile.achievements.total }}</span>
+                </div>
+                <div class="ach-bar">
+                  <div class="ach-bar-fill" :style="{ width: achievementsPct + '%' }" />
+                </div>
+                <div class="ach-sub">{{ achievementsPct }}%</div>
 
-        <section class="profile-card">
-          <h2>Succès</h2>
+                <button type="button" class="profile-achievements-btn" @click="goAchievements">
+                  Voir tous mes succès
+                </button>
+              </div>
+            </div>
+          </section>
 
-          <p class="profile-achievements">
-            <strong>{{ profile.achievements.unlocked }}</strong>
-            succès débloqués sur
-            <strong>{{ profile.achievements.total }}</strong>
-          </p>
+          <section class="profile-card profile-kpis">
+            <h2 class="section-title">Aperçu</h2>
 
+            <div class="kpi-grid">
+              <div class="kpi-tile">
+                <div class="kpi-label">Victoires (DLE)</div>
+                <div class="kpi-value">{{ profile.global_stats.total_wins }}</div>
+              </div>
+
+              <div class="kpi-tile">
+                <div class="kpi-label">Jours joués</div>
+                <div class="kpi-value">{{ profile.global_stats.distinct_days_played }}</div>
+              </div>
+
+              <div class="kpi-tile">
+                <div class="kpi-label">Moyenne de coups</div>
+                <div class="kpi-value">
+                  {{ profile.global_stats.global_average_guesses !== null ? profile.global_stats.global_average_guesses : '—' }}
+                </div>
+              </div>
+
+              <div class="kpi-tile">
+                <div class="kpi-label">PvP (matchs)</div>
+                <div class="kpi-value">{{ profile.pvp.total.matches }}</div>
+              </div>
+
+              <div class="kpi-tile">
+                <div class="kpi-label">PvP (winrate)</div>
+                <div class="kpi-value">{{ profile.pvp.total.winrate }}%</div>
+              </div>
+
+              <div class="kpi-tile">
+                <div class="kpi-label">PvP (W/L)</div>
+                <div class="kpi-value">
+                  {{ profile.pvp.total.wins }} - {{ profile.pvp.total.losses }}
+                </div>
+              </div>
+            </div>
+          </section>
+        </header>
+
+        <nav class="profile-tabs">
           <button
             type="button"
-            class="profile-achievements-btn"
-            @click="goAchievements"
+            class="tab-btn"
+            :class="{ active: tab === 'games' }"
+            @click="tab = 'games'"
           >
-            Voir tous mes succès
+            Jeux
           </button>
-        </section>
-
-
-        <section class="profile-card">
-          <h2>Groupes</h2>
-
-          <p v-if="profile.friend_groups.length === 0">
-            Tu n'es encore dans aucun groupe d'amis.
-          </p>
-
-          <ul
-            v-else
-            class="profile-groups"
+          <button
+            type="button"
+            class="tab-btn"
+            :class="{ active: tab === 'pvp' }"
+            @click="tab = 'pvp'"
           >
-            <li
-              v-for="group in profile.friend_groups"
-              :key="group.id"
-            >
-              <div class="group-header">
-                <h3>{{ group.name }}</h3>
-                <span class="group-slug">@{{ group.slug }}</span>
-              </div>
-              <p class="group-meta">
-                Code d'invitation :
-                <span class="code">{{ group.join_code }}</span>
-                <span class="owner" v-if="group.owner?.id">
-                  • Créé par {{ group.owner.name }}
-                </span>
-              </p>
-            </li>
-          </ul>
+            PvP
+          </button>
+          <button
+            type="button"
+            class="tab-btn"
+            :class="{ active: tab === 'groups' }"
+            @click="tab = 'groups'"
+          >
+            Groupes
+          </button>
+        </nav>
+
+        <section v-if="tab === 'games'" class="profile-section">
+          <div class="profile-card">
+            <h2 class="section-title">Stats par jeu</h2>
+
+            <div class="profile-games-grid">
+              <article
+                v-for="[gameCode, stats] in gamesEntries"
+                :key="gameCode"
+                class="profile-game-item"
+              >
+                <div class="game-head">
+                  <h3 class="game-title">{{ gameCode.toUpperCase() }}</h3>
+                  <div class="game-wins">{{ stats.wins }} victoires</div>
+                </div>
+
+                <ul class="profile-list compact">
+                  <li>
+                    <span class="label">Moyenne de coups</span>
+                    <span class="value">{{ stats.average_guesses !== null ? stats.average_guesses : '—' }}</span>
+                  </li>
+                  <li>
+                    <span class="label">Série actuelle</span>
+                    <span class="value">{{ stats.current_streak }}</span>
+                  </li>
+                  <li>
+                    <span class="label">Meilleure série</span>
+                    <span class="value">{{ stats.max_streak }}</span>
+                  </li>
+                </ul>
+              </article>
+            </div>
+          </div>
         </section>
 
-        <section class="profile-card profile-games">
-          <h2>Stats par jeu</h2>
+        <section v-else-if="tab === 'pvp'" class="profile-section">
+          <div class="profile-card">
+            <h2 class="section-title">PvP</h2>
 
-          <div class="profile-games-grid">
-            <article
-              v-for="[gameCode, stats] in gamesEntries"
-              :key="gameCode"
-              class="profile-game-item"
-            >
-              <h3 class="game-title">
-                {{ gameCode.toUpperCase() }}
-              </h3>
+            <div class="pvp-grid">
+              <div class="pvp-box">
+                <div class="pvp-box-head">
+                  <h3 class="pvp-title">Queue</h3>
+                  <div class="pvp-sub">{{ profile.pvp.queue.matches }} matchs</div>
+                </div>
 
-              <ul class="profile-list compact">
-                <li>
-                  <span class="label">Victoires</span>
-                  <span class="value">{{ stats.wins }}</span>
-                </li>
-                <li>
-                  <span class="label">Moyenne de coups</span>
-                  <span class="value">
-                    {{ stats.average_guesses !== null ? stats.average_guesses : '—' }}
-                  </span>
-                </li>
-                <li>
-                  <span class="label">Série actuelle</span>
-                  <span class="value">{{ stats.current_streak }}</span>
-                </li>
-                <li>
-                  <span class="label">Meilleure série</span>
-                  <span class="value">{{ stats.max_streak }}</span>
-                </li>
-              </ul>
-            </article>
+                <div class="pvp-kpis">
+                  <div class="pvp-kpi">
+                    <div class="kpi-label">Winrate</div>
+                    <div class="kpi-value">{{ profile.pvp.queue.winrate }}%</div>
+                  </div>
+                  <div class="pvp-kpi">
+                    <div class="kpi-label">Victoires</div>
+                    <div class="kpi-value">{{ profile.pvp.queue.wins }}</div>
+                  </div>
+                  <div class="pvp-kpi">
+                    <div class="kpi-label">Défaites</div>
+                    <div class="kpi-value">{{ profile.pvp.queue.losses }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pvp-box">
+                <div class="pvp-box-head">
+                  <h3 class="pvp-title">Privé</h3>
+                  <div class="pvp-sub">{{ profile.pvp.private.matches }} matchs</div>
+                </div>
+
+                <div class="pvp-kpis">
+                  <div class="pvp-kpi">
+                    <div class="kpi-label">Winrate</div>
+                    <div class="kpi-value">{{ profile.pvp.private.winrate }}%</div>
+                  </div>
+                  <div class="pvp-kpi">
+                    <div class="kpi-label">Victoires</div>
+                    <div class="kpi-value">{{ profile.pvp.private.wins }}</div>
+                  </div>
+                  <div class="pvp-kpi">
+                    <div class="kpi-label">Défaites</div>
+                    <div class="kpi-value">{{ profile.pvp.private.losses }}</div>
+                  </div>
+                </div>
+
+                <div class="pvp-opponents">
+                  <div class="pvp-opponents-head">
+                    <div class="pvp-opponents-title">Top adversaires</div>
+
+                    <button
+                      v-if="(profile.pvp.private_opponents?.length ?? 0) > 5"
+                      type="button"
+                      class="link-btn"
+                      @click="showAllPrivateOpponents = !showAllPrivateOpponents"
+                    >
+                      {{ showAllPrivateOpponents ? 'Réduire' : 'Afficher plus' }}
+                    </button>
+                  </div>
+
+                  <div v-if="(profile.pvp.private_opponents?.length ?? 0) === 0" class="muted">
+                    Aucun match privé terminé pour le moment.
+                  </div>
+
+                  <ul v-else class="opponents-list">
+                    <li v-for="opp in privateOpponentsVisible" :key="opp.user_id" class="opponent-row">
+                      <div class="opp-line">
+                        <span class="opp-name">{{ opp.name }}</span>
+                        <span class="opp-sep">•</span>
+                        <span class="opp-meta">{{ opp.matches }} matchs</span>
+                        <span class="opp-sep">•</span>
+                        <span class="opp-meta">{{ opp.wins }}W-{{ opp.losses }}L</span>
+                      </div>
+                      <div class="opp-right">
+                        <div class="opp-wr">{{ opp.winrate }}%</div>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="pvp-total">
+              <div class="muted">
+                Total : {{ profile.pvp.total.matches }} matchs • {{ profile.pvp.total.wins }}W-{{ profile.pvp.total.losses }}L • {{ profile.pvp.total.winrate }}%
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section v-else class="profile-section">
+          <div class="profile-card">
+            <h2 class="section-title">Groupes</h2>
+
+            <p v-if="profile.friend_groups.length === 0">
+              Tu n'es encore dans aucun groupe d'amis.
+            </p>
+
+            <ul v-else class="profile-groups">
+              <li v-for="group in profile.friend_groups" :key="group.id">
+                <div class="group-header">
+                  <h3>{{ group.name }}</h3>
+                  <span class="group-slug">@{{ group.slug }}</span>
+                </div>
+                <p class="group-meta">
+                  {{ group.users_count }} utilisateur<span v-if="group.users_count > 1">s</span>
+                  • Code d'invitation : <span class="code">{{ group.join_code }}</span>
+                  <span class="owner" v-if="group.owner?.id"> • Créé par {{ group.owner.name }}</span>
+                </p>
+              </li>
+            </ul>
           </div>
         </section>
       </div>
@@ -233,42 +352,8 @@ onMounted(async () => {
   min-height: 100vh;
 }
 
-.profile-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
-  gap: 12px;
-}
-
-.profile-header h1 {
-  margin: 0;
-  font-size: 1.6rem;
-}
-
-.profile-header p {
-  margin: 4px 0 0;
-  font-size: 0.9rem;
-  opacity: 0.9;
-}
-
-.profile-email {
-  font-size: 0.85rem;
-  opacity: 0.8;
-}
-
-.profile-back {
-  border: none;
-  background: #00a6ff;
-  color: #fff;
-  padding: 6px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
 .profile-main {
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -276,10 +361,10 @@ onMounted(async () => {
   color: #ff6b6b;
 }
 
-.profile-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+.profile-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .profile-card {
@@ -290,9 +375,198 @@ onMounted(async () => {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
 }
 
-.profile-card h2 {
+.profile-overview {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 14px;
+}
+
+.profile-title {
   margin: 0 0 8px;
+  font-size: 1.6rem;
+}
+
+.section-title {
+  margin: 0 0 10px;
   font-size: 1.1rem;
+}
+
+.profile-identity .identity-top {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.identity-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.meta-label {
+  opacity: 0.8;
+}
+
+.meta-value {
+  font-weight: 600;
+}
+
+.identity-achievements {
+  background: rgba(15, 18, 28, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 10px 10px;
+}
+
+.ach-title {
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+.ach-kpi {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ach-big {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.ach-sep {
+  opacity: 0.6;
+}
+
+.ach-small {
+  opacity: 0.9;
+  font-weight: 700;
+}
+
+.ach-bar {
+  margin-top: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.ach-bar-fill {
+  height: 100%;
+  background: rgba(0, 166, 255, 0.55);
+}
+
+.ach-sub {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.profile-achievements-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #00a6ff;
+  border-radius: 6px;
+  background: rgba(0, 166, 255, 0.15);
+  color: #00a6ff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s ease;
+}
+
+.profile-achievements-btn:hover {
+  background: rgba(0, 166, 255, 0.25);
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.kpi-tile {
+  background: rgba(15, 18, 28, 0.9);
+  border-radius: 6px;
+  padding: 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.kpi-label {
+  opacity: 0.8;
+  font-size: 0.85rem;
+}
+
+.kpi-value {
+  margin-top: 4px;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.profile-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 18, 28, 0.7);
+  color: #f0f0f0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.tab-btn.active {
+  border-color: rgba(0, 166, 255, 0.6);
+  background: rgba(0, 166, 255, 0.12);
+}
+
+.profile-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.profile-game-item {
+  background: rgba(15, 18, 28, 0.9);
+  border-radius: 6px;
+  padding: 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.game-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.game-title {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.game-wins {
+  font-size: 0.85rem;
+  opacity: 0.85;
 }
 
 .profile-list {
@@ -320,14 +594,125 @@ onMounted(async () => {
   font-weight: 600;
 }
 
-.profile-achievements {
-  margin: 4px 0;
+.pvp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
-.profile-achievements-hint {
-  margin: 4px 0 0;
+.pvp-box {
+  background: rgba(15, 18, 28, 0.9);
+  border-radius: 8px;
+  padding: 12px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.pvp-box-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.pvp-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.pvp-sub {
+  opacity: 0.85;
   font-size: 0.85rem;
-  opacity: 0.8;
+}
+
+.pvp-kpis {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pvp-kpi {
+  background: rgba(10, 12, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 10px 10px;
+}
+
+.pvp-opponents {
+  margin-top: 12px;
+}
+
+.pvp-opponents-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.pvp-opponents-title {
+  font-weight: 700;
+  opacity: 0.95;
+}
+
+.link-btn {
+  border: none;
+  background: transparent;
+  color: #00a6ff;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.opponents-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.opponent-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.opp-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.opp-name {
+  font-weight: 700;
+}
+
+.opp-meta {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.opp-sep {
+  opacity: 0.5;
+}
+
+.opponent-row:first-child {
+  border-top: none;
+}
+
+.opp-wr {
+  font-weight: 800;
+}
+
+.pvp-total {
+  margin-top: 10px;
+}
+
+.muted {
+  opacity: 0.85;
 }
 
 .profile-groups {
@@ -376,55 +761,27 @@ onMounted(async () => {
   margin-left: 4px;
 }
 
-.profile-games {
-  grid-column: 1 / -1;
-}
-
-.profile-games-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-  margin-top: 4px;
-}
-
-.profile-game-item {
-  background: rgba(15, 18, 28, 0.9);
-  border-radius: 6px;
-  padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.game-title {
-  margin: 0 0 4px;
-  font-size: 0.95rem;
-}
-
-.profile-achievements-btn {
-  margin-top: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #00a6ff;
-  border-radius: 6px;
-  background: rgba(0, 166, 255, 0.15);
-  color: #00a6ff;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.15s ease;
-}
-
-.profile-achievements-btn:hover {
-  background: rgba(0, 166, 255, 0.25);
-}
-
-
-@media (max-width: 600px) {
-  .profile-header {
-    flex-direction: column;
+@media (max-width: 900px) {
+  .profile-overview {
+    grid-template-columns: 1fr;
   }
 
-  .profile-back {
-    align-self: stretch;
-    text-align: center;
+  .profile-identity .identity-top {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pvp-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .kpi-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

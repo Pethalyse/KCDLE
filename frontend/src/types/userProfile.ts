@@ -37,7 +37,31 @@ export interface UserProfileFriendGroup {
   name: string
   slug: string
   join_code: string
+  users_count: number
   owner: UserProfileFriendGroupOwner
+}
+
+export interface UserProfilePvpTotals {
+  matches: number
+  wins: number
+  losses: number
+  winrate: number
+}
+
+export interface UserProfilePvpOpponent {
+  user_id: number
+  name: string
+  matches: number
+  wins: number
+  losses: number
+  winrate: number
+}
+
+export interface UserProfilePvpStats {
+  queue: UserProfilePvpTotals
+  private: UserProfilePvpTotals
+  total: UserProfilePvpTotals
+  private_opponents: UserProfilePvpOpponent[]
 }
 
 export interface UserProfileResponse {
@@ -46,4 +70,5 @@ export interface UserProfileResponse {
   games: Record<GameCode, UserProfileGameStats>
   achievements: UserProfileAchievements
   friend_groups: UserProfileFriendGroup[]
+  pvp: UserProfilePvpStats
 }
