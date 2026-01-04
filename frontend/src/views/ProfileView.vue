@@ -420,7 +420,6 @@ onMounted(async () => {
 @media (max-width: 600px) {
   .profile-header {
     flex-direction: column;
-    align-items: flex-start;
   }
 
   .profile-back {

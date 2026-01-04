@@ -615,7 +615,6 @@ watch(
 @media (max-width: 700px) {
   .leaderboard-header {
     flex-direction: column;
-    align-items: flex-start;
     gap: 8px;
   }
 
