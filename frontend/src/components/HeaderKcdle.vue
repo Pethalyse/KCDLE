@@ -198,7 +198,7 @@ async function logout() {
                 :class="{ active: currentRouteName === 'friends' }"
                 @click="go('friends')"
               >
-                Groupes d’amis
+                Groupes
               </button>
             </div>
           </div>

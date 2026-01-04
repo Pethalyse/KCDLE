@@ -154,7 +154,7 @@ onMounted(async () => {
 
 
         <section class="profile-card">
-          <h2>Groupes d'amis</h2>
+          <h2>Groupes</h2>
 
           <p v-if="profile.friend_groups.length === 0">
             Tu n'es encore dans aucun groupe d'amis.

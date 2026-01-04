@@ -290,7 +290,7 @@ watch(
         class="leaderboard-groups leaderboard-groups--guest"
       >
         <p class="leaderboard-groups-hint">
-          Connecte-toi pour accéder au classement de tes groupes d’amis.
+          Connecte-toi pour accéder au classement de tes groupes.
         </p>
       </section>
 

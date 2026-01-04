@@ -60,7 +60,7 @@ async function loadGroups() {
     const data = await fetchFriendGroups()
     groups.value = data.groups
   } catch {
-    error.value = "Impossible de charger vos groupes d'amis."
+    error.value = "Impossible de charger vos groupes."
   } finally {
     loading.value = false
   }
@@ -96,10 +96,10 @@ async function handleCreateGroup() {
       owner: auth.user ? { id: auth.user.id, name: auth.user.name } : null,
     })
 
-    flash.success('Groupe créé avec succès.', 'Groupes d’amis')
+    flash.success('Groupe créé avec succès.', 'Groupes')
     resetCreateForm()
   } catch {
-    flash.error("La création du groupe a échoué.", 'Groupes d’amis')
+    flash.error("La création du groupe a échoué.", 'Groupes')
   } finally {
     creating.value = false
   }
@@ -129,10 +129,10 @@ async function handleJoinGroup() {
       })
     }
 
-    flash.success('Vous avez rejoint le groupe.', 'Groupes d’amis')
+    flash.success('Vous avez rejoint le groupe.', 'Groupes')
     resetJoinForm()
   } catch {
-    flash.error("Impossible de rejoindre ce groupe.", 'Groupes d’amis')
+    flash.error("Impossible de rejoindre ce groupe.", 'Groupes')
   } finally {
     joining.value = false
   }
@@ -145,9 +145,9 @@ async function handleLeaveGroup(group: FriendGroupSummary) {
   try {
     await leaveFriendGroup(group.slug)
     groups.value = groups.value.filter(g => g.id !== group.id)
-    flash.info('Vous avez quitté ce groupe.', 'Groupes d’amis')
+    flash.info('Vous avez quitté ce groupe.', 'Groupes')
   } catch {
-    flash.error("Impossible de quitter ce groupe.", 'Groupes d’amis')
+    flash.error("Impossible de quitter ce groupe.", 'Groupes')
   }
 }
 
@@ -158,9 +158,9 @@ async function handleDeleteGroup(group: FriendGroupSummary) {
   try {
     await deleteFriendGroup(group.slug)
     groups.value = groups.value.filter(g => g.id !== group.id)
-    flash.success('Le groupe a été supprimé.', 'Groupes d’amis')
+    flash.success('Le groupe a été supprimé.', 'Groupes')
   } catch {
-    flash.error("La suppression du groupe a échoué.", 'Groupes d’amis')
+    flash.error("La suppression du groupe a échoué.", 'Groupes')
   }
 }
 
@@ -186,7 +186,7 @@ onMounted(loadGroups)
 <template>
   <div class="friends-page">
     <header class="friends-header">
-      <h1>Groupes d’amis</h1>
+      <h1>Groupes</h1>
       <p>Crée un groupe, rejoins tes amis et comparez vos scores ensemble.</p>
     </header>
 
