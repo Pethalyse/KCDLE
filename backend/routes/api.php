@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\AchievementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CreditController;
 use App\Http\Controllers\Api\DailyGameController;
+use App\Http\Controllers\Api\EmailVerificationController;
+use App\Http\Controllers\Api\EmailVerificationNotificationController;
 use App\Http\Controllers\Api\FriendGroupController;
 use App\Http\Controllers\Api\GameGuessController;
 use App\Http\Controllers\Api\GamePlayerController;
@@ -39,6 +41,11 @@ Route::prefix('auth')
     ->group(function () {
         Route::post('register', [AuthController::class, 'register']);
         Route::post('login', [AuthController::class, 'login']);
+        Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
+            ->middleware(['throttle:6,1']);
+        Route::get('email/verify/{id}/{hash}', EmailVerificationController::class)
+            ->middleware(['signed'])
+            ->name('verification.verify');
     });
 
 Route::prefix('auth')

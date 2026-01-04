@@ -91,7 +91,6 @@ class CountriesTableSeeder extends Seeder
             ['code' => 'IR', 'name' => 'Iran'],
             ['code' => 'IQ', 'name' => 'Iraq'],
             ['code' => 'IE', 'name' => 'Ireland'],
-            ['code' => 'IL', 'name' => 'Israel'],
             ['code' => 'IT', 'name' => 'Italy'],
             ['code' => 'JM', 'name' => 'Jamaica'],
             ['code' => 'JP', 'name' => 'Japan'],
