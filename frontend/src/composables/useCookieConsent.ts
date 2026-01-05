@@ -91,7 +91,7 @@ function toggleDetails() {
 function openCookieManager() {
   initIfNeeded()
   visible.value = true
-  showDetails.value = true
+  showDetails.value = false
 }
 
 export function useCookieConsent() {

@@ -34,14 +34,14 @@ class LegalController extends Controller
     {
         return response()->json([
             'title' => 'Mentions légales',
-            'last_updated' => '2025-12-04',
+            'last_updated' => '2026-01-05',
 
             'editor' => [
                 'title' => '1. Éditeur du site',
                 'paragraphs' => [
-                    "Le site KCDLE est un projet personnel, non commercial, développé par un particulier.",
-                    "Éditeur du site : Yanhis Mezence",
-                    "Courriel : yanhismez@icloud.com",
+                    "Le site KCDLE est un projet web édité à titre personnel.",
+                    "Éditeur : Yanhis Mezence",
+                    "Contact : yanhismez@icloud.com",
                     "Conformément à l’article 6 III-2 de la loi pour la Confiance dans l’Économie Numérique (LCEN), l’éditeur non professionnel a communiqué ses informations d’identité à l’hébergeur du site.",
                 ],
             ],
@@ -57,48 +57,57 @@ class LegalController extends Controller
                 ],
             ],
 
-            'intellectual_property' => [
-                'title' => '3. Propriété intellectuelle',
+            'service' => [
+                'title' => '3. Description du service',
                 'paragraphs' => [
-                    "Le site KCDLE est un projet de fans, sans but lucratif. Il n’est pas affilié, sponsorisé ou validé par la Karmine Corp, Riot Games, ni par aucune structure esport citée sur le site.",
+                    "KCDLE propose des jeux de devinettes autour de l’esport (dont des modes de jeu quotidiens), ainsi que des fonctionnalités communautaires et compétitives.",
+                    "Certaines fonctionnalités nécessitent un compte (profil, statistiques, succès, groupes d’amis, PVP et lobbies privés).",
+                    "Le Site peut afficher de la publicité et utiliser un outil de mesure d’audience, sous réserve de votre consentement via le gestionnaire de cookies/traceurs.",
+                ],
+            ],
+
+            'intellectual_property' => [
+                'title' => '4. Propriété intellectuelle',
+                'paragraphs' => [
+                    "KCDLE est un projet de fans. Il n’est pas affilié, sponsorisé ou validé par la Karmine Corp, Riot Games, ni par aucune structure esport citée sur le site.",
                     "League of Legends, Riot Games et tous les éléments associés sont des marques déposées de Riot Games, Inc.",
                     "Les noms, logos et marques des équipes, ligues et organisations esport restent la propriété exclusive de leurs détenteurs respectifs.",
-                    "Les visuels originaux créés pour le KCDLE (interfaces, icônes, assets graphiques spécifiques, etc.) sont protégés par le droit d’auteur. Toute reproduction ou réutilisation sans autorisation est interdite.",
+                    "Les contenus originaux créés pour KCDLE (interface, code, organisation, éléments graphiques originaux, etc.) sont protégés. Toute reproduction ou réutilisation non autorisée est interdite.",
                 ],
             ],
 
             'personal_data' => [
-                'title' => '4. Données personnelles',
+                'title' => '5. Données personnelles',
                 'paragraphs' => [
                     "Le traitement des données personnelles liées à l’utilisation du site KCDLE est décrit dans la Politique de confidentialité.",
-                    "Cette Politique de confidentialité est consultable à l’adresse suivante : /confidentialite.",
-                    "Pour toute question ou demande relative à vos données personnelles, vous pouvez nous contacter à l’adresse : yanhismez@icloud.com.",
+                    "La Politique de confidentialité est consultable à l’adresse suivante : /confidentialite.",
+                    "Pour toute question ou demande relative à vos données personnelles : yanhismez@icloud.com.",
                 ],
             ],
 
             'cookies' => [
-                'title' => '5. Cookies',
+                'title' => '6. Cookies et traceurs',
                 'paragraphs' => [
-                    "Le site peut utiliser des cookies techniques et, le cas échéant, des cookies publicitaires ou de mesure d’audience.",
-                    "Les modalités de gestion des cookies et des traceurs sont détaillées dans la Politique de confidentialité, qui précise notamment les finalités et les bases légales des traitements concernés.",
+                    "Le site utilise des traceurs strictement nécessaires (ex. stockage local pour la session applicative) et peut proposer des traceurs de mesure d’audience et/ou publicitaires.",
+                    "Les traceurs non essentiels sont soumis à votre consentement via le gestionnaire de cookies/traceurs, et vous pouvez modifier votre choix à tout moment.",
                 ],
             ],
 
             'responsibility' => [
-                'title' => '6. Responsabilité',
+                'title' => '7. Responsabilité',
                 'paragraphs' => [
-                    "L’éditeur du site met tout en œuvre pour proposer des informations exactes et à jour. Toutefois, aucune garantie n’est apportée quant à l’exhaustivité ou l’exactitude des données (notamment celles concernant les joueurs, équipes, compétitions ou résultats).",
+                    "L’éditeur met tout en œuvre pour assurer l’accès et le bon fonctionnement du Site, mais n’apporte aucune garantie d’absence d’erreurs ou d’interruptions.",
+                    "Les informations affichées (joueurs, équipes, compétitions, données de jeu) peuvent évoluer et contenir des imprécisions. Elles sont fournies « en l’état ».",
                     "L’éditeur ne saurait être tenu responsable :",
-                    "- d’éventuelles erreurs ou omissions dans le contenu du site ;",
-                    "- d’une indisponibilité temporaire ou prolongée du site ;",
-                    "- de dommages directs ou indirects liés à l’utilisation du site ou des informations qui y sont proposées ;",
-                    "- du contenu des sites externes vers lesquels des liens hypertextes peuvent renvoyer.",
-                    "Le site KCDLE est fourni à titre gratuit, « en l’état », sans aucune garantie de résultat.",
+                    "- d’éventuelles erreurs ou omissions ;",
+                    "- d’une indisponibilité temporaire ou prolongée du Site ;",
+                    "- de dommages directs ou indirects liés à l’utilisation du Site ;",
+                    "- du contenu de sites tiers accessibles via des liens externes.",
                 ],
             ],
 
             'law' => [
-                'title' => '7. Droit applicable',
+                'title' => '8. Droit applicable',
                 'paragraphs' => [
                     "Les présentes mentions légales sont régies par le droit français.",
                     "En cas de litige et à défaut d’accord amiable, les tribunaux français seront seuls compétents.",
@@ -106,9 +115,9 @@ class LegalController extends Controller
             ],
 
             'contact' => [
-                'title' => '8. Contact',
+                'title' => '9. Contact',
                 'paragraphs' => [
-                    "Pour toute question concernant le site, son fonctionnement ou ses mentions légales, vous pouvez nous écrire à l’adresse suivante :",
+                    "Pour toute question concernant le site, son fonctionnement, ou les mentions légales :",
                     "Adresse e-mail : yanhismez@icloud.com",
                 ],
             ],

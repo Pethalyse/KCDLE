@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import {computed, onMounted} from 'vue'
 import { useCookieConsent } from '@/composables/useCookieConsent'
 
 const {
@@ -11,188 +12,401 @@ const {
   savePreferences,
   toggleDetails,
 } = useCookieConsent()
+
+const summary = computed(() => {
+  const items: string[] = ['Essentiels']
+  if (analyticsChecked.value) items.push('Audience')
+  if (adsChecked.value) items.push('Publicité')
+  return items.join(' · ')
+})
+
 </script>
 
 <template>
-  <div
-    v-if="visible"
-    class="cookie-banner"
-  >
-    <div class="cookie-content">
-      <h2>Gestion des cookies</h2>
-
-      <p class="cookie-text">
-        Nous utilisons des cookies et un stockage local pour faire fonctionner le jeu (essentiels) et, si vous l’acceptez,
-        pour mesurer l’audience et afficher des publicités de nos partenaires.
-      </p>
-
-      <p class="cookie-text">
-        Les cookies essentiels sont toujours activés, car ils sont nécessaires au fonctionnement du site (par exemple pour
-        sauvegarder vos parties).
-      </p>
-
-      <button
-        type="button"
-        class="cookie-link"
-        @click="toggleDetails"
-      >
-        {{ showDetails ? 'Masquer le détail' : 'Personnaliser' }}
-      </button>
-
-      <div
-        v-if="showDetails"
-        class="cookie-options"
-      >
-        <div class="cookie-option">
-          <div>
-            <strong>Cookies essentiels</strong>
-            <p>Indispensables au fonctionnement du jeu (stockage de vos parties, préférences techniques).</p>
+  <Teleport to="body">
+    <div
+      v-if="visible"
+      class="cc-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Gestion des cookies"
+    >
+      <div class="cc-card">
+        <div class="cc-head">
+          <div class="cc-title">
+            <div>
+              <h2>Gestion des cookies</h2>
+              <p class="cc-subtitle">
+                Choisis ce que tu autorises.
+              </p>
+            </div>
           </div>
-          <span class="cookie-badge">Toujours activés</span>
+
+          <button
+            type="button"
+            class="cc-link"
+            @click="toggleDetails"
+          >
+            {{ showDetails ? 'Masquer' : 'Personnaliser' }}
+          </button>
         </div>
 
-        <div class="cookie-option">
-          <label>
-            <input
-              v-model="analyticsChecked"
-              type="checkbox"
-            />
-            <strong>Mesure d’audience</strong>
-          </label>
-          <p>Statistiques anonymisées de fréquentation (Plausible) pour améliorer le site.</p>
-        </div>
+        <div class="cc-body">
+          <p class="cc-text">
+            KCDLE utilise des technologies de stockage (cookies et/ou stockage local) pour faire fonctionner le site
+            (connexion, sauvegarde de parties, préférences) et, si tu l’acceptes, pour mesurer l’audience et afficher des
+            publicités.
+          </p>
 
-        <div class="cookie-option">
-          <label>
-            <input
-              v-model="adsChecked"
-              type="checkbox"
-            />
-            <strong>Publicité personnalisée</strong>
-          </label>
-          <p>Affichage de publicités adaptées à votre navigation (désactivé tant que vous ne l’acceptez pas).</p>
-        </div>
-      </div>
+          <div class="cc-list">
+            <div class="cc-item">
+              <div class="cc-item-left">
+                <strong>Essentiels</strong>
+                <p>
+                  Indispensables au fonctionnement : session, sauvegarde de parties, préférences techniques.
+                </p>
+              </div>
+              <span class="cc-pill ok">Toujours actifs</span>
+            </div>
 
-      <div class="cookie-actions">
-        <button
-          type="button"
-          class="cookie-btn secondary"
-          @click="refuseAll"
-        >
-          Tout refuser
-        </button>
-        <button
-          type="button"
-          class="cookie-btn secondary"
-          @click="savePreferences"
-        >
-          Enregistrer mes choix
-        </button>
-        <button
-          type="button"
-          class="cookie-btn"
-          @click="acceptAll"
-        >
-          Tout accepter
-        </button>
+            <div
+              v-if="showDetails"
+              class="cc-item"
+            >
+              <div class="cc-item-left">
+                <strong>Mesure d’audience</strong>
+                <p>
+                  Statistiques de fréquentation via Plausible pour améliorer le site (chargé uniquement si accepté).
+                </p>
+              </div>
+
+              <label class="cc-switch" aria-label="Activer la mesure d’audience">
+                <input
+                  v-model="analyticsChecked"
+                  type="checkbox"
+                />
+                <span class="cc-slider" />
+              </label>
+            </div>
+
+            <div
+              v-if="showDetails"
+              class="cc-item"
+            >
+              <div class="cc-item-left">
+                <strong>Publicité</strong>
+                <p>
+                  Chargement du script publicitaire (EthicalAds) uniquement si accepté.
+                </p>
+              </div>
+
+              <label class="cc-switch" aria-label="Activer la publicité">
+                <input
+                  v-model="adsChecked"
+                  type="checkbox"
+                />
+                <span class="cc-slider" />
+              </label>
+            </div>
+          </div>
+
+          <div class="cc-footer">
+            <div class="cc-note">
+              Tu peux changer d’avis à tout moment via <strong>« Paramètres des cookies »</strong> dans le footer.
+            </div>
+
+            <div class="cc-actions">
+              <button
+                type="button"
+                class="cc-btn ghost"
+                @click="refuseAll"
+              >
+                Tout refuser
+              </button>
+
+              <button
+                type="button"
+                class="cc-btn soft"
+                @click="savePreferences"
+              >
+                Enregistrer
+              </button>
+
+              <button
+                type="button"
+                class="cc-btn primary"
+                @click="acceptAll"
+              >
+                Tout accepter
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>
-.cookie-banner {
+.cc-overlay {
   position: fixed;
+  inset: 0;
   z-index: 9999;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 16px;
   display: flex;
+  align-items: center;
   justify-content: center;
-  pointer-events: none;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
 }
 
-.cookie-content {
-  max-width: 720px;
-  width: 100%;
-  background: #1f2937;
-  color: #f9fafb;
+.cc-card {
+  width: min(860px, 100%);
+  border-radius: 16px;
+  background: rgba(17, 24, 39, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.cc-head {
+  display: grid;
+  grid-template-columns: 2fr auto;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cc-title {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-self: center;
+}
+
+.cc-badge {
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
-  padding: 16px 20px;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
-  pointer-events: auto;
-  font-size: 0.95rem;
+  display: grid;
+  place-items: center;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
 }
 
-.cookie-text {
-  margin-bottom: 8px;
-  line-height: 1.4;
-  text-align: justify;
+h2 {
+  margin: 0;
+  color: #f9fafb;
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
-.cookie-link {
-  background: none;
+.cc-subtitle {
+  margin: 2px 0 0 0;
+  color: rgba(229, 231, 235, 0.85);
+  font-size: 0.9rem;
+}
+
+.cc-summary {
+  opacity: 0.95;
+}
+
+.cc-link {
   border: none;
+  background: transparent;
   color: #93c5fd;
-  padding: 0;
-  margin-top: 4px;
   cursor: pointer;
   font-size: 0.9rem;
   text-decoration: underline;
+  padding: 6px 8px;
+  border-radius: 10px;
+  justify-self: end;
 }
 
-.cookie-options {
-  margin-top: 12px;
-  border-top: 1px solid rgba(148, 163, 184, 0.5);
-  padding-top: 10px;
+.cc-link:hover {
+  background: rgba(147, 197, 253, 0.10);
+  text-decoration: none;
 }
 
-.cookie-option {
+.cc-body {
+  padding: 14px 18px 16px 18px;
+}
+
+.cc-text {
+  margin: 0 0 12px 0;
+  color: rgba(243, 244, 246, 0.92);
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.cc-list {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cc-item {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.cookie-option p {
-  margin-top: 2px;
+.cc-item-left strong {
+  color: #f9fafb;
+  font-size: 0.95rem;
+}
+
+.cc-item-left p {
+  margin: 3px 0 0 0;
+  color: rgba(229, 231, 235, 0.85);
   font-size: 0.85rem;
-  opacity: 0.9;
+  line-height: 1.35;
 }
 
-.cookie-badge {
-  font-size: 0.8rem;
-  padding: 4px 8px;
+.cc-pill {
+  font-size: 0.78rem;
+  padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.6);
+  border: 1px solid transparent;
+  white-space: nowrap;
 }
 
-.cookie-actions {
+.cc-pill.ok {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: rgba(209, 250, 229, 0.95);
+}
+
+.cc-footer {
   margin-top: 12px;
   display: flex;
-  justify-content: center;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.cc-note {
+  color: rgba(229, 231, 235, 0.75);
+  font-size: 0.85rem;
+}
+
+.cc-actions {
+  display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.cookie-btn {
+.cc-btn {
   border-radius: 999px;
-  border: none;
-  padding: 6px 16px;
+  padding: 8px 14px;
   font-size: 0.9rem;
   cursor: pointer;
-  background: #3b82f6;
-  color: white;
-  font-weight: 500;
+  border: 1px solid transparent;
+  font-weight: 600;
 }
 
-.cookie-btn.secondary {
-  background: #111827;
-  border: 1px solid #4b5563;
-  color: #e5e7eb;
+.cc-btn.primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.cc-btn.primary:hover {
+  filter: brightness(1.06);
+}
+
+.cc-btn.ghost {
+  background: transparent;
+  color: rgba(229, 231, 235, 0.92);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.cc-btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cc-btn.soft {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(229, 231, 235, 0.92);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+.cc-btn.soft:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.cc-switch {
+  position: relative;
+  width: 46px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.cc-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.cc-slider {
+  width: 46px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  position: relative;
+  transition: 180ms ease;
+}
+
+.cc-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(229, 231, 235, 0.95);
+  transition: 180ms ease;
+}
+
+.cc-switch input:checked + .cc-slider {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
+.cc-switch input:checked + .cc-slider::after {
+  transform: translateX(18px);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+@media (max-width: 540px) {
+  .cc-head {
+    align-items: center;
+  }
+
+  .cc-link {
+    white-space: nowrap;
+  }
+
+  .cc-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cc-actions {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>
