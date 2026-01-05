@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import SimpleImg from '@/components/SimpleImg.vue'
 import Credit from '@/components/Credit.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useFlashStore } from '@/stores/flash'
+import { handleError } from '@/utils/handleError'
 
 const router = useRouter()
 const route = useRoute()
@@ -25,8 +26,9 @@ const fieldErrors = reactive<{
   passwordConfirmation?: string
 }>({})
 
-const generalError = ref<string | null>(null)
 const submitting = ref(false)
+const showPassword = ref(false)
+const showPasswordConfirmation = ref(false)
 
 function getSafeRedirect(v: unknown): string {
   if (typeof v !== 'string') return '/'
@@ -34,14 +36,13 @@ function getSafeRedirect(v: unknown): string {
   return v
 }
 
-const redirectTo = getSafeRedirect(route.query.redirect)
+const redirectTo = computed(() => getSafeRedirect(route.query.redirect))
 
 function resetErrors() {
   fieldErrors.name = undefined
   fieldErrors.email = undefined
   fieldErrors.password = undefined
   fieldErrors.passwordConfirmation = undefined
-  generalError.value = null
 }
 
 async function handleSubmit() {
@@ -49,8 +50,15 @@ async function handleSubmit() {
 
   resetErrors()
 
+  if (!form.name.trim()) {
+    fieldErrors.name = 'Le pseudo est obligatoire.'
+    flash.error('Le pseudo est obligatoire.', 'Création de compte')
+    return
+  }
+
   if (form.password !== form.passwordConfirmation) {
     fieldErrors.passwordConfirmation = 'Les mots de passe ne correspondent pas.'
+    flash.error('Les mots de passe ne correspondent pas.', 'Création de compte')
     return
   }
 
@@ -58,49 +66,49 @@ async function handleSubmit() {
 
   try {
     const data = await auth.register({
-      name: form.name,
-      email: form.email,
+      name: form.name.trim(),
+      email: form.email.trim(),
       password: form.password,
+      password_confirmation: form.passwordConfirmation,
     })
 
-    if (data && Array.isArray(data.unlocked_achievements) && data.unlocked_achievements.length > 0) {
-      data.unlocked_achievements.forEach((achievement: any) => {
-        if (!achievement || !achievement.name) return
-
-        flash.push(
-          'success',
-          achievement.name,
-          'Succès débloqué',
-        )
-      })
+    if (data?.requires_email_verification) {
+      flash.info("Un e-mail de validation vient de t'être envoyé. Pense à vérifier tes spams.", 'Validation e-mail')
     }
 
-    flash.success('Compte créé avec succès.', 'Bienvenue sur KCDLE')
-    await router.push(redirectTo)
+    // flash.success('Compte créé avec succès. Tu dois valider ton e-mail pour te connecter.', 'Inscription réussie')
+
+    const query: Record<string, string> = {}
+    if (typeof route.query.redirect === 'string') query.redirect = route.query.redirect
+    await router.push({ name: 'login', query })
   } catch (error: any) {
-    const response = error?.response
-    if (response?.status === 422) {
-      const data = response.data
+    const status = error?.response?.status
+    const data = error?.response?.data
 
+    if (status === 422) {
       if (data?.errors) {
-        if (Array.isArray(data.errors.name)) {
-          fieldErrors.name = data.errors.name[0]
-        }
-        if (Array.isArray(data.errors.email)) {
-          fieldErrors.email = data.errors.email[0]
-        }
-        if (Array.isArray(data.errors.password)) {
-          fieldErrors.password = data.errors.password[0]
-        }
-      } else if (data?.message) {
-        generalError.value = data.message
-      } else {
-        generalError.value = 'Impossible de créer le compte.'
+        if (Array.isArray(data.errors.name)) fieldErrors.name = data.errors.name[0]
+        if (Array.isArray(data.errors.email)) fieldErrors.email = data.errors.email[0]
+        if (Array.isArray(data.errors.password)) fieldErrors.password = data.errors.password[0]
+
+        const first =
+          fieldErrors.name ||
+          fieldErrors.email ||
+          fieldErrors.password ||
+          fieldErrors.passwordConfirmation ||
+          (typeof data?.message === 'string' ? data.message : null)
+
+        flash.error(first || 'Impossible de créer le compte.', 'Création de compte')
+        return
       }
-    } else {
-      generalError.value = 'Une erreur inattendue est survenue.'
+
+      if (typeof data?.message === 'string') {
+        flash.error(data.message, 'Création de compte')
+        return
+      }
     }
-    flash.error("L'inscription a échoué. Vérifie le formulaire.")
+
+    handleError(error)
   } finally {
     submitting.value = false
   }
@@ -109,338 +117,309 @@ async function handleSubmit() {
 function goHome() {
   void router.push({ name: 'home' })
 }
+
+watch(
+  () => [form.name, form.email, form.password, form.passwordConfirmation],
+  () => resetErrors(),
+)
 </script>
 
 <template>
-  <div class="dle-page HOME">
-    <header class="header_HOME">
+  <div class="auth-page">
+    <header class="auth-header">
       <div class="auth-logo">
-        <SimpleImg
-          class="logo"
-          alt="KCDLE"
-          img="HOMEDLE_Header-rbg.png"
-          @onclick="goHome"
-        />
+        <SimpleImg class="logo" alt="KCDLE" img="HOMEDLE_Header-rbg.png" @onclick="goHome" />
       </div>
     </header>
 
-    <main class="auth-container">
+    <main class="auth-main">
       <section class="auth-card">
-        <h1 class="auth-title">
-          Création de compte
-        </h1>
-        <p class="auth-subtitle">
-          Crée un compte pour garder l’historique de tes parties et tes récompenses.
-        </p>
+        <div class="auth-head">
+          <h1 class="auth-title">Inscription</h1>
+          <p class="auth-subtitle">Ton e-mail devra être validé pour activer ton compte.</p>
+        </div>
 
         <form class="auth-form" @submit.prevent="handleSubmit">
           <div class="auth-field">
             <label for="name">Pseudo</label>
             <input
               id="name"
-              v-model="form.name"
+              v-model.trim="form.name"
               type="text"
               autocomplete="nickname"
               required
               :disabled="submitting"
               maxlength="20"
+              placeholder="Pseudo"
             />
-            <p v-if="fieldErrors.name" class="auth-error">
-              {{ fieldErrors.name }}
-            </p>
+            <p v-if="fieldErrors.name" class="auth-error">{{ fieldErrors.name }}</p>
           </div>
 
           <div class="auth-field">
             <label for="email">Adresse e-mail</label>
             <input
               id="email"
-              v-model="form.email"
+              v-model.trim="form.email"
               type="email"
               autocomplete="email"
               required
               :disabled="submitting"
-              maxlength="255"
+              placeholder="Adresse e-mail"
             />
-            <p v-if="fieldErrors.email" class="auth-error">
-              {{ fieldErrors.email }}
-            </p>
+            <p v-if="fieldErrors.email" class="auth-error">{{ fieldErrors.email }}</p>
           </div>
 
           <div class="auth-field">
             <label for="password">Mot de passe</label>
-            <input
-              id="password"
-              v-model="form.password"
-              type="password"
-              autocomplete="new-password"
-              required
-              :disabled="submitting"
-              minlength="8"
-            />
-            <p v-if="fieldErrors.password" class="auth-error">
-              {{ fieldErrors.password }}
-            </p>
+            <div class="auth-password">
+              <input
+                id="password"
+                v-model="form.password"
+                :type="showPassword ? 'text' : 'password'"
+                autocomplete="new-password"
+                required
+                :disabled="submitting"
+                placeholder="Mot de passe"
+              />
+              <button
+                type="button"
+                class="auth-password-toggle"
+                :disabled="submitting"
+                :aria-label="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                @click="showPassword = !showPassword"
+              >
+                {{ showPassword ? 'Masquer' : 'Afficher' }}
+              </button>
+            </div>
+            <p class="auth-help">10 caractères min, 1 majuscule, 1 minuscule, 1 chiffre, 1 symbole.</p>
+            <p v-if="fieldErrors.password" class="auth-error">{{ fieldErrors.password }}</p>
           </div>
 
           <div class="auth-field">
-            <label for="passwordConfirmation">Confirmation du mot de passe</label>
-            <input
-              id="passwordConfirmation"
-              v-model="form.passwordConfirmation"
-              type="password"
-              autocomplete="new-password"
-              required
-              :disabled="submitting"
-              minlength="8"
-            />
-            <p v-if="fieldErrors.passwordConfirmation" class="auth-error">
-              {{ fieldErrors.passwordConfirmation }}
-            </p>
+            <label for="passwordConfirmation">Confirmation</label>
+            <div class="auth-password">
+              <input
+                id="passwordConfirmation"
+                v-model="form.passwordConfirmation"
+                :type="showPasswordConfirmation ? 'text' : 'password'"
+                autocomplete="new-password"
+                required
+                :disabled="submitting"
+                placeholder="Mot de passe"
+              />
+              <button
+                type="button"
+                class="auth-password-toggle"
+                :disabled="submitting"
+                :aria-label="showPasswordConfirmation ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                @click="showPasswordConfirmation = !showPasswordConfirmation"
+              >
+                {{ showPasswordConfirmation ? 'Masquer' : 'Afficher' }}
+              </button>
+            </div>
+            <p v-if="fieldErrors.passwordConfirmation" class="auth-error">{{ fieldErrors.passwordConfirmation }}</p>
           </div>
 
-          <p v-if="generalError" class="auth-error auth-error--general">
-            {{ generalError }}
-          </p>
-
-          <button
-            type="submit"
-            class="auth-submit"
-            :disabled="submitting"
-          >
+          <button type="submit" class="auth-submit" :disabled="submitting">
             <span v-if="!submitting">Créer mon compte</span>
             <span v-else>Création en cours…</span>
           </button>
         </form>
 
-        <p class="auth-footer-text">
-          Tu as déjà un compte ?
-          <RouterLink
-            :to="{ name: 'login', query: route.query.redirect ? { redirect: route.query.redirect } : {} }"
-          >
-            J’ai déjà un compte
-          </RouterLink>
-        </p>
+        <div class="auth-footer">
+          <div class="auth-footer-text">
+            Déjà un compte ?
+            <RouterLink :to="{ name: 'login', query: route.query.redirect ? { redirect: route.query.redirect } : {} }">
+              Se connecter
+            </RouterLink>
+          </div>
+        </div>
       </section>
     </main>
   </div>
 </template>
 
 <style scoped>
-
-.dle-page {
-  min-height: 100vh;
+.auth-page {
   padding: 20px;
   color: #f0f0f0;
-  background: radial-gradient(circle at top, #20263a 0, #05060a 60%);
+  background: radial-gradient(circle at top, #20263a 0, #05060a 75%);
+  min-height: 100vh;
   font-size: 0.95rem;
-  display: flex;
-  flex-direction: column;
 }
 
-.header_HOME {
+.auth-header {
   display: flex;
   justify-content: center;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
-.btn-home .logo {
-  max-width: 260px;
+.auth-logo .logo {
+  width: auto;
+  max-width: 320px;
+  cursor: pointer;
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.3));
+}
+
+.auth-main {
+  max-width: 520px;
+  margin: 0 auto;
 }
 
 .auth-card {
-  max-width: 420px;
-  margin-top: 10px;
+  background: rgba(10, 12, 20, 0.9);
+  border-radius: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+}
 
-  padding: 1.8rem 1.8rem 1.6rem;
-  border-radius: 18px;
+.auth-card,
+.auth-card * {
+  box-sizing: border-box;
+}
 
-  background: radial-gradient(circle at top left, rgba(30, 64, 175, 0.25), rgba(15, 23, 42, 0.96));
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  box-shadow:
-    0 18px 40px rgba(15, 23, 42, 0.55),
-    0 0 0 1px rgba(15, 23, 42, 0.9);
+.auth-head {
+  margin-bottom: 12px;
 }
 
 .auth-title {
-  font-size: 1.45rem;
-  font-weight: 800;
-  margin-bottom: 0.25rem;
+  margin: 0 0 6px;
+  font-size: 1.6rem;
   text-align: center;
-  letter-spacing: -0.3px;
 }
 
 .auth-subtitle {
-  font-size: 0.9rem;
-  color: #cbd5f5;
+  margin: 0;
+  opacity: 0.85;
   text-align: center;
-  margin-bottom: 1.4rem;
+  font-size: 0.95rem;
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 12px;
 }
 
 .auth-field label {
   display: block;
-  margin-bottom: 0.3rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #e5e7eb;
+  margin: 0 0 6px;
+  font-weight: 700;
+  opacity: 0.9;
 }
 
 .auth-field input {
-  width: 94%;
-  padding: 0.6rem 0.85rem;
-  border-radius: 12px;
-
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid #1f2937;
-
-  font-size: 0.92rem;
-  font-weight: 500;
-  color: #f9fafb;
-
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    background-color 0.2s ease,
-    transform 0.08s ease;
+  width: 100%;
+  display: block;
+  padding: 10px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 18, 28, 0.9);
+  color: #f3f3f3;
+  font-size: 0.95rem;
 }
 
-.auth-field input::placeholder {
-  color: #64748b;
+.auth-password {
+  position: relative;
 }
 
-.auth-field input:hover {
-  border-color: #334155;
-  background: rgba(15, 23, 42, 0.96);
+.auth-password input {
+  padding-right: 96px;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.25);
+  color: #f3f3f3;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.auth-password-toggle:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.auth-password-toggle:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 
 .auth-field input:focus {
   outline: none;
-  border-color: #3b82f6;
-  background: rgba(15, 23, 42, 1);
-  box-shadow:
-    0 0 0 1px rgba(59, 130, 246, 0.8),
-    0 0 0 6px rgba(59, 130, 246, 0.15);
-  transform: translateY(-0.5px);
+  border-color: rgba(0, 166, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(0, 166, 255, 0.18);
+}
+
+.auth-help {
+  margin: 6px 0 0;
+  opacity: 0.75;
+  font-size: 0.86rem;
+  line-height: 1.25;
 }
 
 .auth-error {
-  margin-top: 0.28rem;
-  font-size: 0.82rem;
-  color: #fecaca;
-  font-weight: 500;
-}
-
-.auth-error--general {
-  margin-top: 0.5rem;
-  text-align: center;
+  margin: 6px 0 0;
+  color: #ffb4b4;
+  font-weight: 600;
+  font-size: 0.86rem;
 }
 
 .auth-submit {
-  margin-top: 0.4rem;
   width: 100%;
-  padding: 0.7rem 1rem;
-
-  border-radius: 999px;
-  border: none;
-
-  background: linear-gradient(135deg, #2563eb, #4f46e5);
-  color: #f9fafb;
-
-  font-weight: 700;
-  font-size: 0.98rem;
-
+  padding: 10px 10px;
+  border-radius: 6px;
+  border: 1px solid #00a6ff;
+  background: rgba(0, 166, 255, 0.15);
+  color: #00a6ff;
   cursor: pointer;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.15s ease,
-    opacity 0.12s ease;
+  font-size: 0.95rem;
+  font-weight: 800;
+  transition: background 0.15s ease;
 }
 
 .auth-submit:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow:
-    0 12px 24px rgba(15, 23, 42, 0.55),
-    0 0 0 1px rgba(59, 130, 246, 0.5);
-}
-
-.auth-submit:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow:
-    0 6px 14px rgba(15, 23, 42, 0.55),
-    0 0 0 1px rgba(37, 99, 235, 0.8);
+  background: rgba(0, 166, 255, 0.25);
 }
 
 .auth-submit:disabled {
-  opacity: 0.6;
+  opacity: 0.65;
   cursor: default;
 }
 
+.auth-footer {
+  margin-top: 12px;
+}
+
 .auth-footer-text {
-  margin-top: 1.1rem;
-  font-size: 0.86rem;
   text-align: center;
-  color: #cbd5f5;
+  opacity: 0.85;
 }
 
 .auth-footer-text a {
   color: #00a6ff;
-  font-weight: 700;
   text-decoration: none;
+  font-weight: 800;
 }
 
 .auth-footer-text a:hover {
   text-decoration: underline;
 }
 
-.auth-field label{
-  text-align: start;
-}
-
-.auth-logo {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.auth-logo img {
-  width: auto;
-  filter: drop-shadow(0 0 4px rgba(0,0,0,0.25));
-}
-
-@media (max-width: 640px) {
-  .dle-page {
-    padding: 14px 10px 18px;
+@media (max-width: 420px) {
+  .auth-page {
+    padding: 16px 12px 20px;
   }
 
-  .auth-card {
-    padding: 1.5rem 1.3rem 1.3rem;
-    margin-top: 4px;
-  }
-
-  .auth-title {
-    font-size: 1.3rem;
-  }
-
-  .auth-subtitle {
-    font-size: 0.86rem;
-  }
-
-  .auth-submit {
-    font-size: 0.94rem;
-  }
-
-  .auth-logo img {
-    height: 50%;
+  .auth-logo .logo {
+    max-width: 260px;
   }
 }
 </style>
-

@@ -88,7 +88,7 @@ class UserProfileController extends Controller
                 ];
             })
             ->values();
-        
+
         $pvpStats = $this->pvp->getForUser($user);
 
         return response()->json([

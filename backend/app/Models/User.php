@@ -2,7 +2,8 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\VerifyEmailNotification;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -12,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
@@ -52,6 +53,19 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
 
+    /**
+     * Send the email verification notification.
+     *
+     * This method overrides Laravel's default notification so the email content
+     * and call-to-action are tailored to the application's branding and flow.
+     *
+     * @return void
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification());
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() === 'admin') {
@@ -60,7 +74,6 @@ class User extends Authenticatable implements FilamentUser
 
         return false;
     }
-
 
     public function friendGroups(): BelongsToMany
     {
@@ -75,6 +88,4 @@ class User extends Authenticatable implements FilamentUser
             ->withPivot('unlocked_at')
             ->withTimestamps();
     }
-
-
 }

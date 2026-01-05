@@ -3,19 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Achievement;
-use App\Models\DailyGame;
-use App\Models\PendingGuess;
 use App\Models\User;
-use App\Models\UserGameResult;
-use App\Models\UserGuess;
-use App\Services\AchievementService;
 use App\Services\PendingGuessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
@@ -29,137 +23,142 @@ class AuthController extends Controller
      * IP-based anonymous key) into the newly authenticated account and
      * triggers achievement unlocking when appropriate.
      *
-     * @param PendingGuessService $pendingGuesses Service used to import pending
-     *                                            guesses into a user account.
+     * @param PendingGuessService $pendingGuesses Service used to import pending guesses into a user account.
      */
     public function __construct(
-        protected PendingGuessService  $pendingGuesses,
+        protected PendingGuessService $pendingGuesses,
     ) {}
 
     /**
-     * Register a new user and issue a Sanctum token.
+     * Register a new user.
      *
-     * This endpoint:
-     * - validates the registration payload (name, unique email, password),
-     * - creates a new User with a hashed password,
-     * - revokes any existing tokens for safety (should not exist for new users,
-     *   but keeps behavior consistent with login),
-     * - creates a new personal access token using Sanctum,
-     * - imports any pending anonymous guesses for the caller's IP, linking them
-     *   to the new account and unlocking achievements if conditions are met,
-     * - returns the created user in a normalized shape and the API token.
+     * This endpoint validates the registration payload, creates the account
+     * and sends an email verification notification.
      *
-     * Validation rules:
-     * - name: required, string, max 20 characters.
-     * - email: required, valid email, max 255 characters, unique in users.
-     * - password: required, string, minimum 8 characters.
+     * The newly created user is NOT authenticated immediately: no Sanctum
+     * token is issued until the email has been verified.
      *
      * Response JSON payload:
-     * - 'user'         => array{ id:int, name:string, email:string|null }
-     * - 'token'        => string  Newly issued API token.
-     * - 'achievements' => array[] List of unlocked achievements from imported guesses.
+     * - 'user'                        => array Normalized user.
+     * - 'requires_email_verification' => bool Indicates that an email was sent and the account is not verified.
      *
      * @param Request $request Incoming HTTP request containing registration data.
      *
-     * @return JsonResponse JSON response with created user, token and unlocked achievements.
+     * @return JsonResponse JSON response with created user.
      */
     public function register(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'name'     => ['required', 'string', 'max:20'],
-            'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
-        ]);
+        $data = $request->validate(
+            [
+                'name' => ['required', 'string', 'max:20', 'unique:users,name'],
+                'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+                'password' => [
+                    'required',
+                    'string',
+                    'confirmed',
+                    Password::min(10)
+                        ->mixedCase()
+                        ->numbers()
+                        ->symbols()
+                        ->uncompromised(),
+                ],
+            ],
+            [
+                'name.required' => 'Le pseudo est obligatoire.',
+                'name.string' => 'Le pseudo est invalide.',
+                'name.max' => 'Le pseudo ne peut pas dépasser :max caractères.',
+                'name.unique' => 'Ce pseudo est déjà utilisé.',
+                'email.required' => 'L’adresse e-mail est obligatoire.',
+                'email.email' => 'L’adresse e-mail est invalide.',
+                'email.max' => 'L’adresse e-mail ne peut pas dépasser :max caractères.',
+                'email.unique' => 'Cette adresse e-mail est déjà utilisée.',
+                'password.required' => 'Le mot de passe est obligatoire.',
+                'password.confirmed' => 'Les mots de passe ne correspondent pas.',
+                'password.min' => 'Le mot de passe doit contenir au moins :min caractères.',
+                'password.mixed' => 'Le mot de passe doit contenir une minuscule et une majuscule.',
+                'password.numbers' => 'Le mot de passe doit contenir au moins un chiffre.',
+                'password.symbols' => 'Le mot de passe doit contenir au moins un symbole.',
+                'password.uncompromised' => 'Ce mot de passe a déjà fuité. Choisis-en un autre.',
+            ],
+            [
+                'name' => 'pseudo',
+                'email' => 'adresse e-mail',
+                'password' => 'mot de passe',
+            ],
+        );
 
         $user = User::query()->create([
-            'name'     => $data['name'],
-            'email'    => $data['email'],
+            'name' => $data['name'],
+            'email' => $data['email'],
             'password' => Hash::make($data['password']),
         ]);
 
-        $token = $user->createToken('kcdle-app')->plainTextToken;
-        $unlocked = $this->pendingGuesses->import($user, $request);
+        $user->sendEmailVerificationNotification();
 
         return response()->json([
-            'user'  => $this->formatUser($user),
-            'token' => $token,
-            'unlocked_achievements' => $unlocked->values(),
+            'user' => $this->formatUser($user),
+            'requires_email_verification' => ! $user->hasVerifiedEmail(),
         ], Response::HTTP_CREATED);
     }
 
     /**
      * Authenticate an existing user and issue a new Sanctum token.
      *
-     * This endpoint:
-     * - validates the login credentials (email, password),
-     * - locates the user by email,
-     * - verifies the provided password against the stored password hash,
-     * - returns a validation error if credentials are invalid,
-     * - revokes any existing tokens for the user,
-     * - creates a new Sanctum personal access token,
-     * - imports any pending anonymous guesses associated with the caller's IP
-     *   into the account and evaluates achievements on those imported wins,
-     * - returns the authenticated user, the new token and unlocked achievements.
-     *
-     * Validation rules:
-     * - email: required, valid email.
-     * - password: required, string.
-     *
-     * On invalid credentials, the response is:
-     * - HTTP 422 Unprocessable Entity
-     * - JSON: { "message": "Identifiants invalides." }
-     *
-     * On success, Response JSON payload:
-     * - 'user'         => array{ id:int, name:string, email:string|null }
-     * - 'token'        => string
-     * - 'achievements' => array[] Newly unlocked achievements from imported guesses.
+     * If the provided credentials are invalid, a validation error is returned.
+     * If the email is not verified, a 403 response is returned.
      *
      * @param Request $request Incoming HTTP request with login credentials.
      *
-     * @return JsonResponse JSON response containing the user, token and achievements.
+     * @return JsonResponse JSON response containing the user, token and unlocked achievements.
      */
     public function login(Request $request): JsonResponse
     {
-        $credentials = $request->validate([
-            'email'    => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
-        ]);
+        $credentials = $request->validate(
+            [
+                'email' => ['required', 'string', 'email'],
+                'password' => ['required', 'string'],
+            ],
+            [
+                'email.required' => 'L’adresse e-mail est obligatoire.',
+                'email.email' => 'L’adresse e-mail est invalide.',
+                'password.required' => 'Le mot de passe est obligatoire.',
+            ],
+            [
+                'email' => 'adresse e-mail',
+                'password' => 'mot de passe',
+            ],
+        );
 
         /** @var User|null $user */
-        $user = User::query()
-            ->where('email', $credentials['email'])
-            ->first();
+        $user = User::query()->where('email', $credentials['email'])->first();
 
-        if (! $user || ! Hash::check($credentials['password'], $user->getAttribute('password'))) {
+        if (! $user || ! Hash::check($credentials['password'], (string) $user->getAttribute('password'))) {
+            throw ValidationException::withMessages([
+                'email' => ['Identifiants invalides.'],
+            ]);
+        }
+
+        if (! $user->hasVerifiedEmail()) {
             return response()->json([
-                'message' => 'Identifiants invalides.',
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+                'message' => 'Adresse e-mail non vérifiée.',
+                'code' => 'email_not_verified',
+            ], Response::HTTP_FORBIDDEN);
         }
 
         $user->tokens()->delete();
 
         $token = $user->createToken('kcdle-app')->plainTextToken;
-
         $unlocked = $this->pendingGuesses->import($user, $request);
 
         return response()->json([
-            'user'  => $this->formatUser($user),
+            'user' => $this->formatUser($user),
             'token' => $token,
             'unlocked_achievements' => $unlocked->values(),
         ]);
     }
 
     /**
-     * Revoke all API tokens for the authenticated user.
-     *
-     * This endpoint deletes every Sanctum token associated with the currently
-     * authenticated user, effectively logging them out from all devices
-     * and clients.
-     *
-     * If no user is authenticated, it still returns a success response.
-     *
-     * Response JSON payload:
-     * - 'message' => string  Confirmation message.
+     * Revoke the current API token for the authenticated user.
      *
      * @param Request $request HTTP request used to resolve the authenticated user.
      *
@@ -179,14 +178,6 @@ class AuthController extends Controller
     /**
      * Return the profile of the currently authenticated user.
      *
-     * This endpoint:
-     * - retrieves the user attached to the incoming request,
-     * - returns a normalized representation of the user, or null if no user
-     *   is authenticated (depending on route middleware configuration).
-     *
-     * Response JSON payload:
-     * - 'user' => array{ id:int, name:string, email:string|null }
-     *
      * @param Request $request HTTP request providing the authenticated user.
      *
      * @return JsonResponse JSON response containing the current user profile.
@@ -203,25 +194,17 @@ class AuthController extends Controller
     /**
      * Normalize a User model into a public API-safe array.
      *
-     * The normalized representation exposes only the fields needed by the
-     * frontend: identifier, display name and email address. Sensitive fields
-     * (password hash, tokens, timestamps, etc.) are intentionally omitted.
-     *
-     * Returned array structure:
-     * - 'id'    => int          User primary key.
-     * - 'name'  => string       User display name.
-     * - 'email' => string|null  User email address if set.
-     *
      * @param User $user User instance to normalize.
      *
-     * @return array{id:int, name:string, email:string|null} Normalized user data.
+     * @return array{id:int, name:string, email:string|null, email_verified:bool} Normalized user data.
      */
     protected function formatUser(User $user): array
     {
         return [
-            'id'    => $user->getAttribute("id"),
-            'name'  => $user->getAttribute("name"),
-            'email' => $user->getAttribute("email"),
+            'id' => (int) $user->getAttribute('id'),
+            'name' => (string) $user->getAttribute('name'),
+            'email' => $user->getAttribute('email'),
+            'email_verified' => $user->hasVerifiedEmail(),
         ];
     }
 }

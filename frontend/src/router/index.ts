@@ -34,8 +34,8 @@ const routes: RouteRecordRaw[] = [
   { path: '/privacy', name: 'privacy', component: PrivacyPolicyView },
   { path: '/legal', name: 'legal', component: LegalView },
 
-  { path: '/login', name: 'login', component: LoginView },
-  { path: '/register', name: 'register', component: RegisterView },
+  { path: '/login', name: 'login', component: LoginView, meta: { requiresNotAuth: true } },
+  { path: '/register', name: 'register', component: RegisterView, meta: { requiresNotAuth: true } },
 
   { path: '/profile', name: 'profile', component: ProfileView, meta: { requiresAuth: true } },
 
@@ -70,6 +70,18 @@ router.beforeEach((to) => {
     query: {
       redirect: to.fullPath,
     },
+  }
+})
+
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+
+  const requiresNotAuth = Boolean(to.meta?.requiresNotAuth)
+  if (!requiresNotAuth) return true
+  if (!auth.isAuthenticated) return true
+
+  return {
+    name: 'home',
   }
 })
 
