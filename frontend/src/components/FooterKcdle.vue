@@ -23,7 +23,7 @@ function goLegal() {
   <footer class="footer-kcdle">
     <div class="footer-content">
       <span class="footer-left">
-        2024 - {{ new Date().getFullYear() }} KCDLE
+        © 2024 - {{ new Date().getFullYear() }} KCDLE
       </span>
 
       <button
