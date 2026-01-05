@@ -5,6 +5,9 @@ import GameButton from "@/components/GameButton.vue";
 import {trackEvent} from "@/analytics.ts";
 import AdSlot from "@/components/AdSlot.vue";
 import {handleError} from "@/utils/handleError.ts";
+import {useAuthStore} from "@/stores/auth.ts";
+
+const auth = useAuthStore();
 
 interface dle {
   dle : string,
@@ -160,6 +163,12 @@ function handleGameButton(targetGame: string) {
       </button>
     </div>
 
+    <div>
+      <router-link to="login" class="white">
+        <p class="white">Connecte toi pour enregistrer tes résultats !</p>
+      </router-link>
+    </div>
+
     <div class="gg-other-dles">
       <GameButton
         v-for="val in getOthersDle()"
@@ -210,5 +219,9 @@ function handleGameButton(targetGame: string) {
 
 .popup-ad {
   margin-top: 4px;
+}
+
+.white{
+  color: white;
 }
 </style>
