@@ -25,6 +25,7 @@ const fieldErrors = reactive<{
 const submitting = ref(false)
 const unverifiedEmail = ref<string | null>(null)
 const resendLoading = ref(false)
+const showPassword = ref(false)
 
 function getSafeRedirect(v: unknown): string {
   if (typeof v !== 'string') return '/'
@@ -124,9 +125,22 @@ function goHome() {
 }
 
 onMounted(() => {
-  if (route.query.verified === '1') {
-    flash.success('Adresse e-mail vérifiée. Tu peux te connecter.', 'Validation réussie')
+  const token = typeof route.query.token === 'string' ? route.query.token : null
+
+  if (token) {
+    void (async () => {
+      try {
+        await auth.loginWithToken(token)
+        flash.success('Adresse e-mail vérifiée. Connexion effectuée.', 'Validation réussie')
+        await router.push(redirectTo.value)
+      } catch (error) {
+        handleError(error)
+      }
+    })()
+    return
   }
+
+  if (route.query.verified === '1') flash.success('Adresse e-mail vérifiée. Tu peux te connecter.', 'Validation réussie')
 })
 
 watch(
@@ -170,15 +184,26 @@ watch(
 
           <div class="auth-field">
             <label for="password">Mot de passe</label>
-            <input
-              id="password"
-              v-model="form.password"
-              type="password"
-              autocomplete="current-password"
-              required
-              :disabled="submitting"
-              placeholder="Mot de passe"
-            />
+            <div class="auth-password">
+              <input
+                id="password"
+                v-model="form.password"
+                :type="showPassword ? 'text' : 'password'"
+                autocomplete="current-password"
+                required
+                :disabled="submitting"
+                placeholder="Mot de passe"
+              />
+              <button
+                type="button"
+                class="auth-password-toggle"
+                :disabled="submitting"
+                :aria-label="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                @click="showPassword = !showPassword"
+              >
+                {{ showPassword ? 'Masquer' : 'Afficher' }}
+              </button>
+            </div>
             <p v-if="fieldErrors.password" class="auth-error">{{ fieldErrors.password }}</p>
           </div>
 
@@ -289,6 +314,38 @@ watch(
   background: rgba(15, 18, 28, 0.9);
   color: #f3f3f3;
   font-size: 0.95rem;
+}
+
+.auth-password {
+  position: relative;
+}
+
+.auth-password input {
+  padding-right: 96px;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.25);
+  color: #f3f3f3;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.auth-password-toggle:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.auth-password-toggle:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 
 .auth-field input:focus {

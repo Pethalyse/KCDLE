@@ -27,6 +27,8 @@ const fieldErrors = reactive<{
 }>({})
 
 const submitting = ref(false)
+const showPassword = ref(false)
+const showPasswordConfirmation = ref(false)
 
 function getSafeRedirect(v: unknown): string {
   if (typeof v !== 'string') return '/'
@@ -70,19 +72,15 @@ async function handleSubmit() {
       password_confirmation: form.passwordConfirmation,
     })
 
-    if (data && Array.isArray(data.unlocked_achievements) && data.unlocked_achievements.length > 0) {
-      data.unlocked_achievements.forEach((achievement: any) => {
-        if (!achievement || !achievement.name) return
-        flash.push('success', achievement.name, 'Succès débloqué')
-      })
-    }
-
     if (data?.requires_email_verification) {
       flash.info("Un e-mail de validation vient de t'être envoyé. Pense à vérifier tes spams.", 'Validation e-mail')
     }
 
-    flash.success('Compte créé avec succès.', 'Bienvenue sur KCDLE')
-    await router.push(redirectTo.value)
+    // flash.success('Compte créé avec succès. Tu dois valider ton e-mail pour te connecter.', 'Inscription réussie')
+
+    const query: Record<string, string> = {}
+    if (typeof route.query.redirect === 'string') query.redirect = route.query.redirect
+    await router.push({ name: 'login', query })
   } catch (error: any) {
     const status = error?.response?.status
     const data = error?.response?.data
@@ -173,30 +171,52 @@ watch(
 
           <div class="auth-field">
             <label for="password">Mot de passe</label>
-            <input
-              id="password"
-              v-model="form.password"
-              type="password"
-              autocomplete="new-password"
-              required
-              :disabled="submitting"
-              placeholder="Mot de passe"
-            />
+            <div class="auth-password">
+              <input
+                id="password"
+                v-model="form.password"
+                :type="showPassword ? 'text' : 'password'"
+                autocomplete="new-password"
+                required
+                :disabled="submitting"
+                placeholder="Mot de passe"
+              />
+              <button
+                type="button"
+                class="auth-password-toggle"
+                :disabled="submitting"
+                :aria-label="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                @click="showPassword = !showPassword"
+              >
+                {{ showPassword ? 'Masquer' : 'Afficher' }}
+              </button>
+            </div>
             <p class="auth-help">10 caractères min, 1 majuscule, 1 minuscule, 1 chiffre, 1 symbole.</p>
             <p v-if="fieldErrors.password" class="auth-error">{{ fieldErrors.password }}</p>
           </div>
 
           <div class="auth-field">
             <label for="passwordConfirmation">Confirmation</label>
-            <input
-              id="passwordConfirmation"
-              v-model="form.passwordConfirmation"
-              type="password"
-              autocomplete="new-password"
-              required
-              :disabled="submitting"
-              placeholder="Mot de passe"
-            />
+            <div class="auth-password">
+              <input
+                id="passwordConfirmation"
+                v-model="form.passwordConfirmation"
+                :type="showPasswordConfirmation ? 'text' : 'password'"
+                autocomplete="new-password"
+                required
+                :disabled="submitting"
+                placeholder="Mot de passe"
+              />
+              <button
+                type="button"
+                class="auth-password-toggle"
+                :disabled="submitting"
+                :aria-label="showPasswordConfirmation ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                @click="showPasswordConfirmation = !showPasswordConfirmation"
+              >
+                {{ showPasswordConfirmation ? 'Masquer' : 'Afficher' }}
+              </button>
+            </div>
             <p v-if="fieldErrors.passwordConfirmation" class="auth-error">{{ fieldErrors.passwordConfirmation }}</p>
           </div>
 
@@ -298,6 +318,38 @@ watch(
   background: rgba(15, 18, 28, 0.9);
   color: #f3f3f3;
   font-size: 0.95rem;
+}
+
+.auth-password {
+  position: relative;
+}
+
+.auth-password input {
+  padding-right: 96px;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.25);
+  color: #f3f3f3;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.auth-password-toggle:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.auth-password-toggle:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 
 .auth-field input:focus {

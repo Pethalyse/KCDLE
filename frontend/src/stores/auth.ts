@@ -41,6 +41,20 @@ export const useAuthStore = defineStore('auth', {
       api.defaults.headers.common.Authorization = `Bearer ${token}`
     },
 
+    setToken(token: string) {
+      this.token = token
+      localStorage.setItem(TOKEN_STORAGE_KEY, token)
+      api.defaults.headers.common.Authorization = `Bearer ${token}`
+    },
+
+    async fetchMe() {
+      if (!this.token) return null
+      const { data } = await api.get('/auth/me')
+      this.user = data?.user ?? null
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(this.user))
+      return data
+    },
+
     async login(payload: { email: string; password: string }) {
       this.loading = true
       try {
@@ -56,21 +70,22 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async register(payload: {
-      name: string
-      email: string
-      password: string
-      password_confirmation: string
-    }) {
+    async register(payload: { name: string; email: string; password: string; password_confirmation: string }) {
       this.loading = true
       try {
         const { data } = await api.post('/auth/register', payload)
-        this.setAuth(data.user, data.token)
-        for (const string of dleCode) {
-          localStorage.removeItem(string)
-          localStorage.removeItem(`${string}_win`)
-        }
         return data
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async loginWithToken(token: string) {
+      this.loading = true
+      try {
+        this.setToken(token)
+        await this.fetchMe()
+        return { user: this.user, token }
       } finally {
         this.loading = false
       }

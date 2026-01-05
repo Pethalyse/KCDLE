@@ -30,20 +30,21 @@ class AuthController extends Controller
     ) {}
 
     /**
-     * Register a new user and issue a Sanctum token.
+     * Register a new user.
      *
-     * This endpoint validates the registration payload, creates the account,
-     * sends an email verification notification and returns an API token.
+     * This endpoint validates the registration payload, creates the account
+     * and sends an email verification notification.
+     *
+     * The newly created user is NOT authenticated immediately: no Sanctum
+     * token is issued until the email has been verified.
      *
      * Response JSON payload:
      * - 'user'                        => array Normalized user.
-     * - 'token'                       => string Newly issued API token.
-     * - 'unlocked_achievements'       => array[] Newly unlocked achievements.
      * - 'requires_email_verification' => bool Indicates that an email was sent and the account is not verified.
      *
      * @param Request $request Incoming HTTP request containing registration data.
      *
-     * @return JsonResponse JSON response with created user, token and unlocked achievements.
+     * @return JsonResponse JSON response with created user.
      */
     public function register(Request $request): JsonResponse
     {
@@ -94,13 +95,8 @@ class AuthController extends Controller
 
         $user->sendEmailVerificationNotification();
 
-        $token = $user->createToken('kcdle-app')->plainTextToken;
-        $unlocked = $this->pendingGuesses->import($user, $request);
-
         return response()->json([
             'user' => $this->formatUser($user),
-            'token' => $token,
-            'unlocked_achievements' => $unlocked->values(),
             'requires_email_verification' => ! $user->hasVerifiedEmail(),
         ], Response::HTTP_CREATED);
     }
