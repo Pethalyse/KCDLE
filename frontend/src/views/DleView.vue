@@ -280,7 +280,7 @@ const guessedIds = computed<number[]>(() =>
         />
 
         <section class="dle-ad-under-grid">
-          <AdSlot id="dle-under-grid-1" kind="inline" />
+          <AdSlot id="dle-under-grid-1" kind="banner" />
         </section>
 
         <PopupGg

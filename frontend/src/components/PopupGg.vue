@@ -163,7 +163,7 @@ function handleGameButton(targetGame: string) {
       </button>
     </div>
 
-    <div>
+    <div v-if="!auth.isAuthenticated">
       <router-link to="login" class="white">
         <p class="white">Connecte toi pour enregistrer tes résultats !</p>
       </router-link>
@@ -179,7 +179,7 @@ function handleGameButton(targetGame: string) {
     </div>
 
     <div class="popup-ad">
-      <AdSlot id="gg-popup-bottom" kind="inline" />
+      <AdSlot id="gg-popup-bottom" kind="banner" />
     </div>
   </div>
 </template>
