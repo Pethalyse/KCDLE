@@ -36,7 +36,7 @@ class PrivacyPolicyController extends Controller
     {
         return response()->json([
             'title' => 'Politique de confidentialité',
-            'last_updated' => '2026-01-05',
+            'last_updated' => '2026-01-06',
             'sections' => [
                 [
                     'id' => 'intro',
@@ -108,9 +108,10 @@ class PrivacyPolicyController extends Controller
                     'title' => '3.4 Cookies, stockage local et technologies similaires',
                     'paragraphs' => [
                         "Le Site utilise des technologies de stockage local et peut utiliser des cookies/traceurs selon vos choix :",
-                        "- stockage local pour la session applicative (ex. jeton d’authentification) et certaines données de confort (ex. consentement cookies, PVP en cours selon le cas),",
+                        "- stockage local pour la session applicative (ex. jeton d’authentification) et certaines données de confort (ex. consentement cookies),",
                         "- stockage local pour mémoriser vos parties quotidiennes et préférences (ex. progression côté navigateur).",
-                        "Le Site propose un gestionnaire de consentement vous permettant d’accepter ou de refuser les catégories « mesure d’audience » et « publicité ». Les traceurs non essentiels ne sont chargés qu’après votre choix.",
+                        "Le Site propose un gestionnaire de consentement vous permettant d’accepter ou de refuser les catégories « mesure d’audience » et « publicités personnalisées ».",
+                        "Les traceurs non essentiels (ex. mesure d’audience, personnalisation publicitaire) ne sont chargés qu’après votre choix.",
                     ],
                 ],
                 [
@@ -126,7 +127,9 @@ class PrivacyPolicyController extends Controller
                     'title' => '3.6 Publicité',
                     'paragraphs' => [
                         "Le Site peut afficher de la publicité afin de contribuer au financement de l’hébergement et des frais techniques.",
-                        "La publicité (et les scripts associés) peut être conditionnée à votre consentement via le gestionnaire de cookies/traceurs. Selon le fournisseur publicitaire, des traceurs peuvent être utilisés pour la diffusion, la limitation de fréquence, la mesure de performance et, le cas échéant, la personnalisation.",
+                        "Selon le fournisseur publicitaire et la configuration choisie, le Site peut diffuser : (1) des publicités non personnalisées (contextuelles), ou (2) des publicités personnalisées.",
+                        "Les publicités non personnalisées peuvent être affichées sans nécessiter l’activation de cookies/traceurs publicitaires.",
+                        "La personnalisation de la publicité (utilisation de cookies ou d’identifiants publicitaires) est conditionnée à votre consentement via le gestionnaire de cookies/traceurs (« publicités personnalisées »).",
                         "Nous vous invitons à consulter la politique de confidentialité du fournisseur publicitaire concerné pour connaître le détail de leurs traitements.",
                     ],
                 ],
@@ -139,7 +142,8 @@ class PrivacyPolicyController extends Controller
                         "- fournir les fonctionnalités de jeu (quotidien, statistiques, succès, groupes, PVP, lobbies),",
                         "- assurer la sécurité et prévenir les abus (anti-spam, anti-fraude, détection d’activités anormales),",
                         "- améliorer le Site via la mesure d’audience (si vous y consentez),",
-                        "- afficher de la publicité et mesurer sa performance (si vous y consentez),",
+                        "- diffuser de la publicité non personnalisée (le cas échéant),",
+                        "- activer la personnalisation publicitaire (si vous y consentez),",
                         "- répondre à vos demandes si vous nous contactez.",
                     ],
                 ],
@@ -149,8 +153,8 @@ class PrivacyPolicyController extends Controller
                     'paragraphs' => [
                         "Les traitements mis en œuvre reposent sur les bases légales suivantes :",
                         "- exécution du service demandé par l’utilisateur (création de compte, accès aux fonctionnalités),",
-                        "- intérêt légitime (sécurité du Site, prévention des abus, stabilité technique),",
-                        "- consentement pour les cookies/traceurs non essentiels (mesure d’audience et publicité, selon votre choix).",
+                        "- intérêt légitime (sécurité du Site, prévention des abus, stabilité technique, et diffusion de publicités non personnalisées le cas échéant),",
+                        "- consentement pour les cookies/traceurs non essentiels (mesure d’audience et personnalisation publicitaire, selon votre choix).",
                     ],
                 ],
                 [
@@ -170,7 +174,8 @@ class PrivacyPolicyController extends Controller
                         "Les données peuvent être accessibles, dans la limite de leurs attributions :",
                         "- au responsable du traitement (développeur),",
                         "- aux prestataires d’hébergement et de maintenance technique,",
-                        "- aux fournisseurs d’analytics et/ou de publicité uniquement si vous y consentez (données de navigation nécessaires à leurs services).",
+                        "- aux fournisseurs d’analytics si vous y consentez (données de navigation nécessaires à leurs services),",
+                        "- aux fournisseurs de publicité (diffusion de publicités non personnalisées) et, si vous y consentez, personnalisation publicitaire selon le fournisseur.",
                         "Les données ne sont pas revendues.",
                     ],
                 ],

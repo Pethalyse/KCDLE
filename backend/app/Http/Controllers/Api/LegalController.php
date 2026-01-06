@@ -34,7 +34,7 @@ class LegalController extends Controller
     {
         return response()->json([
             'title' => 'Mentions légales',
-            'last_updated' => '2026-01-05',
+            'last_updated' => '2026-01-06',
 
             'editor' => [
                 'title' => '1. Éditeur du site',
@@ -62,7 +62,8 @@ class LegalController extends Controller
                 'paragraphs' => [
                     "KCDLE propose des jeux de devinettes autour de l’esport (dont des modes de jeu quotidiens), ainsi que des fonctionnalités communautaires et compétitives.",
                     "Certaines fonctionnalités nécessitent un compte (profil, statistiques, succès, groupes d’amis, PVP et lobbies privés).",
-                    "Le Site peut afficher de la publicité et utiliser un outil de mesure d’audience, sous réserve de votre consentement via le gestionnaire de cookies/traceurs.",
+                    "Le Site peut utiliser un outil de mesure d’audience, sous réserve de votre consentement via le gestionnaire de cookies/traceurs.",
+                    "Le Site peut afficher de la publicité non personnalisée. La personnalisation de la publicité (ex. via Google AdSense) est soumise à votre consentement (« publicités personnalisées »).",
                 ],
             ],
 
@@ -88,8 +89,9 @@ class LegalController extends Controller
             'cookies' => [
                 'title' => '6. Cookies et traceurs',
                 'paragraphs' => [
-                    "Le site utilise des traceurs strictement nécessaires (ex. stockage local pour la session applicative) et peut proposer des traceurs de mesure d’audience et/ou publicitaires.",
+                    "Le site utilise des traceurs strictement nécessaires (ex. stockage local pour la session applicative) et peut proposer des traceurs de mesure d’audience et/ou liés à la personnalisation publicitaire.",
                     "Les traceurs non essentiels sont soumis à votre consentement via le gestionnaire de cookies/traceurs, et vous pouvez modifier votre choix à tout moment.",
+                    "En cas de refus, le Site peut continuer d’afficher des publicités non personnalisées (contextuelles), sans activer de traceurs de personnalisation publicitaire.",
                 ],
             ],
 
