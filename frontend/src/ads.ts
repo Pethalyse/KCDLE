@@ -1,21 +1,55 @@
-import {handleError} from "@/utils/handleError.ts";
+import { ref } from 'vue'
+import { handleError } from '@/utils/handleError.ts'
 
 export type AdsProvider = 'ethical' | 'adsense' | 'none'
 
-let currentProvider: AdsProvider = 'none'
+export const adsProvider = ref<AdsProvider>('none')
+let preferredProvider: AdsProvider = 'none'
 let providerInitialized = false
 
 let ethicalScriptLoaded = false
 let adsenseScriptLoaded = false
 
-const REAL_ADS_ENABLED = import.meta.env.VITE_ENV === "production";
+let adsensePersonalizedAllowed = false
+
+const REAL_ADS_ENABLED = import.meta.env.VITE_ENV === 'production'
+
+const PUBLISHER_ID = (import.meta.env.PUBLISHER_ID as string | undefined) || ''
+const AD_SENSE_ID = (import.meta.env.AD_SENSE_ID as string | undefined) || ''
 
 export function initAds(provider: AdsProvider) {
   if (!REAL_ADS_ENABLED) {
-    currentProvider = 'none'
+    preferredProvider = 'none'
+    adsProvider.value = 'none'
   } else {
-    currentProvider = provider
+    preferredProvider = provider
+    adsProvider.value = provider
   }
+}
+
+export function autoInitAds() {
+  if (!REAL_ADS_ENABLED) {
+    initAds('none')
+    return
+  }
+
+  const forced = (import.meta.env.VITE_ADS_PROVIDER as string | undefined) || ''
+  if (forced === 'ethical' || forced === 'adsense' || forced === 'none') {
+    initAds(forced)
+    return
+  }
+
+  if (AD_SENSE_ID) {
+    initAds('adsense')
+    return
+  }
+
+  if (PUBLISHER_ID) {
+    initAds('ethical')
+    return
+  }
+
+  initAds('none')
 }
 
 export function loadAds() {
@@ -23,20 +57,22 @@ export function loadAds() {
   if (providerInitialized) return
   providerInitialized = true
 
-  if (currentProvider === 'ethical') {
+  if (adsProvider.value === 'ethical') {
     loadEthicalAdsScript()
-  } else if (currentProvider === 'adsense') {
+    return
+  }
+
+  if (adsProvider.value === 'adsense') {
     loadAdsenseScript()
-  } else {
+    return
   }
 }
 
 export function renderSlot(slotId: string, options?: Record<string, any>) {
-  if (currentProvider === 'ethical') {
+  if (adsProvider.value === 'ethical') {
     renderEthicalSlot(slotId, options)
-  } else if (currentProvider === 'adsense') {
+  } else if (adsProvider.value === 'adsense') {
     renderAdsenseSlot(slotId, options)
-  } else {
   }
 }
 
@@ -48,6 +84,11 @@ function loadEthicalAdsScript() {
   script.async = true
   script.src = 'https://media.ethicalads.io/media/client/ethicalads.min.js'
   script.id = 'ethicalads-script'
+
+  script.onerror = () => {
+    adsProvider.value = 'none'
+  }
+
   document.head.appendChild(script)
 }
 
@@ -59,7 +100,6 @@ function loadEthicalAdsScript() {
  * @param options
  */
 function renderEthicalSlot(slotId: string, options?: Record<string, any>) {
-
   const w = window as any
   if (!w.ethicalads || typeof w.ethicalads.load_placements !== 'function') {
     return
@@ -72,16 +112,47 @@ function renderEthicalSlot(slotId: string, options?: Record<string, any>) {
   }
 }
 
-
 function loadAdsenseScript() {
   if (adsenseScriptLoaded) return
   adsenseScriptLoaded = true
 
+  setAdsensePersonalizedAllowed(adsensePersonalizedAllowed)
+
   const script = document.createElement('script')
   script.async = true
   script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
-  script.setAttribute('data-ad-client', 'ca-pub-XXXXXXXXXXXXXXX')
+  if (AD_SENSE_ID) {
+    script.setAttribute('data-ad-client', AD_SENSE_ID)
+  }
+
+  script.onerror = () => {
+    try {
+      if (preferredProvider === 'adsense' && PUBLISHER_ID) {
+        adsProvider.value = 'ethical'
+        loadEthicalAdsScript()
+        return
+      }
+      adsProvider.value = 'none'
+    } catch (e) {
+      handleError('[KCDLE] Error while handling AdSense script failure:' + e)
+      adsProvider.value = 'none'
+    }
+  }
+
   document.head.appendChild(script)
+}
+
+export function setAdsensePersonalizedAllowed(allowed: boolean) {
+  adsensePersonalizedAllowed = allowed
+
+  const w = window as any
+  w.adsbygoogle = w.adsbygoogle || []
+
+  if (!adsensePersonalizedAllowed) {
+    w.adsbygoogle.requestNonPersonalizedAds = 1
+  } else {
+    w.adsbygoogle.requestNonPersonalizedAds = 0
+  }
 }
 
 function renderAdsenseSlot(slotId: string, options?: Record<string, any>) {

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, watch, computed } from 'vue'
-import { renderSlot } from '@/ads'
-import {useCookieConsent} from "@/composables/useCookieConsent.ts";
+import { adsProvider, renderSlot } from '@/ads'
 
 const props = defineProps<{
   id: string
@@ -9,19 +8,18 @@ const props = defineProps<{
 }>()
 
 const slotId = computed(() => props.id)
-const publisherId = import.meta.env.PUBLISHER_ID;
-const adSenseId = import.meta.env.AD_SENSE_ID;
+const publisherId = import.meta.env.PUBLISHER_ID
+const adSenseId = import.meta.env.AD_SENSE_ID
 
-const REAL_ADS_ENABLED = import.meta.env.VITE_ENV === "production";
+const REAL_ADS_ENABLED = import.meta.env.VITE_ENV === 'production'
 
-const {
-  adsChecked,
-} = useCookieConsent()
+const currentProvider = computed(() => adsProvider.value)
 
-function adsExists() : boolean {
-  if(REAL_ADS_ENABLED)
-    return publisherId || adSenseId;
-  return true;
+function adsExists(): boolean {
+  if (!REAL_ADS_ENABLED) return true
+  if (currentProvider.value === 'ethical') return !!publisherId
+  if (currentProvider.value === 'adsense') return !!adSenseId
+  return false
 }
 
 onMounted(() => {
@@ -35,10 +33,17 @@ watch(slotId, (newVal) => {
     renderSlot(newVal)
   }
 })
+
+watch(currentProvider, () => {
+  if (REAL_ADS_ENABLED) {
+    renderSlot(slotId.value)
+  }
+})
 </script>
 
 <template>
-  <div v-if="adsChecked && adsExists()"
+  <div
+    v-if="adsExists()"
     class="ad-slot"
     :data-kind="kind || 'inline'"
   >
@@ -48,12 +53,22 @@ watch(slotId, (newVal) => {
       </div>
 
       <div
-        v-if="REAL_ADS_ENABLED"
+        v-if="REAL_ADS_ENABLED && currentProvider === 'ethical'"
         class="ad-content ethical-ad"
         :data-ea-publisher="publisherId"
         :data-ea-type="kind === 'sidebar' ? 'image' : 'text'"
         :data-ea-manual="true"
       ></div>
+
+      <ins
+        v-else-if="REAL_ADS_ENABLED && currentProvider === 'adsense'"
+        class="ad-content adsbygoogle"
+        style="display:block"
+        :data-ad-client="adSenseId"
+        :data-ad-slot="slotId"
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      />
 
       <div v-else class="ad-content ad-placeholder">
         <div class="fake-title">[PUB DE TEST]</div>
@@ -62,10 +77,10 @@ watch(slotId, (newVal) => {
         </div>
       </div>
 
-    <div class="ad-footer">
-      <span>Publicité non intrusive pour soutenir KCDLE 💙</span>
+      <div class="ad-footer">
+        <span>Publicité non intrusive pour soutenir KCDLE 💙</span>
+      </div>
     </div>
-  </div>
   </div>
 </template>
 
@@ -115,7 +130,6 @@ watch(slotId, (newVal) => {
   color: #e5e7eb;
 }
 
-
 .ad-slot[data-kind='banner'] .ad-card {
   max-width: 720px;
 }
@@ -142,7 +156,6 @@ watch(slotId, (newVal) => {
   color: #e5e7eb;
 }
 
-
 .ad-content {
   margin-top: 4px;
   min-height: 60px;
@@ -157,7 +170,6 @@ watch(slotId, (newVal) => {
 }
 
 .ethical-ad > * {
-
 }
 
 .ad-footer {
@@ -170,7 +182,7 @@ watch(slotId, (newVal) => {
 
 .ad-card:hover {
   border-color: var(--dle-accent-strong, rgba(59, 130, 246, 0.8));
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.7));
   transform: translateY(-1px);
   transition: all 120ms ease-out;
 }
@@ -200,5 +212,4 @@ watch(slotId, (newVal) => {
 .ad-content :deep(div) {
   max-width: 100% !important;
 }
-
 </style>

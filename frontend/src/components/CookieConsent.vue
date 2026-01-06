@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, onMounted} from 'vue'
+import { computed } from 'vue'
 import { useCookieConsent } from '@/composables/useCookieConsent'
 
 const {
@@ -16,10 +16,9 @@ const {
 const summary = computed(() => {
   const items: string[] = ['Essentiels']
   if (analyticsChecked.value) items.push('Audience')
-  if (adsChecked.value) items.push('Publicité')
+  if (adsChecked.value) items.push('Pubs personnalisées')
   return items.join(' · ')
 })
-
 </script>
 
 <template>
@@ -54,8 +53,9 @@ const summary = computed(() => {
         <div class="cc-body">
           <p class="cc-text">
             KCDLE utilise des technologies de stockage (cookies et/ou stockage local) pour faire fonctionner le site
-            (connexion, sauvegarde de parties, préférences) et, si tu l’acceptes, pour mesurer l’audience et afficher des
-            publicités.
+            (connexion, sauvegarde de parties, préférences) et, si tu l’acceptes, pour mesurer l’audience.
+            La publicité peut être affichée sans personnalisation. La personnalisation publicitaire (cookies/identifiants)
+            nécessite ton accord.
           </p>
 
           <div class="cc-list">
@@ -94,13 +94,13 @@ const summary = computed(() => {
               class="cc-item"
             >
               <div class="cc-item-left">
-                <strong>Publicité</strong>
+                <strong>Publicités personnalisées</strong>
                 <p>
-                  Chargement du script publicitaire (EthicalAds) uniquement si accepté.
+                  Autoriser la personnalisation des pubs (AdSense). Sans accord, on demande des publicités non personnalisées.
                 </p>
               </div>
 
-              <label class="cc-switch" aria-label="Activer la publicité">
+              <label class="cc-switch" aria-label="Activer les publicités personnalisées">
                 <input
                   v-model="adsChecked"
                   type="checkbox"

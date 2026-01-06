@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { loadPlausible } from '@/analytics'
-import { loadAds } from '@/ads'
-import {handleError} from "@/utils/handleError.ts";
+import { adsProvider, loadAds, setAdsensePersonalizedAllowed } from '@/ads'
+import { handleError } from '@/utils/handleError.ts'
 
 interface Consent {
   essential: true
@@ -26,6 +26,10 @@ function initIfNeeded() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) {
+      setAdsensePersonalizedAllowed(false)
+      if (adsProvider.value !== 'none') {
+        loadAds()
+      }
       visible.value = true
       return
     }
@@ -38,7 +42,8 @@ function initIfNeeded() {
       loadPlausible()
     }
 
-    if (consent.ads) {
+    setAdsensePersonalizedAllowed(consent.ads)
+    if (adsProvider.value !== 'none') {
       loadAds()
     }
   } catch (e) {
@@ -61,7 +66,8 @@ function saveConsent(partial: { analytics: boolean; ads: boolean }) {
     loadPlausible()
   }
 
-  if (consent.ads) {
+  setAdsensePersonalizedAllowed(consent.ads)
+  if (adsProvider.value !== 'none') {
     loadAds()
   }
 
