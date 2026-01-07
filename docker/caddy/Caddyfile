@@ -1,0 +1,13 @@
+kcdle.fr, www.kcdle.fr {
+    encode gzip
+
+    @http {
+        protocol http
+    }
+
+    handle @http {
+        redir https://{host}{uri}
+    }
+
+    reverse_proxy kcdle_nginx:80
+}

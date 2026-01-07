@@ -1,0 +1,25 @@
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+
+import App from './App.vue'
+import router from './router'
+
+import './assets/style.css'
+import { initRouterAnalytics } from '@/analytics.ts'
+import { initAds } from '@/ads.ts'
+import { initAuthStore } from '@/stores/auth.ts'
+import { initPvpRuntime } from '@/pvpRuntime.ts'
+
+const app = createApp(App)
+
+const pinia = createPinia()
+app.use(pinia)
+app.use(router)
+
+initAuthStore()
+initPvpRuntime(router)
+
+initRouterAnalytics(router)
+initAds('ethical')
+
+app.mount('#app')
