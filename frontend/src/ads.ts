@@ -14,8 +14,8 @@ let adsensePersonalizedAllowed = false
 
 const REAL_ADS_ENABLED = import.meta.env.VITE_ENV === 'production'
 
-const PUBLISHER_ID = (import.meta.env.PUBLISHER_ID as string | undefined) || ''
-const AD_SENSE_ID = (import.meta.env.AD_SENSE_ID as string | undefined) || ''
+const PUBLISHER_ID = (import.meta.env.VITE_PUBLISHER_ID as string | undefined) || ''
+const AD_SENSE_ID = (import.meta.env.VITE_AD_SENSE_ID as string | undefined) || ''
 
 export function initAds(provider: AdsProvider) {
   if (!REAL_ADS_ENABLED) {

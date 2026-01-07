@@ -8,8 +8,8 @@ const props = defineProps<{
 }>()
 
 const slotId = computed(() => props.id)
-const publisherId = import.meta.env.PUBLISHER_ID
-const adSenseId = import.meta.env.AD_SENSE_ID
+const publisherId = import.meta.env.VITE_PUBLISHER_ID
+const adSenseId = import.meta.env.VITE_AD_SENSE_ID
 
 const REAL_ADS_ENABLED = import.meta.env.VITE_ENV === 'production'
 
