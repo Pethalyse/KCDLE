@@ -29,7 +29,11 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: nginx:1.27
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile.prod
+      args:
+        APP_IMAGE: ghcr.io/pethalyse/kcdle-app:${IMAGE_TAG:-latest}
     container_name: kcdle_nginx
     ports:
       - "80"
