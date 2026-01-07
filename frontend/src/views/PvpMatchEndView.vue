@@ -7,6 +7,7 @@ import { usePvpStore } from '@/stores/pvp'
 import api from '@/api'
 import { pvpGetMatch } from '@/api/pvpApi'
 import SimpleImg from '@/components/SimpleImg.vue'
+import AdSlot from '@/components/AdSlot.vue'
 import type { BestOf, PvpGame } from '@/types/pvp'
 
 const route = useRoute()
@@ -52,7 +53,6 @@ type GameLite = { id: number; code: string | null; name: string | null; logo_url
 const countriesByCode = ref<Map<string, CountryLite>>(new Map())
 const teamsById = ref<Map<number, TeamLite>>(new Map())
 const gamesById = ref<Map<number, GameLite>>(new Map())
-
 
 function toggleRound(round: number) {
   expandedRound.value = expandedRound.value === round ? null : round
@@ -179,7 +179,19 @@ function whoisSentenceForNumber(key: string, op: string, value: any, ok: boolean
     return ok ? `Sa première année officielle chez KC correspond à ${n}.` : `Sa première année officielle chez KC ne correspond pas à ${n}.`
   }
 
-  const unit = key === 'trophies_count' ? (Math.abs(n) <= 1 ? 'trophée' : 'trophées') : key === 'age' ? (Math.abs(n) <= 1 ? 'an' : 'ans') : (Math.abs(n) <= 1 ? 'unité' : 'unités')
+  const unit =
+    key === 'trophies_count'
+      ? Math.abs(n) <= 1
+        ? 'trophée'
+        : 'trophées'
+      : key === 'age'
+        ? Math.abs(n) <= 1
+          ? 'an'
+          : 'ans'
+        : Math.abs(n) <= 1
+          ? 'unité'
+          : 'unités'
+
   if (op === 'gt') return ok ? `Il a plus de ${n} ${unit}.` : `Il n’a pas plus de ${n} ${unit}.`
   if (op === 'lt') return ok ? `Il a moins de ${n} ${unit}.` : `Il n’a pas moins de ${n} ${unit}.`
   if (op === 'eq') return ok ? `Il a ${n} ${unit}.` : `Il n’a pas ${n} ${unit}.`
@@ -193,15 +205,15 @@ function formatTimelineItem(roundType: string, it: TimelineItem): { text: string
   const actorId = Number(p?.actor_user_id ?? 0)
   const actor = actorId > 0 ? nameFromUserId(actorId) : 'Joueur'
 
-  if (it.type === 'round_started') {
-    return { text: `Début du round.` }
-  }
+  if (it.type === 'round_started') return { text: `Début du round.` }
+  if (it.type === 'round_finished') return { text: `Round terminé.` }
 
-  if (it.type === 'round_finished') {
-    return { text: `Round terminé.` }
-  }
-
-  if (it.type === 'classic_guess_made' || it.type === 'locked_guess_made' || it.type === 'draft_guess_made' || it.type === 'reveal_race_guess_made') {
+  if (
+    it.type === 'classic_guess_made' ||
+    it.type === 'locked_guess_made' ||
+    it.type === 'draft_guess_made' ||
+    it.type === 'reveal_race_guess_made'
+  ) {
     const pid = Number(p?.player_id ?? 0)
     const order = Number(p?.guess_order ?? 0)
     const label = pid > 0 ? playerLabel(pid) : '…'
@@ -228,9 +240,7 @@ function formatTimelineItem(roundType: string, it: TimelineItem): { text: string
     return { text: `${actor} a choisi : ${keyLabel(key)}${suffix}.` }
   }
 
-  if (it.type === 'draft_guess_phase_started') {
-    return { text: `Phase de guess commencée.` }
-  }
+  if (it.type === 'draft_guess_phase_started') return { text: `Phase de guess commencée.` }
 
   if (it.type === 'reveal_race_reveal') {
     const keys: string[] = Array.isArray(p?.keys) ? p.keys.map((x: any) => String(x)).filter(Boolean) : []
@@ -250,7 +260,8 @@ function formatTimelineItem(roundType: string, it: TimelineItem): { text: string
     const op = String(q?.op ?? '')
     const value = q?.value
     const ok = !!p?.answer
-    const sentence = ['trophies_count', 'first_official_year', 'age'].includes(key) ? whoisSentenceForNumber(key, op, value, ok) : whoisSentenceForEnum(key, value, ok)
+    const sentence =
+      ['trophies_count', 'first_official_year', 'age'].includes(key) ? whoisSentenceForNumber(key, op, value, ok) : whoisSentenceForEnum(key, value, ok)
     const img = resolveEnumImage(key, value)
     return { text: `${actor} : ${sentence}`, img }
   }
@@ -262,9 +273,7 @@ function formatTimelineItem(roundType: string, it: TimelineItem): { text: string
     return { text: `${actor} : ${ok ? `C’est ${label}.` : `Ce n’est pas ${label}.`}`, img: pid > 0 ? playerImage(pid) : null }
   }
 
-  if (it.type === 'whois_round_resolved') {
-    return { text: `Le joueur a été trouvé.` }
-  }
+  if (it.type === 'whois_round_resolved') return { text: `Le joueur a été trouvé.` }
 
   if (it.type.endsWith('_round_resolved')) {
     const win = Number(p?.winner_user_id ?? 0)
@@ -280,12 +289,14 @@ const roundRecaps = computed(() => (Array.isArray(match.value?.round_recaps) ? m
 function recapTimelineFor(round: number): TimelineItem[] {
   const r = roundRecaps.value.find((x: any) => Number(x?.round ?? 0) === Number(round))
   const tl = Array.isArray(r?.timeline) ? r.timeline : []
-  return tl.map((x: any) => ({
-    id: Number(x?.id ?? 0),
-    type: String(x?.type ?? ''),
-    created_at: typeof x?.created_at === 'string' ? x.created_at : null,
-    payload: x?.payload ?? null,
-  })).filter((x: any) => x.id > 0 && x.type)
+  return tl
+    .map((x: any) => ({
+      id: Number(x?.id ?? 0),
+      type: String(x?.type ?? ''),
+      created_at: typeof x?.created_at === 'string' ? x.created_at : null,
+      payload: x?.payload ?? null,
+    }))
+    .filter((x: any) => x.id > 0 && x.type)
 }
 
 function formattedTimelineFor(round: number, roundType: string): Array<{ id: number; text: string; img: string | null }> {
@@ -373,14 +384,8 @@ const resultTitle = computed(() => {
 })
 
 const resultSubtitle = computed(() => {
-  if (endedReason.value === 'leave' || endedReason.value === 'afk') {
-    return 'Fin par abandon'
-  }
-
-  if (endedReason.value === 'points') {
-    return 'Fin au score'
-  }
-
+  if (endedReason.value === 'leave' || endedReason.value === 'afk') return 'Fin par abandon'
+  if (endedReason.value === 'points') return 'Fin au score'
   return 'Match terminé'
 })
 
@@ -400,7 +405,7 @@ async function load() {
           api.get('/countries'),
           api.get('/teams'),
           api.get('/games'),
-          api.get(`/games/${g}/players`, { params: { active: 0 } })
+          api.get(`/games/${g}/players`, { params: { active: 0 } }),
         ])
 
         const cList = Array.isArray(c.data?.countries) ? c.data.countries : []
@@ -449,9 +454,7 @@ async function load() {
           const id = Number(x?.id ?? 0)
           const label = String(x?.player?.display_name ?? x?.display_name ?? '').trim()
           const imageUrl = typeof x?.player?.image_url === 'string' ? x.player.image_url : null
-          if (id > 0) {
-            map.set(id, { id, label: label || `#${id}`, imageUrl })
-          }
+          if (id > 0) map.set(id, { id, label: label || `#${id}`, imageUrl })
         }
         gamePlayersById.value = map
       } catch {
@@ -478,7 +481,7 @@ async function load() {
 }
 
 function backToPvp() {
-  router.push({ name: 'pvp', query: {game: game.value, bo: bestOf.value} })
+  router.push({ name: 'pvp', query: { game: game.value, bo: bestOf.value } })
 }
 
 function replay() {
@@ -490,7 +493,7 @@ function replay() {
   pvp.clearMatch()
   pvp.setQueued(game.value, bestOf.value)
   flash.info(`File relancée sur ${formatGame(game.value)} (BO${bestOf.value}).`, 'PvP', 3000)
-  router.push({ name: 'pvp', query: {game: game.value, bo: bestOf.value} })
+  router.push({ name: 'pvp', query: { game: game.value, bo: bestOf.value } })
 }
 
 onMounted(async () => {
@@ -565,6 +568,10 @@ onMounted(async () => {
           </div>
         </section>
 
+        <section class="card ad-card">
+          <AdSlot id="pvp-end-banner-1" kind="banner" />
+        </section>
+
         <section v-if="recapRows.length > 0" class="card">
           <div class="card-title">Récap des rounds</div>
 
@@ -605,11 +612,7 @@ onMounted(async () => {
                   <div class="timeline-title">Historique</div>
                   <div v-if="formattedTimelineFor(r.round, r.roundTypeRaw).length === 0" class="timeline-empty">Aucun événement pour ce round.</div>
                   <ul v-else class="timeline">
-                    <li
-                      v-for="it in formattedTimelineFor(r.round, r.roundTypeRaw)"
-                      :key="`tl-${r.round}-${it.id}`"
-                      class="tl-item"
-                    >
+                    <li v-for="it in formattedTimelineFor(r.round, r.roundTypeRaw)" :key="`tl-${r.round}-${it.id}`" class="tl-item">
                       <SimpleImg v-if="it.img" class="tl-img" :img="it.img" :alt="''" />
                       <div class="tl-text">{{ it.text }}</div>
                     </li>
@@ -618,6 +621,10 @@ onMounted(async () => {
               </div>
             </button>
           </div>
+        </section>
+
+        <section class="card ad-card">
+          <AdSlot id="pvp-end-banner-2" kind="banner" />
         </section>
       </div>
     </template>
@@ -815,6 +822,12 @@ onMounted(async () => {
 
 .btn:active {
   transform: translateY(1px);
+}
+
+.ad-card {
+  display: flex;
+  justify-content: center;
+  padding: 10px 10px;
 }
 
 .card-title {

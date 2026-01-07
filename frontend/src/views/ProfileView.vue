@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { fetchUserProfile } from '@/api/userProfileApi'
 import type { UserProfileGameStats, UserProfileResponse } from '@/types/userProfile'
 import { handleError } from '@/utils/handleError'
+import AdSlot from '@/components/AdSlot.vue'
 
 type TabKey = 'games' | 'pvp' | 'groups'
 
@@ -159,6 +160,8 @@ onMounted(async () => {
                 </div>
               </div>
             </div>
+
+            <AdSlot id="profile-inline-1" kind="inline" />
           </section>
         </header>
 
@@ -337,6 +340,10 @@ onMounted(async () => {
               </li>
             </ul>
           </div>
+        </section>
+
+        <section class="profile-ad">
+          <AdSlot id="profile-banner-1" kind="banner" />
         </section>
       </div>
     </main>
@@ -759,6 +766,11 @@ onMounted(async () => {
 
 .owner {
   margin-left: 4px;
+}
+
+.profile-ad {
+  display: flex;
+  justify-content: center;
 }
 
 @media (max-width: 900px) {

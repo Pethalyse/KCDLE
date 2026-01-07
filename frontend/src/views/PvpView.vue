@@ -16,6 +16,7 @@ import {
 import SimpleImg from '@/components/SimpleImg.vue'
 import { handleError } from '@/utils/handleError'
 import { useRoute, useRouter } from 'vue-router'
+import AdSlot from "@/components/AdSlot.vue";
 
 const route = useRoute()
 const router = useRouter()
@@ -300,6 +301,10 @@ onMounted(() => {
         </div>
       </section>
 
+      <div class="lobby-ad">
+        <AdSlot id="pvp-banner-1" kind="banner" />
+      </div>
+
       <section class="pvp-card lobby-card">
         <div class="pvp-card-title">Lobby privé</div>
 
@@ -309,30 +314,34 @@ onMounted(() => {
 
         <template v-else>
           <div v-if="!isInLobby" class="lobby-grid">
-            <div class="lobby-panel">
-              <div class="lobby-title">Créer</div>
-              <div class="lobby-sub">Même jeu et format que ta sélection ci-dessus.</div>
-              <button type="button" class="btn" :disabled="lobbyLoading || isInMatch" @click="createLobby">
-                Créer un lobby
-              </button>
-            </div>
-
-            <div class="lobby-panel">
-              <div class="lobby-title">Rejoindre</div>
-              <div class="lobby-sub">Entre un code de 8 caractères.</div>
-
-              <div class="code-row">
-                <input v-model="lobbyCodeInput" class="code-input" placeholder="ABCDEFGH" maxlength="8" />
-                <button type="button" class="btn" :disabled="lobbyLoading || lobbyCodeInput.length !== 8 || isInMatch" @click="joinLobby">
-                  Rejoindre
+            <div class="lobby-div">
+              <div class="lobby-panel">
+                <div class="lobby-title">Créer</div>
+                <div class="lobby-sub">Même jeu et format que ta sélection ci-dessus.</div>
+                <button type="button" class="btn" :disabled="lobbyLoading || isInMatch" @click="createLobby">
+                  Créer un lobby
                 </button>
               </div>
+              <div class="lobby-panel">
+                <div class="lobby-title">Rejoindre</div>
+                <div class="lobby-sub">Entre un code de 8 caractères.</div>
 
-              <div v-if="lobbyPeek" class="peek">
-                <div class="peek-title">Lobby de {{ lobbyPeek.host.name }}</div>
-                <div class="peek-meta">{{ lobbyPeek.game.toUpperCase() }} · BO{{ lobbyPeek.best_of }}</div>
+                <div class="code-row">
+                  <input v-model="lobbyCodeInput" class="code-input" placeholder="ABCDEFGH" maxlength="8" @keyup.enter="joinLobby"/>
+                  <button type="button" class="btn" :disabled="lobbyLoading || lobbyCodeInput.length !== 8 || isInMatch" @click="joinLobby">
+                    Rejoindre
+                  </button>
+                </div>
+
+                <div v-if="lobbyPeek" class="peek">
+                  <div class="peek-title">Lobby de {{ lobbyPeek.host.name }}</div>
+                  <div class="peek-meta">{{ lobbyPeek.game.toUpperCase() }} · BO{{ lobbyPeek.best_of }}</div>
+                </div>
+                <div v-else-if="lobbyCodeInput.length === 8" class="peek peek--empty">Aperçu indisponible.</div>
               </div>
-              <div v-else-if="lobbyCodeInput.length === 8" class="peek peek--empty">Aperçu indisponible.</div>
+            </div>
+            <div class="lobby-ad">
+              <AdSlot id="pvp-inline-1" kind="inline" />
             </div>
           </div>
 
@@ -357,6 +366,7 @@ onMounted(() => {
                   <div v-else class="slot-wait">En attente…</div>
                 </div>
               </div>
+
             </div>
 
             <div class="lobby-actions">
@@ -370,6 +380,9 @@ onMounted(() => {
 
             <div class="hint" v-if="lobby?.is_host && !lobby?.guest">Partage le code pour inviter quelqu’un.</div>
             <div class="hint" v-else-if="!lobby?.is_host">Attends que l’host lance le match.</div>
+            <div class="lobby-ad">
+              <AdSlot id="pvp-banner-2" kind="banner" />
+            </div>
           </div>
         </template>
       </section>
@@ -493,6 +506,12 @@ onMounted(() => {
 .peek-meta {
   font-size: 0.9rem;
   opacity: 0.85;
+}
+
+.lobby-div {
+  gap: 14px;
+  display: flex;
+  flex-direction: column;
 }
 
 .lobby-wrap {
@@ -707,6 +726,12 @@ onMounted(() => {
 .hint.warn {
   color: #ffd28a;
   opacity: 0.95;
+}
+
+.lobby-ad {
+  margin-top: 2px;
+  display: flex;
+  justify-content: center;
 }
 
 @media (min-width: 720px) {

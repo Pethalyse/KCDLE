@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import GameButton from '@/components/GameButton.vue'
-import AdSlot from "@/components/AdSlot.vue";
+import AdSlot from "@/components/AdSlot.vue"
+
 
 const data = [
   { dle: 'KCDLE', active: true },
@@ -25,6 +26,10 @@ const data = [
       </div>
     </header>
 
+    <section class="home-ad-top">
+      <AdSlot id="home-top-1" kind="banner" />
+    </section>
+
     <main class="home-body">
       <div class="btn-container">
         <GameButton
@@ -34,7 +39,10 @@ const data = [
         />
       </div>
 
-      <AdSlot id="dle-bottom-1" kind="banner" />
+      <div class="bottom-ad">
+        <AdSlot id="dle-bottom-1" kind="inline" />
+        <AdSlot id="dle-bottom-1" kind="inline" />
+      </div>
     </main>
   </div>
 </template>
@@ -74,6 +82,14 @@ const data = [
   opacity: 0.8;
 }
 
+.home-ad-top {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  justify-content: center;
+  margin: 0 0 14px;
+}
+
 .home-body {
   width: 100%;
   max-width: 900px;
@@ -102,6 +118,10 @@ const data = [
   filter: drop-shadow(0 0 6px rgba(0,0,0,0.4));
 }
 
+.bottom-ad {
+  display: flex;
+}
+
 @media (max-width: 640px) {
   .btn-container {
     gap: 14px;
@@ -116,4 +136,3 @@ const data = [
   }
 }
 </style>
-

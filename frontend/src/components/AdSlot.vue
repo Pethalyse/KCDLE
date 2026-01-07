@@ -78,7 +78,7 @@ watch(currentProvider, () => {
       </div>
 
       <div class="ad-footer">
-        <span>Publicité non intrusive pour soutenir KCDLE 💙</span>
+        <span>Publicité non intrusive pour soutenir KCDLE </span>
       </div>
     </div>
   </div>
