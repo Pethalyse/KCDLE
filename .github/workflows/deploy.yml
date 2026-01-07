@@ -118,6 +118,6 @@ jobs:
           script: |
             cd ${{ secrets.VPS_PROJECT_PATH }}
             git pull origin main
-            IMAGE_TAG=${GITHUB_SHA} docker compose -f docker-compose.prod.yml pull app
-            IMAGE_TAG=${GITHUB_SHA} docker compose -f docker-compose.prod.yml up -d app        
+            IMAGE_TAG=${GITHUB_SHA} docker compose -f docker-compose.prod.yml pull app scheduler
+            IMAGE_TAG=${GITHUB_SHA} docker compose -f docker-compose.prod.yml up -d app scheduler       
             docker image prune -f --filter "until=168h"
