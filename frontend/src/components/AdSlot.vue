@@ -70,7 +70,7 @@ watch(currentProvider, () => {
         data-full-width-responsive="true"
       />
 
-      <div v-else class="ad-content ad-placeholder">
+      <div v-else-if="!REAL_ADS_ENABLED" class="ad-content ad-placeholder">
         <div class="fake-title">[PUB DE TEST]</div>
         <div class="fake-text">
           Ici, il y aura une publicité quand KCDLE sera en ligne 🚀
