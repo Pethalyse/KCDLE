@@ -23,7 +23,6 @@ function adsExists(): boolean {
 }
 
 onMounted(() => {
-  console.log(import.meta.env.VITE_ENV)
   if (REAL_ADS_ENABLED) {
     renderSlot(slotId.value)
   }
