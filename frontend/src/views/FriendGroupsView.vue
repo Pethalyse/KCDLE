@@ -14,6 +14,7 @@ import type {
   FriendGroupSummary,
   FriendGroupCreatePayload,
 } from '@/types/friendGroup'
+import AdSlot from "@/components/AdSlot.vue";
 
 const router = useRouter()
 const route = useRoute()
@@ -220,6 +221,10 @@ onMounted(loadGroups)
           </div>
 
           <div class="friends-card">
+            <AdSlot id="friend-sidebar-1" kind="sidebar" />
+          </div>
+
+          <div class="friends-card">
             <h2>Rejoindre un groupe</h2>
             <p class="friends-card-text">Entre le code envoyé par ton ami.</p>
 
@@ -316,6 +321,9 @@ onMounted(loadGroups)
         </section>
       </section>
     </main>
+    <section>
+      <AdSlot id="friend-banner-1" kind="banner" />
+    </section>
   </div>
 </template>
 

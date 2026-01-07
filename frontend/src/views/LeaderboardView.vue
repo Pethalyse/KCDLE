@@ -7,6 +7,7 @@ import {fetchLeaderboard} from '@/api/leaderboardApi'
 import {useAuthStore} from '@/stores/auth'
 import {fetchFriendGroupLeaderboard, fetchFriendGroups} from '@/api/friendGroupApi'
 import type {FriendGroupLeaderboardGroup, FriendGroupSummary,} from '@/types/friendGroup'
+import AdSlot from "@/components/AdSlot.vue";
 
 const route = useRoute()
 const router = useRouter()
@@ -385,6 +386,9 @@ watch(
         </div>
       </template>
     </main>
+    <section>
+      <AdSlot id="leaderboard-banner-1" kind="banner" />
+    </section>
   </div>
 </template>
 

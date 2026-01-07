@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import type { Achievement } from '@/types/achievement'
 import { fetchAchievements } from '@/api/achievementApi'
 import { useAuthStore } from '@/stores/auth'
+import AdSlot from "@/components/AdSlot.vue";
 
 const auth = useAuthStore()
 
@@ -120,10 +121,17 @@ onMounted(load)
         </article>
       </div>
     </main>
+
+    <section class="bottom-ads">
+      <AdSlot id="achievement-banner-1" kind="banner" />
+    </section>
   </div>
 </template>
 
 <style scoped>
+.bottom-ads {
+  display: flex;
+}
 .achievements-page {
   min-height: 100vh;
   padding: 20px 12px 28px;
