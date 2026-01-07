@@ -32,6 +32,7 @@ const opponentSolved = computed(() => !!props.round?.opponent?.solved_at)
 
 const uiYouSolved = ref(false)
 const inputLocked = ref(false)
+const unwrittableEffective = computed(() => inputLocked.value || (props.unwrittable ?? false))
 
 const joueurs = ref<any[]>([])
 const pendingGuessedIds = ref<Set<number>>(new Set())
@@ -375,7 +376,7 @@ onMounted(async () => {
             class="containt-name"
             :dle="dleCode"
             :joueurs="joueurs"
-            :unwrittable="inputLocked || unwrittable"
+            :unwrittable="unwrittableEffective"
             :guessed-ids="guessedIdsEffective"
             @click_card="handleClickCard"
           />

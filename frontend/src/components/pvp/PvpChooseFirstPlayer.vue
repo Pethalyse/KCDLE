@@ -2,10 +2,11 @@
 import { computed } from 'vue'
 
 type GameCode = 'kcdle' | 'lecdle' | 'lfldle'
+type Player = { user_id: number; name?: string | null }
 
 const props = defineProps<{
   game: GameCode
-  players: Array<{ user_id: number; name?: string | null }>
+  players: Player[]
   canChoose: boolean
   disabled?: boolean
 }>()
@@ -14,10 +15,17 @@ const emit = defineEmits<{
   (e: 'choose', firstUserId: number): void
 }>()
 
-const left = computed(() => props.players?.[0] ?? null)
-const right = computed(() => props.players?.[1] ?? null)
+const left = computed<Player | null>(() => props.players?.[0] ?? null)
+const right = computed<Player | null>(() => props.players?.[1] ?? null)
 
-function choose(id: number) {
+const leftId = computed<number | null>(() => left.value?.user_id ?? null)
+const rightId = computed<number | null>(() => right.value?.user_id ?? null)
+
+const leftName = computed(() => left.value?.name ?? 'Joueur 1')
+const rightName = computed(() => right.value?.name ?? 'Joueur 2')
+
+function choose(id: number | null) {
+  if (id === null) return
   if (!props.canChoose || props.disabled) return
   emit('choose', id)
 }
@@ -31,22 +39,20 @@ function choose(id: number) {
       <div class="subtitle">Ce joueur fera le premier pick du draft.</div>
 
       <div class="choices">
-        <button class="choice" :disabled="disabled" @click="choose(left.user_id)">
-          <span class="name">{{ left?.name ?? 'Joueur 1' }}</span>
+        <button class="choice" :disabled="disabled || leftId === null" @click="choose(leftId)">
+          <span class="name">{{ leftName }}</span>
           <span class="meta">Commence</span>
         </button>
 
-        <button class="choice" :disabled="disabled" @click="choose(right.user_id)">
-          <span class="name">{{ right?.name ?? 'Joueur 2' }}</span>
+        <button class="choice" :disabled="disabled || rightId === null" @click="choose(rightId)">
+          <span class="name">{{ rightName }}</span>
           <span class="meta">Commence</span>
         </button>
       </div>
     </template>
 
     <template v-else>
-      <div class="waiting">
-        En attente du choix de l’adversaire…
-      </div>
+      <div class="waiting">En attente du choix de l’adversaire…</div>
     </template>
   </section>
 </template>
