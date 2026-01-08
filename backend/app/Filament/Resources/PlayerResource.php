@@ -60,6 +60,7 @@ class PlayerResource extends Resource
             FileUpload::make('avatar')
                 ->label('Photo du joueur')
                 ->image()
+                ->acceptedFileTypes(['image/png', 'image/webp', 'image/jpeg'])
                 ->disk('public')
                 ->directory('players')
                 ->visibility('public')
@@ -67,21 +68,26 @@ class PlayerResource extends Resource
                 ->getUploadedFileNameForStorageUsing(
                     function (TemporaryUploadedFile $file, callable $get): string {
                         $slug = $get('slug') ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-                        return $slug . '.' . $file->getClientOriginalExtension();
+                        $ext = strtolower($file->getClientOriginalExtension());
+                        return $slug . '.' . $ext;
                     }
                 )
                 ->storeFileNamesIn('unused_field')
                 ->afterStateHydrated(function (FileUpload $component, $state, ?Player $record) {
-                    if ($state || !$record) {
+                    if ($state || ! $record) {
                         return;
                     }
+
                     $slug = $record->getAttribute('slug');
-                    $relativePath = "players/$slug.png";
-                    if (Storage::disk('public')->exists($relativePath)) {
-                        $component->state([$relativePath]);
+                    foreach (['png', 'webp', 'jpg', 'jpeg'] as $ext) {
+                        $relativePath = "players/$slug.$ext";
+                        if (Storage::disk('public')->exists($relativePath)) {
+                            $component->state([$relativePath]);
+                            return;
+                        }
                     }
                 })
-                ->helperText('L’image sera enregistrée comme {slug}.ext dans /storage/players'),
+                ->helperText('L’image sera enregistrée comme {slug}.ext dans /storage/players')
         ];
     }
 

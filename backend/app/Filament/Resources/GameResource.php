@@ -46,29 +46,35 @@ class GameResource extends Resource
                 FileUpload::make('logo')
                     ->label('Logo du jeu')
                     ->image()
+                    ->acceptedFileTypes(['image/png', 'image/webp', 'image/jpeg'])
                     ->disk('public')
                     ->directory('games')
                     ->visibility('public')
                     ->imageEditor()
                     ->getUploadedFileNameForStorageUsing(
                         function (TemporaryUploadedFile $file, callable $get): string {
-                            $slug = $get('slug') ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-                            return $slug . '.' . $file->getClientOriginalExtension();
+                            $slug = $get('icon_slug') ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                            $ext = strtolower($file->getClientOriginalExtension());
+                            return $slug . '.' . $ext;
                         }
                     )
                     ->storeFileNamesIn('unused_field')
                     ->afterStateHydrated(function (FileUpload $component, $state, ?Game $record) {
-                        if ($state || !$record) {
+                        if ($state || ! $record) {
                             return;
                         }
+
                         $slug = $record->getAttribute('icon_slug');
-                        $relativePath = "games/$slug.png";
-                        if (Storage::disk('public')->exists($relativePath)) {
-                            $component->state([$relativePath]);
+                        foreach (['png', 'webp', 'jpg', 'jpeg'] as $ext) {
+                            $relativePath = "games/$slug.$ext";
+                            if (Storage::disk('public')->exists($relativePath)) {
+                                $component->state([$relativePath]);
+                                return;
+                            }
                         }
                     })
-                    ->helperText('L’image sera enregistrée comme {slug}.ext dans /storage/games'),
-            ]);
+                    ->helperText('L’image sera enregistrée comme {icon_slug}.ext dans /storage/games'),
+        ]);
     }
 
     public static function table(Table $table): Table

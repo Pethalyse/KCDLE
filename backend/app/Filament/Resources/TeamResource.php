@@ -56,6 +56,7 @@ class TeamResource extends Resource
             FileUpload::make('logo')
                 ->label('Logo de l’équipe')
                 ->image()
+                ->acceptedFileTypes(['image/png', 'image/webp', 'image/jpeg'])
                 ->disk('public')
                 ->directory('teams')
                 ->visibility('public')
@@ -63,21 +64,26 @@ class TeamResource extends Resource
                 ->getUploadedFileNameForStorageUsing(
                     function (TemporaryUploadedFile $file, callable $get): string {
                         $slug = $get('slug') ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-                        return $slug . '.' . $file->getClientOriginalExtension();
+                        $ext = strtolower($file->getClientOriginalExtension());
+                        return $slug . '.' . $ext;
                     }
                 )
                 ->storeFileNamesIn('unused_field')
                 ->afterStateHydrated(function (FileUpload $component, $state, ?Team $record) {
-                    if ($state || !$record) {
+                    if ($state || ! $record) {
                         return;
                     }
+
                     $slug = $record->getAttribute('slug');
-                    $relativePath = "teams/$slug.png";
-                    if (Storage::disk('public')->exists($relativePath)) {
-                        $component->state([$relativePath]);
+                    foreach (['png', 'webp', 'jpg', 'jpeg'] as $ext) {
+                        $relativePath = "teams/$slug.$ext";
+                        if (Storage::disk('public')->exists($relativePath)) {
+                            $component->state([$relativePath]);
+                            return;
+                        }
                     }
                 })
-                ->helperText('L’image sera enregistrée comme {slug}.ext dans /storage/teams'),
+                ->helperText('L’image sera enregistrée comme {slug}.ext dans /storage/teams')
         ];
     }
 
