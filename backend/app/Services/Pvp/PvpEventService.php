@@ -25,7 +25,7 @@ class PvpEventService
         $match = PvpMatch::query()->find($matchId);
         $round = (int) ($match?->current_round ?? 0);
         $state = is_array($match?->state) ? (array) $match->state : [];
-        $roundType = (string) ($state['round_type'] ?? ($match?->rounds[($round - 1)] ?? ''));
+        $roundType = (string) ($state['round_type'] ?? ($match?->rounds[($round - 1)]['type'] ?? ''));
 
         foreach ($events as $event) {
             $payload = $event['payload'] ?? null;
