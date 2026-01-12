@@ -17,6 +17,8 @@ function displayName(joueur: any): string {
   if (!joueur) return ''
   if (joueur.name) return joueur.name
   if (joueur.player?.name) return joueur.player.name
+  if (joueur.display_name) return joueur.display_name
+  if (joueur.player?.display_name) return joueur.player.display_name
   return joueur.player?.slug ?? ''
 }
 
