@@ -70,7 +70,6 @@ async function load() {
 
     pool.value = rounds.length > 0 ? rounds.map((x: any) => x.name) : ['classic', 'whois', 'locked_infos', 'draft', 'reveal_race']
     revealed.value = rounds.filter((x: any)  => x.type === getRoundType(m))[0].name;
-    console.log(m)
     const key = seenKey(matchId.value, roundNumber.value)
     if (sessionStorage.getItem(key) === '1') {
       showTransition.value = false
