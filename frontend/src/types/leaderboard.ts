@@ -4,6 +4,7 @@ export interface LeaderboardUser {
   id: number
   name: string
   email: string | null
+  is_admin: boolean
 }
 
 export interface LeaderboardRow {

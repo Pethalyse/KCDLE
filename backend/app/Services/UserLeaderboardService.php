@@ -151,7 +151,7 @@ class UserLeaderboardService
 
         $users = User::query()
             ->whereIn('id', $userIds)
-            ->get(['id', 'name', 'email'])
+            ->get(['id', 'name', 'email', 'is_admin'])
             ->keyBy('id');
 
         $scored = $grouped->map(function (Collection $entries, int $userId) use ($users) {
@@ -195,6 +195,7 @@ class UserLeaderboardService
                     'id'    => $user->getAttribute('id'),
                     'name'  => $user->getAttribute('name'),
                     'email' => $user->getAttribute('email'),
+                    'is_admin' => $user->getAttribute('is_admin'),
                 ] : null,
                 'wins'            => $wins,
                 'average_guesses' => $averageGuesses,
