@@ -10,13 +10,14 @@ use App\Models\PvpMatchEvent;
 use App\Models\PvpMatchPlayer;
 use App\Models\PvpQueueEntry;
 use App\Models\User;
+use App\Services\Pvp\Rounds\PvpRoundHandlerFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
 
 readonly class PvpLobbyService
 {
-    public function __construct(private PvpMatchService $matches)
+    public function __construct(private PvpMatchService $matches, private PvpRoundHandlerFactory $factory)
     {
     }
 
@@ -234,15 +235,22 @@ readonly class PvpLobbyService
                 abort(409, 'Guest is already in an active match.');
             }
 
-            $roundPool = (array) config('pvp.round_pool', []);
-            if (count($roundPool) < (int) $lobby->best_of) {
+            $roundPool = [];
+            foreach ((array) config('pvp.round_pool', []) as $round) {
+                $roundResolve = $this->factory->forType($round);
+                $roundPool[] = [
+                    'type' => $roundResolve->type(),
+                    'name' => $roundResolve->name(),
+                ];
+            }
+            if (count($roundPool) < $lobby->bestOf) {
                 abort(500, 'PvP round pool is smaller than requested best-of format.');
             }
 
-            if (! config('pvp.disable_shuffle', false)) {
+            if (!config('pvp.disable_shuffle', false)) {
                 shuffle($roundPool);
             }
-            $selectedRounds = array_values(array_slice($roundPool, 0, (int) $lobby->best_of));
+            $selectedRounds = array_values(array_slice($roundPool, 0, $lobby->bestOf));
 
             $match = PvpMatch::create([
                 'game' => $lobby->game,
@@ -252,7 +260,7 @@ readonly class PvpLobbyService
                 'rounds' => $selectedRounds,
                 'state' => [
                     'round' => 1,
-                    'round_type' => $selectedRounds[0],
+                    'round_type' => $selectedRounds[0]['type'],
                     'chooser_rule' => 'random_first_then_last_winner',
                     'chooser_user_id' => null,
                     'last_round_winner_user_id' => null,

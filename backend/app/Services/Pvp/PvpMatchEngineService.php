@@ -185,7 +185,7 @@ readonly class PvpMatchEngineService
 
             $match->current_round = $roundIndex + 1;
 
-            $nextType = (string) ($match->rounds[$match->current_round - 1] ?? '');
+            $nextType = (string) ($match->rounds[$match->current_round - 1]['type'] ?? '');
             $state['round'] = $match->current_round;
             $state['round_type'] = $nextType;
             unset($state['chooser_user_id']);
@@ -218,7 +218,7 @@ readonly class PvpMatchEngineService
         $base = $this->matches->buildBaseMatchPayload($match, $userId);
 
         $state = $match->state ?? [];
-        $roundType = (string) ($state['round_type'] ?? ($match->rounds[($match->current_round - 1)] ?? ''));
+        $roundType = (string) ($state['round_type'] ?? ($match->rounds[($match->current_round - 1)]['type'] ?? ''));
 
         $round = null;
         if ($match->status === 'active' && $roundType !== '') {
@@ -246,7 +246,7 @@ readonly class PvpMatchEngineService
         $state = $match->state ?? [];
         $roundIndex = (int) $match->current_round;
 
-        $roundType = (string) ($state['round_type'] ?? ($match->rounds[$roundIndex - 1] ?? ''));
+        $roundType = (string) ($state['round_type'] ?? ($match->rounds[$roundIndex - 1]['type'] ?? ''));
         if ($roundType === '') {
             abort(500, 'Round type not found.');
         }

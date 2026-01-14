@@ -8,12 +8,13 @@ use App\Models\PvpMatchEvent;
 use App\Models\PvpMatchPlayer;
 use App\Models\PvpQueueEntry;
 use App\Models\User;
+use App\Services\Pvp\Rounds\PvpRoundHandlerFactory;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 readonly class PvpMatchmakingService
 {
-    public function __construct(private PvpMatchService $matches)
+    public function __construct(private PvpMatchService $matches, private PvpRoundHandlerFactory $factory)
     {
     }
 
@@ -120,7 +121,14 @@ readonly class PvpMatchmakingService
                 return null;
             }
 
-            $roundPool = (array) config('pvp.round_pool', []);
+            $roundPool = [];
+            foreach ((array) config('pvp.round_pool', []) as $round) {
+                $roundResolve = $this->factory->forType($round);
+                $roundPool[] = [
+                    'type' => $roundResolve->type(),
+                    'name' => $roundResolve->name(),
+                ];
+            }
             if (count($roundPool) < $bestOf) {
                 abort(500, 'PvP round pool is smaller than requested best-of format.');
             }
@@ -138,7 +146,7 @@ readonly class PvpMatchmakingService
                 'rounds' => $selectedRounds,
                 'state' => [
                     'round' => 1,
-                    'round_type' => $selectedRounds[0],
+                    'round_type' => $selectedRounds[0]['type'],
                     'chooser_rule' => 'random_first_then_last_winner',
                     'chooser_user_id' => null,
                     'last_round_winner_user_id' => null,

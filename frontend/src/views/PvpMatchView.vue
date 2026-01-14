@@ -66,12 +66,10 @@ async function load() {
     }
 
     roundNumber.value = Number(m?.current_round ?? 1)
+    const rounds = Array.isArray(m?.rounds) ? m.rounds : [];
 
-    const rounds = Array.isArray(m?.rounds) ? m.rounds.filter((x: any) => typeof x === 'string') : []
-    pool.value = rounds.length > 0 ? rounds : ['classic', 'whois', 'locked_infos', 'draft', 'reveal_race']
-
-    revealed.value = getRoundType(m)
-
+    pool.value = rounds.length > 0 ? rounds.map((x: any) => x.name) : ['classic', 'whois', 'locked_infos', 'draft', 'reveal_race']
+    revealed.value = rounds.filter((x: any)  => x.type === getRoundType(m))[0].name;
     const key = seenKey(matchId.value, roundNumber.value)
     if (sessionStorage.getItem(key) === '1') {
       showTransition.value = false

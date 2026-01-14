@@ -75,12 +75,11 @@ function formatGame(g: string): string {
 }
 
 function formatRoundType(rt: string): string {
-  if (rt === 'classic') return 'Classic'
+  if (rt === 'classic') return 'Classique'
   if (rt === 'draft') return 'Draft'
-  if (rt === 'locked_infos') return 'Infos verrouillées'
-  if (rt === 'whois') return 'Whois'
-  if (rt === 'reveal_race') return 'Reveal race'
-  if (rt === 'reveal_face') return 'Reveal face'
+  if (rt === 'locked_infos') return 'Informations limitées'
+  if (rt === 'whois') return 'Qui est-ce ?'
+  if (rt === 'reveal_race') return 'Course contre la montre'
   return rt
 }
 
