@@ -332,7 +332,8 @@ watch(
               {{ row.rank }}
             </td>
             <td class="col-user">
-                <span class="user-name">
+<!--                <span class="admin-badge" v-if="row.user?.is_admin">🛡️</span>-->
+                <span class="user-name" :class="{'admin-name' : row.user?.is_admin}">
                   {{ row.user?.name ?? 'Joueur inconnu' }}
                 </span>
             </td>
