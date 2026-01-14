@@ -34,7 +34,9 @@ class PvpRoundPoolSelectionTest extends TestCase
         $rounds = (array) $match->rounds;
 
         $this->assertCount(5, $rounds);
-        $this->assertCount(5, array_values(array_unique($rounds)));
+
+        $types = array_column($rounds, 'type');
+        $this->assertCount(5, array_unique($types));
 
         foreach ($rounds as $t) {
             $this->assertTrue(in_array($t['type'], ['classic', 'whois', 'locked_infos', 'draft', 'reveal_race'], true));
@@ -61,7 +63,9 @@ class PvpRoundPoolSelectionTest extends TestCase
         $rounds = (array) $match->rounds;
 
         $this->assertCount(3, $rounds);
-        $this->assertCount(3, array_values(array_unique($rounds)));
+
+        $types = array_column($rounds, 'type');
+        $this->assertCount(3, array_unique($types));
 
         foreach ($rounds as $t) {
             $this->assertTrue(in_array($t['type'], ['classic', 'whois', 'locked_infos', 'draft', 'reveal_race'], true));
