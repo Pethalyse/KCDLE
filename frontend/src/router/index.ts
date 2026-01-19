@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import DleView from '@/views/DleView.vue'
+import TrophiesHigherLowerView from '@/views/TrophiesHigherLowerView.vue'
 import CreditsView from '@/views/CreditsView.vue'
 import PrivacyPolicyView from '@/views/PrivacyPolicyView.vue'
 import LegalView from '@/views/LegalView.vue'
@@ -21,6 +22,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: HomeView },
 
   { path: '/kcdle', name: 'kcdle', component: DleView, props: { game: 'kcdle' } },
+  { path: '/kcdle/higher-or-lower', name: 'kcdle_trophies_hl', component: TrophiesHigherLowerView },
   { path: '/lecdle', name: 'lecdle', component: DleView, props: { game: 'lecdle' } },
   { path: '/lfldle', name: 'lfldle', component: DleView, props: { game: 'lfldle' } },
 
