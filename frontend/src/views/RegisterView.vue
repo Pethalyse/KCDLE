@@ -73,7 +73,7 @@ async function handleSubmit() {
     })
 
     if (data?.requires_email_verification) {
-      flash.info("Un e-mail de validation vient de t'être envoyé. Pense à vérifier tes spams.", 'Validation e-mail')
+      flash.info("Un e-mail de validation vient de t'être envoyé. Pense à vérifier tes spams.", 'Validation e-mail', 0)
     }
 
     // flash.success('Compte créé avec succès. Tu dois valider ton e-mail pour te connecter.', 'Inscription réussie')
