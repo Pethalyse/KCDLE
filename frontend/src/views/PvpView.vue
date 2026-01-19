@@ -14,6 +14,7 @@ import {
   pvpStartLobby,
 } from '@/api/pvpApi'
 import SimpleImg from '@/components/SimpleImg.vue'
+import PvpRoundsHelp from '@/components/pvp/PvpRoundsHelp.vue'
 import { handleError } from '@/utils/handleError'
 import { useRoute, useRouter } from 'vue-router'
 import AdSlot from "@/components/AdSlot.vue";
@@ -242,6 +243,10 @@ onMounted(() => {
           Lance une recherche sur un jeu. Tu peux continuer à naviguer pendant la file d’attente.
         </p>
       </div>
+
+      <div class="header-right">
+        <PvpRoundsHelp button-variant="ghost" />
+      </div>
     </header>
 
     <main class="pvp-main">
@@ -419,6 +424,11 @@ onMounted(() => {
   font-size: 0.95rem;
   margin: 0;
   opacity: 0.85;
+}
+
+.header-right {
+  display: flex;
+  align-items: flex-start;
 }
 
 .pvp-main {
