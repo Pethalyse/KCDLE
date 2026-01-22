@@ -44,7 +44,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/leaderboard/lfldle', name: 'leaderboard_lfldle', component: LeaderboardView, props: { game: 'lfldle' } },
 
   { path: '/achievements', name: 'achievements', component: AchievementsView, meta: { requiresAuth: true } },
-  { path: '/friends', name: 'friends', component: FriendGroupsView, meta: { requiresAuth: true } },
+  { path: '/groups', name: 'friends', component: FriendGroupsView, meta: { requiresAuth: true } },
 
   { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
 ]

@@ -129,7 +129,7 @@ Route::get('/health', function () {
     try {
         DB::connection()->getPdo();
         $db = true;
-    } catch (\Throwable) {
+    } catch (Throwable) {
         $db = false;
     }
 
