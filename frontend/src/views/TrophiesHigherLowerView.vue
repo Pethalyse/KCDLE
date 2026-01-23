@@ -438,7 +438,6 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   background: radial-gradient(circle at top, rgba(32, 38, 58, 1) 0%, rgba(5, 6, 10, 1) 65%);
-  border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.10);
 }
 
