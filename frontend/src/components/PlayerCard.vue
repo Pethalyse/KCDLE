@@ -63,7 +63,7 @@ function imagePath(joueur: any): string {
     rgba(15, 23, 42, 0.86)
   );
   border: 1px solid rgba(148, 163, 184, 0.5);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.45);
+  //box-shadow: 0 10px 20px rgba(0, 0, 0, 0.45);
 
   cursor: pointer;
   transition:
@@ -76,7 +76,7 @@ function imagePath(joueur: any): string {
 .player-card:hover {
   transform: translateY(-1px);
   border-color: var(#38bdf8, #38bdf8);
-  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.7);
+  //box-shadow: 0 14px 26px rgba(0, 0, 0, 0.7);
   background: linear-gradient(
     90deg,
     rgba(15, 23, 42, 0.98),

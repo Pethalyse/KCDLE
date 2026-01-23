@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\GameGuessController;
 use App\Http\Controllers\Api\GamePlayerController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\Api\LegalController;
+use App\Http\Controllers\Api\Kcdle\TrophiesHigherLowerController;
 use App\Http\Controllers\Api\Meta\CountryController;
 use App\Http\Controllers\Api\Meta\GameController;
 use App\Http\Controllers\Api\Meta\LolRoleController;
@@ -35,6 +36,13 @@ Route::prefix('games')
         Route::get('{game}/players', [GamePlayerController::class, 'index']);
         Route::post('{game}/guess', [GameGuessController::class, 'store'])
             ->middleware(['throttle:game-guess']);
+    });
+
+Route::prefix('games/kcdle/trophies-higher-lower')
+    ->group(function () {
+        Route::post('start', [TrophiesHigherLowerController::class, 'start']);
+        Route::post('guess', [TrophiesHigherLowerController::class, 'guess']);
+        Route::post('end', [TrophiesHigherLowerController::class, 'end']);
     });
 
 Route::prefix('auth')
@@ -129,7 +137,7 @@ Route::get('/health', function () {
     try {
         DB::connection()->getPdo();
         $db = true;
-    } catch (\Throwable) {
+    } catch (Throwable) {
         $db = false;
     }
 

@@ -20,11 +20,11 @@ const currentRouteName = computed(() => route.name?.toString() ?? '')
 const isAuthenticated = computed(() => auth.isAuthenticated)
 
 const currentTheme = computed<'kcdle' | 'lecdle' | 'lfldle' | 'default'>(() => {
-  const name = currentRouteName.value
+  const path = route.path ?? ''
 
-  if (name === 'lecdle') return 'lecdle'
-  if (name === 'lfldle') return 'lfldle'
-  if (name === 'kcdle') return 'kcdle'
+  if (path.startsWith('/lecdle')) return 'lecdle'
+  if (path.startsWith('/lfldle')) return 'lfldle'
+  if (path.startsWith('/kcdle')) return 'kcdle'
   return 'default'
 })
 
@@ -141,7 +141,7 @@ async function logout() {
                 :class="{ active: currentRouteName === 'pvp' }"
                 @click="goPvp"
               >
-                PvP
+                PVP
               </button>
 
               <button
@@ -162,6 +162,13 @@ async function logout() {
                 @click="goMatch"
               >
                 Match en cours
+              </button>
+              <button
+                class="nav-item"
+                :class="{ active: currentRouteName === 'kcdle_trophies_hl' }"
+                @click="go('kcdle_trophies_hl')"
+              >
+                Plus/Moins
               </button>
             </div>
           </div>

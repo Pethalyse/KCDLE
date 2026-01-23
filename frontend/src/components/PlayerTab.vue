@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import SimpleImg from '@/components/SimpleImg.vue'
 
 type GameCode = 'kcdle' | 'lecdle' | 'lfldle'
@@ -31,6 +31,8 @@ interface InfoCol {
 const emit = defineEmits<{
   (e: 'endAnimaiton'): void
 }>()
+
+const lastEndAnimationEmitSignature = ref<string | null>(null)
 
 const infoBar = computed<InfoCol[]>(() => {
   if (props.game === 'kcdle') {
@@ -80,12 +82,25 @@ function blackTextStyle(option: number) {
 
 function fadeStyle(infoIndex: number) {
   const delay = infoIndex * 0.4
-  if(infoIndex === infoBar.value.length-1) {
-    setTimeout(() => emit("endAnimaiton"), (delay+0.5)*1000)
-  }
   return {
     animationDelay: `${delay}s`,
   }
+}
+
+function shouldEmitEndAnimation(infoIndex: number, guessIndex: number): boolean {
+  return infoIndex === infoBar.value.length - 1 && guessIndex === 0
+}
+
+function onCellAnimationEnd(infoIndex: number, guessIndex: number, guess: GuessEntry) {
+  if (!shouldEmitEndAnimation(infoIndex, guessIndex)) return
+
+  const playerId = guess?.player?.id ?? ''
+  const signature = `${props.game}-${playerId}-${props.guesses.length}`
+
+  if (signature === lastEndAnimationEmitSignature.value) return
+  lastEndAnimationEmitSignature.value = signature
+
+  emit('endAnimaiton')
 }
 
 function computeAge(dateStr?: string | null): number | null {
@@ -122,9 +137,9 @@ function displayValue(col: InfoCol, guess: GuessEntry): string {
       case 'trophies':
         return String(wrapper.trophies_count ?? '')
       case 'previous_team':
-        return wrapper.previousTeam?.short_name ?? wrapper.previousTeam?.display_name ?? ''
+        return wrapper.previous_team?.short_name ?? wrapper.previous_team?.display_name ?? wrapper.previous_team?.slug ?? ''
       case 'current_team':
-        return wrapper.currentTeam?.short_name ?? wrapper.currentTeam?.display_name ?? ''
+        return wrapper.current_team?.short_name ?? wrapper.current_team?.display_name ?? wrapper.current_team?.slug ?? ''
       case 'role':
         return p.role?.label ?? p.role?.code ?? ''
     }
@@ -249,6 +264,7 @@ function textClass(col: InfoCol): string | null {
                 'fade-in',
               ]"
               :style="fadeStyle(infoIndex)"
+              @animationend="onCellAnimationEnd(infoIndex, guessIndex, guess)"
             >
               <template v-if="info.type === 'cmp'">
                 <div class="ageContainer">
