@@ -1,13 +1,9 @@
-kcdle.fr, www.kcdle.fr {
+kcdle.fr, www.kcdle.fr, www.kcdle.com {
+    redir https://kcdle.com{uri} permanent
+}
+
+kcdle.com {
     encode gzip
-
-    @http {
-        protocol http
-    }
-
-    handle @http {
-        redir https://{host}{uri}
-    }
 
     reverse_proxy kcdle_nginx:80
 }
