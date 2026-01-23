@@ -11,6 +11,7 @@ const route = useRoute()
   <head>
     <title>KCDLE</title>
     <link rel="icon" href="/images/HOMEDLE_Header-rbg.png" />
+    <meta name="google-adsense-account" content="ca-pub-5212930903717514">
   </head>
   <div id="app-wrapper">
     <HeaderKcdle />
