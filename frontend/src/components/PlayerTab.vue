@@ -137,9 +137,9 @@ function displayValue(col: InfoCol, guess: GuessEntry): string {
       case 'trophies':
         return String(wrapper.trophies_count ?? '')
       case 'previous_team':
-        return wrapper.previousTeam?.short_name ?? wrapper.previousTeam?.display_name ?? ''
+        return wrapper.previous_team?.short_name ?? wrapper.previous_team?.display_name ?? wrapper.previous_team?.slug ?? ''
       case 'current_team':
-        return wrapper.currentTeam?.short_name ?? wrapper.currentTeam?.display_name ?? ''
+        return wrapper.current_team?.short_name ?? wrapper.current_team?.display_name ?? wrapper.current_team?.slug ?? ''
       case 'role':
         return p.role?.label ?? p.role?.code ?? ''
     }
