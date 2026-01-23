@@ -1,5 +1,4 @@
 <?php
-
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Foundation\Application;
@@ -7,7 +6,16 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 
+/**
+ * Bootstrap the Laravel application.
+ *
+ * This file configures the application base path, routing, middleware stack,
+ * and trusted proxy headers for correct URL generation behind reverse proxies.
+ *
+ * @return Application
+ */
 return Application::configure(basePath: dirname(__DIR__))
     ->withProviders([
         App\Providers\Filament\AdminPanelProvider::class,
@@ -21,11 +29,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(
             at: '*',
-            headers: Request::HEADER_X_FORWARDED_FOR |
-            Request::HEADER_X_FORWARDED_HOST |
-            Request::HEADER_X_FORWARDED_PORT |
-            Request::HEADER_X_FORWARDED_PROTO |
-            Request::HEADER_X_FORWARDED_AWS_ELB,
+            headers: SymfonyRequest::HEADER_X_FORWARDED_FOR |
+            SymfonyRequest::HEADER_X_FORWARDED_HOST |
+            SymfonyRequest::HEADER_X_FORWARDED_PORT |
+            SymfonyRequest::HEADER_X_FORWARDED_PROTO |
+            SymfonyRequest::HEADER_X_FORWARDED_AWS_ELB,
         );
 
         $middleware->web(append: [
