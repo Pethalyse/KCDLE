@@ -95,7 +95,7 @@ jobs:
         run: |
           cat > frontend/.env <<EOF
           VITE_ENV=production
-          VITE_API_BASE_URL=${{ secrets.VPS_HOST }}/api
+          VITE_API_BASE_URL=${{ secrets.VPS_DOMAIN }}/api
           VITE_PUBLISHER_ID=${{ secrets.VITE_PUBLISHER_ID }}
           VITE_AD_SENSE_ID=${{ secrets.VITE_AD_SENSE_ID }}
           EOF
