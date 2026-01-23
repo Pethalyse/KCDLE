@@ -168,7 +168,7 @@ async function logout() {
                 :class="{ active: currentRouteName === 'kcdle_trophies_hl' }"
                 @click="go('kcdle_trophies_hl')"
               >
-                Higher or Lower
+                Plus/Moins
               </button>
             </div>
           </div>
