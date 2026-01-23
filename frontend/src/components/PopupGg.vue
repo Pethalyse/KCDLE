@@ -22,7 +22,7 @@ const props = defineProps<{
 const root = ref<HTMLElement | null>(null)
 
 const headerText = computed(
-  () => `J'ai joué au ${props.dleCode} sur http://kcdle.fr/ et voici mes résultats :\n`,
+  () => `J'ai joué au ${props.dleCode} sur https://kcdle.com/ et voici mes résultats :\n`,
 )
 
 const hashtagText = '#KCORP'
