@@ -11,12 +11,11 @@ use Illuminate\Validation\Rule;
 /**
  * Controller responsible for the KCDLE trophies Higher/Lower solo game mode.
  *
- * This mode is a session-based mini-game:
- * - The client starts a session.
- * - The API returns two players (left/right) without trophies revealed.
- * - The client submits guesses by selecting which player has more trophies.
- * - The API returns the reveal values and whether the guess is correct.
- * - On success, the right player becomes the next left player and a new right player is drawn.
+ * This mode is session-based and works as follows:
+ * - Start returns two players (left/right) with hidden trophy counts.
+ * - Guess accepts a choice (left/right/equal) and returns reveal values and correctness.
+ * - On success, the right player becomes the new left player and a new right player is drawn.
+ * - On failure, the session is cleared and game_over is returned.
  */
 class TrophiesHigherLowerController extends Controller
 {
@@ -28,14 +27,7 @@ class TrophiesHigherLowerController extends Controller
     }
 
     /**
-     * Start a new trophies Higher/Lower session.
-     *
-     * Response JSON:
-     * - session_id: string
-     * - score: int
-     * - round: int
-     * - left: array{id:int,name:string,image_url:?string,trophies_count:?int}
-     * - right: array{id:int,name:string,image_url:?string,trophies_count:?int}
+     * Start a new session.
      *
      * @return JsonResponse
      */
@@ -45,21 +37,11 @@ class TrophiesHigherLowerController extends Controller
     }
 
     /**
-     * Submit a guess for a given session.
+     * Submit a guess for a session.
      *
      * Request body:
      * - session_id: string
-     * - choice: 'left'|'right'
-     *
-     * Response JSON:
-     * - session_id: string
-     * - correct: bool
-     * - clicked: 'left'|'right'
-     * - reveal: array{left:int,right:int}
-     * - score: int
-     * - round: int
-     * - game_over: bool
-     * - next: null|array{session_id:string,score:int,round:int,left:array,right:array}
+     * - choice: 'left'|'right'|'equal'
      *
      * @param Request $request
      *
@@ -69,7 +51,7 @@ class TrophiesHigherLowerController extends Controller
     {
         $validated = $request->validate([
             'session_id' => ['required', 'string', 'max:128'],
-            'choice' => ['required', 'string', Rule::in(['left', 'right'])],
+            'choice' => ['required', 'string', Rule::in(['left', 'right', 'equal'])],
         ]);
 
         return response()->json($this->service->guess(
@@ -80,12 +62,6 @@ class TrophiesHigherLowerController extends Controller
 
     /**
      * End a session explicitly and clear its state.
-     *
-     * Request body:
-     * - session_id: string
-     *
-     * Response JSON:
-     * - ended: bool
      *
      * @param Request $request
      *

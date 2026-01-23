@@ -11,11 +11,17 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /**
  * Service implementing the KCDLE trophies Higher/Lower solo game mode.
  *
- * State is stored in cache by session id. The service:
- * - Creates a new session with 2 random active KCDLE players.
- * - Evaluates guesses and returns reveal values.
- * - When correct, shifts the right player to the left and draws a new right player.
- * - When incorrect, ends the session and returns game_over=true.
+ * Session state is stored in cache by session id:
+ * - left_id: current left player id
+ * - right_id: current right player id
+ * - used_ids: already used player ids (to reduce repetitions)
+ * - score: number of consecutive correct guesses
+ * - round: current round number (1-based)
+ *
+ * Choice rules:
+ * - If left trophies > right trophies: correct choice is 'left'
+ * - If right trophies > left trophies: correct choice is 'right'
+ * - If equal: correct choice is 'equal'
  */
 class TrophiesHigherLowerService
 {
@@ -45,16 +51,16 @@ class TrophiesHigherLowerService
     {
         $sessionId = (string) Str::uuid();
 
-        $left = $this->pickRandomPlayerId([]);
-        $right = $this->pickRandomPlayerId([$left]);
+        $leftId = $this->pickRandomPlayerId([]);
+        $rightId = $this->pickRandomPlayerId([$leftId]);
 
         $state = [
             'session_id' => $sessionId,
             'score' => 0,
             'round' => 1,
-            'left_id' => $left,
-            'right_id' => $right,
-            'used_ids' => [$left, $right],
+            'left_id' => $leftId,
+            'right_id' => $rightId,
+            'used_ids' => [$leftId, $rightId],
         ];
 
         $this->putState($sessionId, $state);
@@ -63,7 +69,7 @@ class TrophiesHigherLowerService
     }
 
     /**
-     * End a session explicitly (clears cache state).
+     * End a session explicitly.
      *
      * @param string $sessionId
      *
@@ -77,10 +83,21 @@ class TrophiesHigherLowerService
     /**
      * Submit a guess for a session.
      *
+     * Response structure:
+     * - session_id: string
+     * - clicked: 'left'|'right'|'equal'
+     * - correct: bool
+     * - reveal: { left:int, right:int }
+     * - score: int
+     * - round: int
+     * - game_over: bool
+     * - next: null|{ session_id, score, round, left, right }
+     *
      * @param string $sessionId
-     * @param string $choice 'left'|'right'
+     * @param string $choice
      *
      * @return array<string, mixed>
+     * @throws InvalidArgumentException
      */
     public function guess(string $sessionId, string $choice): array
     {
@@ -88,24 +105,19 @@ class TrophiesHigherLowerService
 
         $left = KcdlePlayer::query()
             ->with('player')
-            ->whereKey($state['left_id'])
+            ->whereKey((int) $state['left_id'])
             ->firstOrFail();
 
         $right = KcdlePlayer::query()
             ->with('player')
-            ->whereKey($state['right_id'])
+            ->whereKey((int) $state['right_id'])
             ->firstOrFail();
 
         $leftTrophies = (int) $left->getAttribute('trophies_count');
         $rightTrophies = (int) $right->getAttribute('trophies_count');
 
-        $isTie = $leftTrophies === $rightTrophies;
-
-        $correctSide = $isTie
-            ? 'tie'
-            : ($leftTrophies > $rightTrophies ? 'left' : 'right');
-
-        $isCorrect = $isTie || $choice === $correctSide;
+        $correctChoice = $this->computeCorrectChoice($leftTrophies, $rightTrophies);
+        $isCorrect = $choice === $correctChoice;
 
         $reveal = [
             'left' => $leftTrophies,
@@ -143,9 +155,26 @@ class TrophiesHigherLowerService
     }
 
     /**
+     * Compute the correct choice based on trophy values.
+     *
+     * @param int $left
+     * @param int $right
+     *
+     * @return string
+     */
+    private function computeCorrectChoice(int $left, int $right): string
+    {
+        if ($left === $right) {
+            return 'equal';
+        }
+
+        return $left > $right ? 'left' : 'right';
+    }
+
+    /**
      * Compute the next state after a correct guess.
      *
-     * The right player becomes the new left player. A new right player is drawn.
+     * The right player becomes the new left player and a new right player is drawn.
      *
      * @param array<string, mixed> $state
      *
@@ -153,21 +182,14 @@ class TrophiesHigherLowerService
      */
     private function computeNextState(array $state): array
     {
-        $leftId = (int) $state['left_id'];
         $newLeftId = (int) $state['right_id'];
 
         $usedIds = array_values(array_unique(array_map('intval', (array) ($state['used_ids'] ?? []))));
-
         if (!in_array($newLeftId, $usedIds, true)) {
             $usedIds[] = $newLeftId;
         }
 
-        $excludeForPick = $usedIds;
-        if (!in_array($newLeftId, $excludeForPick, true)) {
-            $excludeForPick[] = $newLeftId;
-        }
-
-        $newRightId = $this->pickRandomPlayerId($excludeForPick);
+        $newRightId = $this->pickRandomPlayerId(array_values(array_unique(array_merge($usedIds, [$newLeftId]))));
 
         if ($newRightId === null) {
             $usedIds = [$newLeftId];
@@ -187,7 +209,7 @@ class TrophiesHigherLowerService
     }
 
     /**
-     * Get the cached state for a session id.
+     * Retrieve cached state.
      *
      * @param string $sessionId
      *
@@ -219,7 +241,7 @@ class TrophiesHigherLowerService
     }
 
     /**
-     * Build the cache key for a given session id.
+     * Build cache key.
      *
      * @param string $sessionId
      *
@@ -231,7 +253,7 @@ class TrophiesHigherLowerService
     }
 
     /**
-     * Pick a random KCDLE player id excluding a given list.
+     * Pick a random active KCDLE player id excluding a set of ids.
      *
      * @param array<int> $excludeIds
      *
@@ -242,8 +264,7 @@ class TrophiesHigherLowerService
         $excludeIds = array_values(array_unique(array_map('intval', $excludeIds)));
 
         $query = KcdlePlayer::query()
-            ->where('active', true)
-            ->whereNotNull('trophies_count');
+            ->where('active', true);
 
         if (!empty($excludeIds)) {
             $query->whereNotIn('id', $excludeIds);
@@ -258,10 +279,10 @@ class TrophiesHigherLowerService
     }
 
     /**
-     * Convert internal state to a public payload for the frontend.
+     * Convert internal state into a frontend payload.
      *
      * @param array<string, mixed> $state
-     * @param bool $leftKnown Whether the left player trophies must be included.
+     * @param bool $leftKnown
      *
      * @return array<string, mixed>
      */

@@ -1,4 +1,4 @@
-export type HigherLowerSide = 'left' | 'right'
+export type HigherLowerSide = 'left' | 'right' | 'equal'
 
 export interface HigherLowerPlayer {
   id: number
