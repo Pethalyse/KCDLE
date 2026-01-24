@@ -98,6 +98,8 @@ jobs:
           VITE_API_BASE_URL=${{ secrets.VPS_DOMAIN }}/api
           VITE_PUBLISHER_ID=${{ secrets.VITE_PUBLISHER_ID }}
           VITE_AD_SENSE_ID=${{ secrets.VITE_AD_SENSE_ID }}
+          VITE_GOOGLE_CMP_ENABLED=1
+          VITE_AD_SENSE_SLOT_ID=${{ secrets.VITE_AD_SENSE_SLOT_ID }}
           EOF
 
       - name: Build Docker image

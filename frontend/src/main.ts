@@ -6,7 +6,7 @@ import router from './router'
 
 import './assets/style.css'
 import { initRouterAnalytics } from '@/analytics.ts'
-import { initAds } from '@/ads.ts'
+import { autoInitAds, loadAds } from '@/ads.ts'
 import { initAuthStore } from '@/stores/auth.ts'
 import { initPvpRuntime } from '@/pvpRuntime.ts'
 
@@ -19,7 +19,8 @@ app.use(router)
 initAuthStore()
 initPvpRuntime(router)
 
-initRouterAnalytics(router)
-initAds('ethical')
+// initRouterAnalytics(router)
+autoInitAds()
+loadAds()
 
 app.mount('#app')

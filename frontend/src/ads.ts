@@ -12,6 +12,8 @@ let adsenseScriptLoaded = false
 
 let adsensePersonalizedAllowed = false
 
+const GOOGLE_CMP_ENABLED = import.meta.env.VITE_GOOGLE_CMP_ENABLED === '1'
+
 const REAL_ADS_ENABLED = import.meta.env.VITE_ENV === 'production'
 
 const PUBLISHER_ID = (import.meta.env.VITE_PUBLISHER_ID as string | undefined) || ''
@@ -114,16 +116,27 @@ function renderEthicalSlot(slotId: string, options?: Record<string, any>) {
 
 function loadAdsenseScript() {
   if (adsenseScriptLoaded) return
+  const existing = document.querySelector(
+    'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]'
+  ) as HTMLScriptElement | null
+
+  if (existing) {
+    adsenseScriptLoaded = true
+    return
+  }
+
   adsenseScriptLoaded = true
 
-  setAdsensePersonalizedAllowed(adsensePersonalizedAllowed)
+  if (!GOOGLE_CMP_ENABLED) {
+    setAdsensePersonalizedAllowed(adsensePersonalizedAllowed)
+  }
 
   const script = document.createElement('script')
   script.async = true
-  script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
-  if (AD_SENSE_ID) {
-    script.setAttribute('data-ad-client', AD_SENSE_ID)
-  }
+  script.crossOrigin = 'anonymous'
+  script.src = AD_SENSE_ID
+    ? `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(AD_SENSE_ID)}`
+    : 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
 
   script.onerror = () => {
     try {
@@ -144,6 +157,10 @@ function loadAdsenseScript() {
 
 export function setAdsensePersonalizedAllowed(allowed: boolean) {
   adsensePersonalizedAllowed = allowed
+
+  if (GOOGLE_CMP_ENABLED) {
+    return
+  }
 
   const w = window as any
   w.adsbygoogle = w.adsbygoogle || []

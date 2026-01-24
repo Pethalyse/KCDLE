@@ -10,6 +10,7 @@ const props = defineProps<{
 const slotId = computed(() => props.id)
 const publisherId = import.meta.env.VITE_PUBLISHER_ID
 const adSenseId = import.meta.env.VITE_AD_SENSE_ID
+const adSenseSlotId = import.meta.env.VITE_AD_SENSE_SLOT_ID
 
 const REAL_ADS_ENABLED = import.meta.env.VITE_ENV === 'production'
 
@@ -18,7 +19,7 @@ const currentProvider = computed(() => adsProvider.value)
 function adsExists(): boolean {
   if (!REAL_ADS_ENABLED) return true
   if (currentProvider.value === 'ethical') return !!publisherId
-  if (currentProvider.value === 'adsense') return !!adSenseId
+  if (currentProvider.value === 'adsense') return !!adSenseId && !!adSenseSlotId
   return false
 }
 
@@ -65,7 +66,7 @@ watch(currentProvider, () => {
         class="ad-content adsbygoogle"
         style="display:block"
         :data-ad-client="adSenseId"
-        :data-ad-slot="slotId"
+        :data-ad-slot="adSenseSlotId"
         data-ad-format="auto"
         data-full-width-responsive="true"
       />

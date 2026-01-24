@@ -5,20 +5,18 @@ import { RouterView, useRoute } from 'vue-router'
 import FlashMessage from "@/components/FlashMessage.vue";
 import HeaderKcdle from "@/components/HeaderKcdle.vue";
 const route = useRoute()
+
+const googleCmpEnabled = import.meta.env.VITE_GOOGLE_CMP_ENABLED === '1'
 </script>
 
 <template>
-  <head>
-    <title>KCDLE</title>
-    <link rel="icon" href="/images/HOMEDLE_Header-rbg.png" />
-  </head>
   <div id="app-wrapper">
     <HeaderKcdle />
     <RouterView v-slot="{ Component }">
       <component :is="Component" :key="route.fullPath" />
     </RouterView>
     <FooterKcdle />
-    <CookieConsent />
+    <CookieConsent v-if="!googleCmpEnabled" />
     <FlashMessage />
   </div>
 </template>

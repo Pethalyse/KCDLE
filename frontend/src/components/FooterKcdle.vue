@@ -5,6 +5,8 @@ import {useCookieConsent} from "@/composables/useCookieConsent.ts";
 const router = useRouter()
 const { openCookieManager } = useCookieConsent()
 
+const googleCmpEnabled = import.meta.env.VITE_GOOGLE_CMP_ENABLED === '1'
+
 function goCredits() {
   router.push({ name: 'credits' })
 }
@@ -50,6 +52,7 @@ function goLegal() {
       <button
         class="footer-link"
         @click="openCookieManager"
+        v-if="!googleCmpEnabled"
       >
         Paramètres des cookies
       </button>
