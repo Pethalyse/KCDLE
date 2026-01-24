@@ -11,8 +11,6 @@ const route = useRoute()
   <head>
     <title>KCDLE</title>
     <link rel="icon" href="/images/HOMEDLE_Header-rbg.png" />
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5212930903717514"
-            crossorigin="anonymous"></script>
   </head>
   <div id="app-wrapper">
     <HeaderKcdle />
