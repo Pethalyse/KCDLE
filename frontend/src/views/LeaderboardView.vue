@@ -8,6 +8,7 @@ import {useAuthStore} from '@/stores/auth'
 import {fetchFriendGroupLeaderboard, fetchFriendGroups} from '@/api/friendGroupApi'
 import type {FriendGroupLeaderboardGroup, FriendGroupSummary,} from '@/types/friendGroup'
 import AdSlot from "@/components/AdSlot.vue";
+import UserBadge from '@/components/UserBadge.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -317,7 +318,6 @@ watch(
             <th>Joueur</th>
             <th>Victoires</th>
             <th>Moyenne de coups</th>
-            <!-- <th>Score</th> -->
           </tr>
           </thead>
           <tbody>
@@ -332,10 +332,16 @@ watch(
               {{ row.rank }}
             </td>
             <td class="col-user">
-<!--                <span class="admin-badge" v-if="row.user?.is_admin">🛡️</span>-->
-                <span class="user-name" :class="{'admin-name' : row.user?.is_admin}">
-                  {{ row.user?.name ?? 'Joueur inconnu' }}
-                </span>
+              <UserBadge
+                v-if="row.user"
+                :name="row.user.name"
+                :avatar-url="row.user.avatar_url"
+                :frame-color="row.user.avatar_frame_color"
+                :size="32"
+                :show-name="true"
+                :admin="row.user.is_admin"
+              />
+              <span v-else class="user-name">Joueur inconnu</span>
             </td>
             <td class="col-wins">
               {{ row.wins }}
@@ -343,11 +349,6 @@ watch(
             <td class="col-avg">
               {{ row.average_guesses !== null ? row.average_guesses.toFixed(2) : '—' }}
             </td>
-            <!--
-            <td class="col-score">
-              {{ row.final_score.toFixed(2) }}
-            </td>
-            -->
           </tr>
           </tbody>
         </table>
@@ -633,4 +634,3 @@ watch(
   }
 }
 </style>
-z

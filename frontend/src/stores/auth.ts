@@ -6,6 +6,9 @@ export interface AuthUser {
   name: string
   email: string
   email_verified?: boolean
+  is_admin?: boolean
+  avatar_url?: string | null
+  avatar_frame_color?: string | null
 }
 
 interface AuthState {
@@ -39,6 +42,11 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
 
       api.defaults.headers.common.Authorization = `Bearer ${token}`
+    },
+
+    updateUser(user: AuthUser) {
+      this.user = user
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
     },
 
     setToken(token: string) {
@@ -93,6 +101,19 @@ export const useAuthStore = defineStore('auth', {
 
     async resendEmailVerification(payload: { email: string }) {
       const { data } = await api.post('/auth/email/verification-notification', payload)
+      return data
+    },
+
+    async refreshToken() {
+      if (!this.token) return null
+      const { data } = await api.post('/auth/refresh')
+      if (data?.token) {
+        this.setToken(data.token)
+      }
+      if (data?.user) {
+        this.user = data.user
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(this.user))
+      }
       return data
     },
 

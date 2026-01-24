@@ -5,6 +5,7 @@ services:
     env_file:
       - backend/.env
     environment:
+      APP_VERSION: ${IMAGE_TAG:-latest}
       RUN_MIGRATIONS: "true"
     working_dir: /var/www/html
     volumes:
@@ -19,6 +20,7 @@ services:
     env_file:
       - backend/.env
     environment:
+      APP_VERSION: ${IMAGE_TAG:-latest}
       RUN_MIGRATIONS: "false"
     working_dir: /var/www/html
     command: sh -c "php artisan schedule:work"

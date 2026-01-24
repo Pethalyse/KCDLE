@@ -4,6 +4,9 @@ export interface UserProfileUser {
   id: number
   name: string
   email: string
+  is_admin?: boolean
+  avatar_url?: string | null
+  avatar_frame_color?: string | null
   created_at: string | null
 }
 

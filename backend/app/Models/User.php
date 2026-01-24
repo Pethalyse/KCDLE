@@ -13,6 +13,13 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * Application user model.
+ *
+ * This model also stores lightweight profile customization attributes used by the frontend,
+ * such as an avatar stored on the public disk and a profile-picture frame color.
+ */
+
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -27,6 +34,17 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'name',
         'email',
         'password',
+        'avatar_path',
+        'avatar_frame_color',
+    ];
+
+    /**
+     * Attributes appended to the model's array / JSON form.
+     *
+     * @var list<string>
+     */
+    protected $appends = [
+        'avatar_url',
     ];
 
     /**
@@ -51,6 +69,34 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
             'password' => 'hashed',
             'is_admin' => 'boolean',
         ];
+    }
+
+    /**
+     * Resolve the public URL for the user's avatar.
+     *
+     * If the user has not uploaded a custom avatar yet, the default avatar is returned.
+     *
+     * @return string
+     */
+    public function getAvatarUrlAttribute(): string
+    {
+        $path = (string) ($this->getAttribute('avatar_path') ?: 'users/defaut.png');
+
+        return asset('storage/' . ltrim($path, '/'));
+    }
+
+    /**
+     * Resolve the avatar frame color.
+     *
+     * @param string|null $value Stored database value.
+     *
+     * @return string
+     */
+    public function getAvatarFrameColorAttribute(?string $value): string
+    {
+        $v = $value ?? '';
+
+        return $v !== '' ? $v : '#3B82F6';
     }
 
     /**

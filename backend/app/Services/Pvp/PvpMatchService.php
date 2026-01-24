@@ -91,7 +91,7 @@ class PvpMatchService
      *   rounds:array<int, string>,
      *   started_at:string|null,
      *   state:array{round_type:mixed},
-     *   players:array<int, array{seat:int, user_id:int, name:string|null, points:int, last_seen_at:mixed}>,
+     *   players:array<int, array{seat:int, user_id:int, name:string|null, is_admin:bool, avatar_url:string|null, avatar_frame_color:string|null, points:int, last_seen_at:mixed}>,
      *   last_event_id:int,
      *   finished_at?:string|null,
      *   result?:array{winner_user_id:int|null, ended_reason:string|null, forfeiting_user_id:int|null},
@@ -103,7 +103,7 @@ class PvpMatchService
     {
         $this->assertParticipant($match->id, $userId);
 
-        $players = $match->players()->with('user:id,name')->orderBy('seat')->get();
+        $players = $match->players()->with('user:id,name,is_admin,avatar_path,avatar_frame_color')->orderBy('seat')->get();
         $lastEventId = $match->events()->max('id') ?? 0;
 
         $state = is_array($match->state) ? $match->state : [];
@@ -123,6 +123,9 @@ class PvpMatchService
                 'seat' => $p->seat,
                 'user_id' => $p->user_id,
                 'name' => $p->user?->name,
+                'is_admin' => (bool) ($p->user?->getAttribute('is_admin') ?? false),
+                'avatar_url' => $p->user ? (string) $p->user->getAttribute('avatar_url') : null,
+                'avatar_frame_color' => $p->user ? (string) $p->user->getAttribute('avatar_frame_color') : null,
                 'points' => $p->points,
                 'last_seen_at' => $p->last_seen_at,
             ])->all(),

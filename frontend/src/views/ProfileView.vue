@@ -2,19 +2,38 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { fetchUserProfile } from '@/api/userProfileApi'
+import { fetchUserProfile, updateUserProfile } from '@/api/userProfileApi'
 import type { UserProfileGameStats, UserProfileResponse } from '@/types/userProfile'
 import { handleError } from '@/utils/handleError'
 import AdSlot from '@/components/AdSlot.vue'
+import { useFlashStore } from '@/stores/flash'
+import UserBadge from '@/components/UserBadge.vue'
 
 type TabKey = 'games' | 'pvp' | 'groups'
 
 const router = useRouter()
 const auth = useAuthStore()
+const flash = useFlashStore()
 
 const profile = ref<UserProfileResponse | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+const saving = ref(false)
+const avatarFile = ref<File | null>(null)
+const avatarPreview = ref<string | null>(null)
+const frameColor = ref<string>('#00a6ff')
+
+const presetColors = [
+  '#00a6ff',
+  '#7c3aed',
+  '#ff4d4d',
+  '#22c55e',
+  '#f59e0b',
+  '#14b8a6',
+  '#e11d48',
+  '#a3a3a3',
+]
 
 const tab = ref<TabKey>('games')
 const showAllPrivateOpponents = ref(false)
@@ -27,9 +46,8 @@ const gamesEntries = computed(() => {
 })
 
 const achievementsPct = computed(() => {
-  if (!profile.value) return 0
-  const total = profile.value.achievements.total || 0
-  const unlocked = profile.value.achievements.unlocked || 0
+  const total = Number(profile.value?.achievements?.total ?? 0)
+  const unlocked = Number(profile.value?.achievements?.unlocked ?? 0)
   if (total <= 0) return 0
   return Math.round((unlocked / total) * 100)
 })
@@ -54,15 +72,78 @@ function goAchievements() {
   router.push({ name: 'achievements' })
 }
 
+function syncEditorFromProfile() {
+  const c = (profile.value?.user?.avatar_frame_color ?? '').toString().trim()
+  frameColor.value = c.length > 0 ? c : '#00a6ff'
+}
+
+function onSelectAvatar(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files && input.files.length > 0 ? input.files[0] : null
+  if (!file) {
+    avatarFile.value = null
+    avatarPreview.value = null
+    return
+  }
+
+  const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif')
+  if (isGif && !auth.user?.is_admin) {
+    avatarFile.value = null
+    avatarPreview.value = null
+    input.value = ''
+    flash.error('Les GIF sont réservés aux admins pour le moment.', 'Photo de profil')
+    return
+  }
+
+  avatarFile.value = file
+  try {
+    avatarPreview.value = URL.createObjectURL(file)
+  } catch {
+    avatarPreview.value = null
+  }
+}
+
+async function saveProfileCustomization() {
+  if (!profile.value) return
+  saving.value = true
+  try {
+    const data = await updateUserProfile({
+      avatar: avatarFile.value,
+      avatar_frame_color: frameColor.value,
+    })
+
+    profile.value = data
+    auth.updateUser({
+      ...(auth.user as any),
+      ...(data.user as any),
+    })
+
+    if (avatarPreview.value) {
+      try {
+        URL.revokeObjectURL(avatarPreview.value)
+      } catch {}
+    }
+    avatarFile.value = null
+    avatarPreview.value = null
+    flash.success('Profil mis à jour.', 'Profil')
+  } catch (e: any) {
+    handleError(e)
+    flash.error('Impossible de mettre à jour ton profil.', 'Profil')
+  } finally {
+    saving.value = false
+  }
+}
+
 onMounted(async () => {
   if (!auth.isAuthenticated) {
-    router.push({ name: 'home' })
+    await router.push({ name: 'home' })
     return
   }
 
   try {
     loading.value = true
     profile.value = await fetchUserProfile()
+    syncEditorFromProfile()
   } catch (e: any) {
     handleError(e)
     error.value = 'Impossible de charger ton profil.'
@@ -84,21 +165,80 @@ onMounted(async () => {
       <div v-else-if="hasProfile && profile" class="profile-layout">
         <header class="profile-overview">
           <section class="profile-card profile-identity">
-            <div class="identity-top">
-              <div class="identity-main">
-                <h1 class="profile-title">Mon profil</h1>
-                <div class="identity-meta">
-                  <div class="meta-line">
-                    <span class="meta-label">Pseudo</span>
-                    <span class="meta-value">{{ profile.user.name }}</span>
+            <div class="identity-grid">
+              <div class="identity-left">
+                <div class="identity-head">
+                  <UserBadge
+                    :name="profile.user.name"
+                    :avatar-url="avatarPreview ?? profile.user.avatar_url ?? null"
+                    :frame-color="frameColor"
+                    :size="88"
+                    :show-name="false"
+                    :admin="Boolean(profile.user.is_admin)"
+                  />
+
+                  <div class="identity-info">
+                    <h1 class="profile-title">Mon profil</h1>
+
+                    <div class="identity-meta">
+                      <div class="meta-line">
+                        <span class="meta-label">Pseudo</span>
+                        <span class="meta-value">{{ profile.user.name }}</span>
+                      </div>
+                      <div class="meta-line">
+                        <span class="meta-label">Email</span>
+                        <span class="meta-value">{{ profile.user.email }}</span>
+                      </div>
+                      <div class="meta-line">
+                        <span class="meta-label">Inscription</span>
+                        <span class="meta-value">{{ formatDate(profile.user.created_at) }}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="meta-line">
-                    <span class="meta-label">Email</span>
-                    <span class="meta-value">{{ profile.user.email }}</span>
+                </div>
+
+                <div class="identity-custom">
+                  <div class="custom-row">
+                    <label class="avatar-upload">
+                      <span class="avatar-upload-text">Changer la photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        class="avatar-upload-input"
+                        @change="onSelectAvatar"
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      class="avatar-save"
+                      :disabled="saving"
+                      @click="saveProfileCustomization"
+                    >
+                      {{ saving ? 'Enregistrement…' : 'Enregistrer' }}
+                    </button>
                   </div>
-                  <div class="meta-line">
-                    <span class="meta-label">Inscription</span>
-                    <span class="meta-value">{{ formatDate(profile.user.created_at) }}</span>
+
+                  <div class="frame-picker">
+                    <div class="frame-label">Cadre</div>
+                    <div class="frame-colors">
+                      <button
+                        v-for="c in presetColors"
+                        :key="c"
+                        type="button"
+                        class="frame-color"
+                        :class="{ active: frameColor.toLowerCase() === c.toLowerCase() }"
+                        :style="{ background: c }"
+                        @click="frameColor = c"
+                        :aria-label="'Couleur ' + c"
+                      />
+                      <input
+                        v-model="frameColor"
+                        type="color"
+                        class="frame-custom"
+                        aria-label="Couleur personnalisée"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -376,7 +516,7 @@ onMounted(async () => {
 
 .profile-card {
   background: rgba(10, 12, 20, 0.9);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
@@ -386,11 +526,13 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
   gap: 14px;
+  align-items: start;
 }
 
 .profile-title {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 1.6rem;
+  line-height: 1.15;
 }
 
 .section-title {
@@ -398,11 +540,32 @@ onMounted(async () => {
   font-size: 1.1rem;
 }
 
-.profile-identity .identity-top {
+.identity-grid {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-columns: 1fr 0.62fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.identity-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.identity-head {
+  display: flex;
   gap: 14px;
-  align-items: start;
+  align-items: center;
+  min-width: 0;
+}
+
+.identity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
 }
 
 .identity-meta {
@@ -414,39 +577,156 @@ onMounted(async () => {
 .meta-line {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
 
 .meta-label {
-  opacity: 0.8;
+  opacity: 0.78;
 }
 
 .meta-value {
-  font-weight: 600;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 65%;
+  text-align: right;
+}
+
+.identity-custom {
+  background: rgba(15, 18, 28, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.custom-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.avatar-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.avatar-upload:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.avatar-upload-input {
+  display: none;
+}
+
+.avatar-upload-text {
+  font-size: 0.9rem;
+  opacity: 0.95;
+}
+
+.avatar-save {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 166, 255, 0.55);
+  background: rgba(0, 166, 255, 0.18);
+  color: #d9f3ff;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.avatar-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.avatar-save:hover {
+  background: rgba(0, 166, 255, 0.25);
+}
+
+.frame-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.frame-label {
+  font-size: 0.9rem;
+  opacity: 0.92;
+  font-weight: 650;
+}
+
+.frame-colors {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.frame-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+}
+
+.frame-color.active {
+  border-color: rgba(255, 255, 255, 0.85);
+}
+
+.frame-custom {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.frame-hint {
+  font-size: 0.8rem;
+  opacity: 0.75;
 }
 
 .identity-achievements {
-  background: rgba(15, 18, 28, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
-  padding: 10px 10px;
+  background: rgba(15, 18, 28, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .ach-title {
   font-size: 0.95rem;
   opacity: 0.9;
+  font-weight: 650;
 }
 
 .ach-kpi {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .ach-big {
-  font-size: 1.6rem;
-  font-weight: 700;
+  font-size: 1.8rem;
+  font-weight: 800;
 }
 
 .ach-sep {
@@ -455,12 +735,12 @@ onMounted(async () => {
 
 .ach-small {
   opacity: 0.9;
-  font-weight: 700;
+  font-weight: 750;
 }
 
 .ach-bar {
-  margin-top: 8px;
-  height: 8px;
+  margin-top: 10px;
+  height: 9px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
@@ -472,21 +752,21 @@ onMounted(async () => {
 }
 
 .ach-sub {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 0.85rem;
   opacity: 0.85;
 }
 
 .profile-achievements-btn {
-  margin-top: 10px;
+  margin-top: 12px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border: 1px solid #00a6ff;
-  border-radius: 6px;
+  border-radius: 10px;
   background: rgba(0, 166, 255, 0.15);
   color: #00a6ff;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   transition: background 0.15s ease;
 }
 
@@ -502,7 +782,7 @@ onMounted(async () => {
 
 .kpi-tile {
   background: rgba(15, 18, 28, 0.9);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 10px 10px;
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -553,7 +833,7 @@ onMounted(async () => {
 
 .profile-game-item {
   background: rgba(15, 18, 28, 0.9);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 10px 10px;
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -778,8 +1058,12 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 
-  .profile-identity .identity-top {
+  .identity-grid {
     grid-template-columns: 1fr;
+  }
+
+  .meta-value {
+    max-width: 72%;
   }
 
   .kpi-grid {
@@ -794,6 +1078,25 @@ onMounted(async () => {
 @media (max-width: 600px) {
   .kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  .identity-head {
+    align-items: flex-start;
+  }
+
+  .profile-title {
+    font-size: 1.45rem;
+  }
+
+  .meta-line {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .meta-value {
+    max-width: 100%;
+    text-align: left;
   }
 }
 </style>

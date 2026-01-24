@@ -60,6 +60,7 @@ Route::prefix('auth')
     ->middleware(['auth:sanctum'])
     ->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
+        Route::post('refresh', [AuthController::class, 'refresh']);
         Route::get('me', [AuthController::class, 'me']);
     });
 
@@ -67,6 +68,7 @@ Route::prefix('user')
     ->middleware(['auth:sanctum'])
     ->group(function () {
         Route::get('profile', [UserProfileController::class, 'show']);
+        Route::post('profile', [UserProfileController::class, 'update']);
         Route::get('games/{game}/today', [GameGuessController::class, 'today']);
         Route::get('games/{game}/stats', [UserGameStatsController::class, 'show']);
         Route::get('games/{game}/history', [GameGuessController::class, 'history']);

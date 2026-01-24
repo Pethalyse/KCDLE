@@ -192,11 +192,47 @@ class AuthController extends Controller
     }
 
     /**
+     * Rotate the current API token for the authenticated user.
+     *
+     * This endpoint revokes the currently used Sanctum token and issues a
+     * fresh one. It can be used by the frontend to seamlessly recover from
+     * edge cases around deployments or token rotation policies while keeping
+     * the user authenticated.
+     *
+     * Response JSON payload:
+     * - 'user'  => array Normalized user.
+     * - 'token' => string Newly issued bearer token.
+     *
+     * @param Request $request HTTP request providing the authenticated user.
+     *
+     * @return JsonResponse JSON response containing the new token.
+     */
+    public function refresh(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $user->currentAccessToken()?->delete();
+
+        $token = $user->createToken('kcdle-app')->plainTextToken;
+
+        return response()->json([
+            'user' => $this->formatUser($user),
+            'token' => $token,
+        ]);
+    }
+
+    /**
      * Normalize a User model into a public API-safe array.
      *
      * @param User $user User instance to normalize.
      *
-     * @return array{id:int, name:string, email:string|null, email_verified:bool} Normalized user data.
+     * @return array{id:int, name:string, email:string|null, email_verified:bool, is_admin:bool, avatar_url:string, avatar_frame_color:string} Normalized user data.
      */
     protected function formatUser(User $user): array
     {
@@ -205,6 +241,9 @@ class AuthController extends Controller
             'name' => (string) $user->getAttribute('name'),
             'email' => $user->getAttribute('email'),
             'email_verified' => $user->hasVerifiedEmail(),
+            'is_admin' => (bool) $user->getAttribute('is_admin'),
+            'avatar_url' => (string) $user->getAttribute('avatar_url'),
+            'avatar_frame_color' => (string) $user->getAttribute('avatar_frame_color'),
         ];
     }
 }
