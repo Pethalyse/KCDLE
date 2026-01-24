@@ -12,9 +12,8 @@ let adsenseScriptLoaded = false
 
 let adsensePersonalizedAllowed = false
 
-const GOOGLE_CMP_ENABLED = import.meta.env.VITE_GOOGLE_CMP_ENABLED === '1'
-
 const REAL_ADS_ENABLED = import.meta.env.VITE_ENV === 'production'
+const GOOGLE_CMP_ENABLED = import.meta.env.VITE_GOOGLE_CMP_ENABLED === '1'
 
 const PUBLISHER_ID = (import.meta.env.VITE_PUBLISHER_ID as string | undefined) || ''
 const AD_SENSE_ID = (import.meta.env.VITE_AD_SENSE_ID as string | undefined) || ''
@@ -94,13 +93,6 @@ function loadEthicalAdsScript() {
   document.head.appendChild(script)
 }
 
-/**
- * EthicalAds fonctionne via des <div data-ea-publisher="..." data-ea-type="..."></div>
- * Ici, on laisse le composant Vue générer le markup, et on demande
- * à EthicalAds de re-scanner la page.
- * @param slotId
- * @param options
- */
 function renderEthicalSlot(slotId: string, options?: Record<string, any>) {
   const w = window as any
   if (!w.ethicalads || typeof w.ethicalads.load_placements !== 'function') {
@@ -116,6 +108,7 @@ function renderEthicalSlot(slotId: string, options?: Record<string, any>) {
 
 function loadAdsenseScript() {
   if (adsenseScriptLoaded) return
+
   const existing = document.querySelector(
     'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]'
   ) as HTMLScriptElement | null
@@ -134,6 +127,8 @@ function loadAdsenseScript() {
   const script = document.createElement('script')
   script.async = true
   script.crossOrigin = 'anonymous'
+  script.id = 'adsense-script'
+
   script.src = AD_SENSE_ID
     ? `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(AD_SENSE_ID)}`
     : 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'

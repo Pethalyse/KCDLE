@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch, computed } from 'vue'
+import { onMounted, watch, computed, ref, nextTick } from 'vue'
 import { adsProvider, renderSlot } from '@/ads'
 
 const props = defineProps<{
@@ -16,6 +16,8 @@ const REAL_ADS_ENABLED = import.meta.env.VITE_ENV === 'production'
 
 const currentProvider = computed(() => adsProvider.value)
 
+const adsenseInsEl = ref<HTMLElement | null>(null)
+
 function adsExists(): boolean {
   if (!REAL_ADS_ENABLED) return true
   if (currentProvider.value === 'ethical') return !!publisherId
@@ -23,22 +25,40 @@ function adsExists(): boolean {
   return false
 }
 
-onMounted(() => {
-  if (REAL_ADS_ENABLED) {
+function shouldRenderAdsense(): boolean {
+  if (!REAL_ADS_ENABLED) return false
+  if (currentProvider.value !== 'adsense') return false
+  if (!adSenseId || !adSenseSlotId) return false
+  if (!adsenseInsEl.value) return false
+
+  const status = adsenseInsEl.value.getAttribute('data-adsbygoogle-status')
+  return !(status && status.length > 0);
+
+
+}
+
+async function tryRender() {
+  if (!REAL_ADS_ENABLED) return
+  await nextTick()
+
+  if (!adsExists()) return
+
+  if (currentProvider.value === 'ethical') {
+    renderSlot(slotId.value)
+    return
+  }
+
+  if (shouldRenderAdsense()) {
     renderSlot(slotId.value)
   }
-})
+}
 
-watch(slotId, (newVal) => {
-  if (REAL_ADS_ENABLED) {
-    renderSlot(newVal)
-  }
+onMounted(() => {
+  void tryRender()
 })
 
 watch(currentProvider, () => {
-  if (REAL_ADS_ENABLED) {
-    renderSlot(slotId.value)
-  }
+  void tryRender()
 })
 </script>
 
@@ -63,6 +83,7 @@ watch(currentProvider, () => {
 
       <ins
         v-else-if="REAL_ADS_ENABLED && currentProvider === 'adsense'"
+        ref="adsenseInsEl"
         class="ad-content adsbygoogle"
         style="display:block"
         :data-ad-client="adSenseId"
