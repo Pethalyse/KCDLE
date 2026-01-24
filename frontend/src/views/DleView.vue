@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/api'
 import SimpleImg from '@/components/SimpleImg.vue'
@@ -11,8 +11,8 @@ import AdSlot from '@/components/AdSlot.vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { sendGuess, fetchTodayGuessState } from '@/api/gameGuessApi'
-import type {GameCode, GuessResponse, StoredGuess, TodayGuessResult} from '@/types/gameGuess'
-import {useFlashStore} from "@/stores/flash.ts";
+import type { GameCode, GuessResponse, StoredGuess, TodayGuessResult } from '@/types/gameGuess'
+import { useFlashStore } from '@/stores/flash.ts'
 
 const props = defineProps<{
   game: GameCode
@@ -37,18 +37,10 @@ const winKey = computed(() => `${dleCode.value}_win`)
 const lastClearKey = computed(() => `${dleCode.value}_lastClearTime`)
 
 const hasWon = computed(() => guesses.value.some(g => g.correct === true))
-const wonData = ref<GuessResponse>();
+const wonData = ref<GuessResponse>()
 const wonDataAnimationFinished = ref<boolean>(false)
 
 const ggPopupOpen = ref(false)
-
-watch(
-  () => [hasWon.value, wonDataAnimationFinished.value] as const,
-  ([won, finished]) => {
-    if (won && finished) ggPopupOpen.value = true
-  },
-  { immediate: true },
-)
 
 function clearLocalStorageDaily(): boolean {
   const now = new Date()
@@ -153,7 +145,6 @@ onMounted(async () => {
   }
 })
 
-
 function goHome() {
   router.push({ name: 'home' })
 }
@@ -166,7 +157,6 @@ const nbTrouveText = computed(() => {
       ? `${daily.value.solvers_count} personne a déjà trouvé`
       : `${daily.value.solvers_count ?? 0} personnes ont déjà trouvé !`
 })
-
 
 function handleClickCard(joueurWrapper: any) {
   if (!joueurWrapper?.id) return
@@ -183,6 +173,9 @@ async function makeGuess(joueurWrapper: any) {
 
   const currentGuessCount = guesses.value.length + 1
 
+  wonDataAnimationFinished.value = false
+  ggPopupOpen.value = false
+
   const data = await sendGuess(props.game, joueurWrapper.id, currentGuessCount)
 
   const guess: StoredGuess = {
@@ -195,7 +188,9 @@ async function makeGuess(joueurWrapper: any) {
 
   guesses.value.unshift(guess)
 
-  if(data.correct === true) wonData.value = data;
+  if (data.correct === true) {
+    wonData.value = data
+  }
 
   if (daily.value && data.stats) {
     daily.value.solvers_count = data.stats.solvers_count
@@ -207,7 +202,9 @@ async function makeGuess(joueurWrapper: any) {
 }
 
 function handleEndTabPlayerAnimation() {
-  const data = wonData.value;
+  if (!hasWon.value) return
+
+  const data = wonData.value
   if (data?.correct) {
     if (Array.isArray(data.unlocked_achievements) && data.unlocked_achievements.length > 0) {
       data.unlocked_achievements.forEach((achievement: any) => {
@@ -231,11 +228,10 @@ function handleEndTabPlayerAnimation() {
     } catch (e) {
       console.error('Erreur lors de la sauvegarde du flag de victoire :', e)
     }
-    wonDataAnimationFinished.value = true
   }
-  else if(hasWon) {
-    wonDataAnimationFinished.value = true
-  }
+
+  wonDataAnimationFinished.value = true
+  ggPopupOpen.value = true
 }
 
 const guessedIds = computed<number[]>(() =>
@@ -243,7 +239,6 @@ const guessedIds = computed<number[]>(() =>
     .map(g => g.player?.id)
     .filter((id): id is number => typeof id === 'number'),
 )
-
 </script>
 
 <template>

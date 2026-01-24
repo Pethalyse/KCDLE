@@ -48,7 +48,7 @@ function onClose(id: number) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 60;
+  z-index: 20000;
 }
 
 .flash {

@@ -91,7 +91,9 @@ function shouldEmitEndAnimation(infoIndex: number, guessIndex: number): boolean 
   return infoIndex === infoBar.value.length - 1 && guessIndex === 0
 }
 
-function onCellAnimationEnd(infoIndex: number, guessIndex: number, guess: GuessEntry) {
+function onCellAnimationEnd(e: AnimationEvent, infoIndex: number, guessIndex: number, guess: GuessEntry) {
+  if (e.target !== e.currentTarget) return
+  if (e.animationName !== 'fade-in') return
   if (!shouldEmitEndAnimation(infoIndex, guessIndex)) return
 
   const playerId = guess?.player?.id ?? ''
@@ -264,7 +266,7 @@ function textClass(col: InfoCol): string | null {
                 'fade-in',
               ]"
               :style="fadeStyle(infoIndex)"
-              @animationend="onCellAnimationEnd(infoIndex, guessIndex, guess)"
+              @animationend="onCellAnimationEnd($event, infoIndex, guessIndex, guess)"
             >
               <template v-if="info.type === 'cmp'">
                 <div class="ageContainer">
