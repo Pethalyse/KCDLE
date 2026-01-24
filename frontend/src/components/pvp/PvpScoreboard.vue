@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import UserBadge from '@/components/UserBadge.vue'
 
 const props = defineProps<{
   game: string
   bestOf: number
   currentRound: number
-  players: Array<{ user_id: number; name?: string | null; points: number }>
+  players: Array<{
+    user_id: number
+    name?: string | null
+    points: number
+    avatar_url?: string | null
+    avatar_frame_color?: string | null
+    is_admin?: boolean
+  }>
   showLeave?: boolean
 }>()
 
@@ -22,6 +30,15 @@ const opp = computed(() => (props.players || []).find(p => Number(p.user_id) !==
 
 const youName = computed(() => you.value?.name ?? 'Toi')
 const oppName = computed(() => opp.value?.name ?? 'Adversaire')
+
+const youAvatar = computed(() => you.value?.avatar_url ?? null)
+const oppAvatar = computed(() => opp.value?.avatar_url ?? null)
+
+const youFrame = computed(() => you.value?.avatar_frame_color ?? null)
+const oppFrame = computed(() => opp.value?.avatar_frame_color ?? null)
+
+const youAdmin = computed(() => Boolean(you.value?.is_admin))
+const oppAdmin = computed(() => Boolean(opp.value?.is_admin))
 
 const youPts = computed(() => Number(you.value?.points ?? 0))
 const oppPts = computed(() => Number(opp.value?.points ?? 0))
@@ -39,11 +56,31 @@ const metaLine = computed(() => {
     <div class="meta">{{ metaLine }}</div>
 
     <div class="row">
-      <div class="name you" :title="youName">{{ youName }}</div>
+      <div class="side left" :title="youName">
+        <UserBadge
+          :name="youName"
+          :avatar-url="youAvatar"
+          :frame-color="youFrame"
+          :size="32"
+          :show-name="true"
+          :reverse="false"
+          :admin="youAdmin"
+        />
+      </div>
       <div class="points">{{ youPts }}</div>
       <div class="dash">-</div>
       <div class="points">{{ oppPts }}</div>
-      <div class="name opp" :title="oppName">{{ oppName }}</div>
+      <div class="side right" :title="oppName">
+        <UserBadge
+          :name="oppName"
+          :avatar-url="oppAvatar"
+          :frame-color="oppFrame"
+          :size="32"
+          :show-name="true"
+          :reverse="true"
+          :admin="oppAdmin"
+        />
+      </div>
     </div>
 
     <div v-if="props.showLeave" class="row">

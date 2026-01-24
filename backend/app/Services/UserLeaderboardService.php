@@ -151,7 +151,7 @@ class UserLeaderboardService
 
         $users = User::query()
             ->whereIn('id', $userIds)
-            ->get(['id', 'name', 'email', 'is_admin'])
+            ->get(['id', 'name', 'email', 'is_admin', 'avatar_path', 'avatar_frame_color'])
             ->keyBy('id');
 
         $scored = $grouped->map(function (Collection $entries, int $userId) use ($users) {
@@ -163,8 +163,8 @@ class UserLeaderboardService
                     return $carry;
                 }
 
-                $solversCount = (int) ($entry->solvers_count ?? 0);
-                $totalGuesses = (int) ($entry->total_guesses ?? 0);
+                $solversCount = $entry->solvers_count ?? 0;
+                $totalGuesses = $entry->total_guesses ?? 0;
 
                 if ($solversCount > 0 && $totalGuesses > 0) {
                     $dayAvg = $totalGuesses / $solversCount;
@@ -196,6 +196,8 @@ class UserLeaderboardService
                     'name'  => $user->getAttribute('name'),
                     'email' => $user->getAttribute('email'),
                     'is_admin' => $user->getAttribute('is_admin'),
+                    'avatar_url' => (string) $user->getAttribute('avatar_url'),
+                    'avatar_frame_color' => (string) $user->getAttribute('avatar_frame_color'),
                 ] : null,
                 'wins'            => $wins,
                 'average_guesses' => $averageGuesses,

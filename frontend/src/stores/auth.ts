@@ -6,6 +6,9 @@ export interface AuthUser {
   name: string
   email: string
   email_verified?: boolean
+  is_admin?: boolean
+  avatar_url?: string | null
+  avatar_frame_color?: string | null
 }
 
 interface AuthState {
@@ -39,6 +42,11 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
 
       api.defaults.headers.common.Authorization = `Bearer ${token}`
+    },
+
+    updateUser(user: AuthUser) {
+      this.user = user
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
     },
 
     setToken(token: string) {

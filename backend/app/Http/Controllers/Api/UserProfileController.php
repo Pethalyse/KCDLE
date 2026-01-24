@@ -11,14 +11,22 @@ use App\Services\Pvp\PvpProfileStatsService;
 use App\Services\UserGameStatsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 
 class UserProfileController extends Controller
 {
     protected UserGameStatsService $stats;
+
     protected AchievementService $achievements;
+
     protected PvpProfileStatsService $pvp;
 
+    /**
+     * @param UserGameStatsService $stats
+     * @param AchievementService $achievements
+     * @param PvpProfileStatsService $pvp
+     */
     public function __construct(
         UserGameStatsService $stats,
         AchievementService $achievements,
@@ -29,6 +37,12 @@ class UserProfileController extends Controller
         $this->pvp = $pvp;
     }
 
+    /**
+     * Return the authenticated user's full profile payload.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function show(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -39,6 +53,106 @@ class UserProfileController extends Controller
             ], Response::HTTP_UNAUTHORIZED);
         }
 
+        return response()->json($this->buildProfileResponse($user), Response::HTTP_OK);
+    }
+
+    /**
+     * Update profile customization (avatar and avatar frame color) and return the same payload as GET /user/profile.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function update(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $validated = $request->validate([
+            'avatar' => ['nullable', 'file', 'max:5120'],
+            'avatar_frame_color' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        if ($request->has('avatar_frame_color')) {
+            $color = trim((string) ($validated['avatar_frame_color'] ?? ''));
+            if ($color === '') {
+                $user->setAttribute('avatar_frame_color', '#00a6ff');
+            } else {
+                if (! preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $color)) {
+                    return response()->json([
+                        'message' => 'Invalid avatar_frame_color.',
+                        'errors' => [
+                            'avatar_frame_color' => ['The avatar_frame_color must be a valid hex color.'],
+                        ],
+                    ], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+                $user->setAttribute('avatar_frame_color', $color);
+            }
+        }
+
+        if ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            if ($file !== null) {
+                $mime = (string) ($file->getMimeType() ?? '');
+                $ext = strtolower((string) ($file->getClientOriginalExtension() ?? ''));
+
+                if ($mime === '' || ! str_starts_with($mime, 'image/')) {
+                    return response()->json([
+                        'message' => 'Invalid avatar file.',
+                        'errors' => [
+                            'avatar' => ['The avatar must be an image.'],
+                        ],
+                    ], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+
+                $isGif = $mime === 'image/gif' || $ext === 'gif';
+                if ($isGif && ! ((bool) $user->getAttribute('is_admin'))) {
+                    return response()->json([
+                        'message' => 'GIF avatars are reserved for admins.',
+                        'errors' => [
+                            'avatar' => ['GIF avatars are reserved for admins.'],
+                        ],
+                    ], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+
+                $oldPath = (string) ($user->getAttribute('avatar_path') ?? '');
+                $stamp = now()->format('YmdHis');
+
+                $filename = $ext !== '' ? "avatar_{$stamp}.{$ext}" : "avatar_{$stamp}";
+                $path = $file->storePubliclyAs('users/' . $user->getAttribute('id'), $filename, 'public');
+
+                if ($oldPath !== '' && $oldPath !== 'users/defaut.png' && Storage::disk('public')->exists($oldPath)) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+
+                $user->setAttribute('avatar_path', $path);
+            }
+        }
+
+        $user->save();
+
+        $fresh = $user->fresh();
+        if (! $fresh instanceof User) {
+            return response()->json([
+                'message' => 'Unexpected error.',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        return response()->json($this->buildProfileResponse($fresh), Response::HTTP_OK);
+    }
+
+    /**
+     * Build the full profile response payload used by both GET and POST endpoints.
+     *
+     * @param User $user
+     * @return array<string, mixed>
+     */
+    protected function buildProfileResponse(User $user): array
+    {
         $games = ['kcdle', 'lfldle', 'lecdle'];
 
         $gamesData = [];
@@ -91,12 +205,15 @@ class UserProfileController extends Controller
 
         $pvpStats = $this->pvp->getForUser($user);
 
-        return response()->json([
+        return [
             'user' => [
                 'id' => $user->getAttribute('id'),
                 'name' => $user->getAttribute('name'),
                 'email' => $user->getAttribute('email'),
                 'created_at' => $user->getAttribute('created_at')?->toIso8601String(),
+                'is_admin' => (bool) $user->getAttribute('is_admin'),
+                'avatar_url' => $user->getAttribute('avatar_url'),
+                'avatar_frame_color' => (string) ($user->getAttribute('avatar_frame_color') ?? '#00a6ff'),
             ],
             'global_stats' => [
                 'total_wins' => $totalWins,
@@ -112,6 +229,6 @@ class UserProfileController extends Controller
             ],
             'friend_groups' => $friendGroups,
             'pvp' => $pvpStats,
-        ]);
+        ];
     }
 }

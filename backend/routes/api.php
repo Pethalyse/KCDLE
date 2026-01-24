@@ -67,6 +67,7 @@ Route::prefix('user')
     ->middleware(['auth:sanctum'])
     ->group(function () {
         Route::get('profile', [UserProfileController::class, 'show']);
+        Route::post('profile', [UserProfileController::class, 'update']);
         Route::get('games/{game}/today', [GameGuessController::class, 'today']);
         Route::get('games/{game}/stats', [UserGameStatsController::class, 'show']);
         Route::get('games/{game}/history', [GameGuessController::class, 'history']);

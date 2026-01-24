@@ -2,19 +2,38 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { fetchUserProfile } from '@/api/userProfileApi'
+import { fetchUserProfile, updateUserProfile } from '@/api/userProfileApi'
 import type { UserProfileGameStats, UserProfileResponse } from '@/types/userProfile'
 import { handleError } from '@/utils/handleError'
 import AdSlot from '@/components/AdSlot.vue'
+import { useFlashStore } from '@/stores/flash'
+import UserBadge from '@/components/UserBadge.vue'
 
 type TabKey = 'games' | 'pvp' | 'groups'
 
 const router = useRouter()
 const auth = useAuthStore()
+const flash = useFlashStore()
 
 const profile = ref<UserProfileResponse | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+const saving = ref(false)
+const avatarFile = ref<File | null>(null)
+const avatarPreview = ref<string | null>(null)
+const frameColor = ref<string>('#00a6ff')
+
+const presetColors = [
+  '#00a6ff',
+  '#7c3aed',
+  '#ff4d4d',
+  '#22c55e',
+  '#f59e0b',
+  '#14b8a6',
+  '#e11d48',
+  '#a3a3a3',
+]
 
 const tab = ref<TabKey>('games')
 const showAllPrivateOpponents = ref(false)
@@ -54,15 +73,76 @@ function goAchievements() {
   router.push({ name: 'achievements' })
 }
 
+function syncEditorFromProfile() {
+  const c = (profile.value?.user?.avatar_frame_color ?? '').toString().trim()
+  frameColor.value = c.length > 0 ? c : '#00a6ff'
+}
+
+function onSelectAvatar(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files && input.files.length > 0 ? input.files[0] : null
+  if (!file) {
+    avatarFile.value = null
+    avatarPreview.value = null
+    return
+  }
+
+  const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif')
+  if (isGif && !auth.user?.is_admin) {
+    avatarFile.value = null
+    avatarPreview.value = null
+    input.value = ''
+    flash.error('Les GIF sont réservés aux admins pour le moment.', 'Photo de profil')
+    return
+  }
+
+  avatarFile.value = file
+  try {
+    avatarPreview.value = URL.createObjectURL(file)
+  } catch {
+    avatarPreview.value = null
+  }
+}
+
+async function saveProfileCustomization() {
+  if (!profile.value) return
+  saving.value = true
+  try {
+    const data = await updateUserProfile({
+      avatar: avatarFile.value,
+      avatar_frame_color: frameColor.value,
+    })
+
+    profile.value = data
+    auth.updateUser({
+      ...(auth.user as any),
+      ...(data.user as any),
+    })
+
+    if (avatarPreview.value) {
+      try { URL.revokeObjectURL(avatarPreview.value) } catch {}
+    }
+    avatarFile.value = null
+    avatarPreview.value = null
+    flash.success('Profil mis à jour.', 'Profil')
+  } catch (e: any) {
+    handleError(e)
+    flash.error('Impossible de mettre à jour ton profil.', 'Profil')
+  } finally {
+    saving.value = false
+  }
+}
+
 onMounted(async () => {
   if (!auth.isAuthenticated) {
-    router.push({ name: 'home' })
+    await router.push({name: 'home'})
     return
   }
 
   try {
     loading.value = true
     profile.value = await fetchUserProfile()
+    syncEditorFromProfile()
   } catch (e: any) {
     handleError(e)
     error.value = 'Impossible de charger ton profil.'
@@ -85,6 +165,61 @@ onMounted(async () => {
         <header class="profile-overview">
           <section class="profile-card profile-identity">
             <div class="identity-top">
+              <div class="identity-avatar">
+                <UserBadge
+                  :name="profile.user.name"
+                  :avatar-url="avatarPreview ?? profile.user.avatar_url ?? null"
+                  :frame-color="frameColor"
+                  :size="74"
+                  :show-name="false"
+                  :admin="Boolean(profile.user.is_admin)"
+                />
+
+                <div class="avatar-actions">
+                  <label class="avatar-upload">
+                    <span class="avatar-upload-text">Changer la photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      class="avatar-upload-input"
+                      @change="onSelectAvatar"
+                    />
+                  </label>
+
+                  <div class="frame-picker">
+                    <div class="frame-label">Cadre</div>
+                    <div class="frame-colors">
+                      <button
+                        v-for="c in presetColors"
+                        :key="c"
+                        type="button"
+                        class="frame-color"
+                        :class="{ active: frameColor.toLowerCase() === c.toLowerCase() }"
+                        :style="{ background: c }"
+                        @click="frameColor = c"
+                        :aria-label="'Couleur ' + c"
+                      />
+                      <input
+                        v-model="frameColor"
+                        type="color"
+                        class="frame-custom"
+                        aria-label="Couleur personnalisée"
+                      />
+                    </div>
+                    <div v-if="!auth.user?.is_admin" class="frame-hint">GIF réservés aux admins.</div>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="avatar-save"
+                    :disabled="saving"
+                    @click="saveProfileCustomization"
+                  >
+                    {{ saving ? 'Enregistrement…' : 'Enregistrer' }}
+                  </button>
+                </div>
+              </div>
+
               <div class="identity-main">
                 <h1 class="profile-title">Mon profil</h1>
                 <div class="identity-meta">
@@ -400,9 +535,110 @@ onMounted(async () => {
 
 .profile-identity .identity-top {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-columns: 0.55fr 1.2fr 0.8fr;
   gap: 14px;
   align-items: start;
+}
+
+.identity-avatar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.avatar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.avatar-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.avatar-upload:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.avatar-upload-input {
+  display: none;
+}
+
+.avatar-upload-text {
+  font-size: 0.86rem;
+  opacity: 0.95;
+}
+
+.frame-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.frame-label {
+  font-size: 0.86rem;
+  opacity: 0.9;
+}
+
+.frame-colors {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.frame-color {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+}
+
+.frame-color.active {
+  border-color: rgba(255, 255, 255, 0.85);
+}
+
+.frame-custom {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.frame-hint {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.avatar-save {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 166, 255, 0.55);
+  background: rgba(0, 166, 255, 0.18);
+  color: #d9f3ff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.avatar-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.avatar-save:hover {
+  background: rgba(0, 166, 255, 0.25);
 }
 
 .identity-meta {

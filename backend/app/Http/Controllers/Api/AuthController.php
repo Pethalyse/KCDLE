@@ -196,7 +196,7 @@ class AuthController extends Controller
      *
      * @param User $user User instance to normalize.
      *
-     * @return array{id:int, name:string, email:string|null, email_verified:bool} Normalized user data.
+     * @return array{id:int, name:string, email:string|null, email_verified:bool, is_admin:bool, avatar_url:string, avatar_frame_color:string} Normalized user data.
      */
     protected function formatUser(User $user): array
     {
@@ -205,6 +205,9 @@ class AuthController extends Controller
             'name' => (string) $user->getAttribute('name'),
             'email' => $user->getAttribute('email'),
             'email_verified' => $user->hasVerifiedEmail(),
+            'is_admin' => (bool) $user->getAttribute('is_admin'),
+            'avatar_url' => (string) $user->getAttribute('avatar_url'),
+            'avatar_frame_color' => (string) $user->getAttribute('avatar_frame_color'),
         ];
     }
 }
