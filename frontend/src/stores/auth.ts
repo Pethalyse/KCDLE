@@ -104,6 +104,19 @@ export const useAuthStore = defineStore('auth', {
       return data
     },
 
+    async refreshToken() {
+      if (!this.token) return null
+      const { data } = await api.post('/auth/refresh')
+      if (data?.token) {
+        this.setToken(data.token)
+      }
+      if (data?.user) {
+        this.user = data.user
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(this.user))
+      }
+      return data
+    },
+
     logout() {
       this.token = null
       this.user = null

@@ -192,6 +192,42 @@ class AuthController extends Controller
     }
 
     /**
+     * Rotate the current API token for the authenticated user.
+     *
+     * This endpoint revokes the currently used Sanctum token and issues a
+     * fresh one. It can be used by the frontend to seamlessly recover from
+     * edge cases around deployments or token rotation policies while keeping
+     * the user authenticated.
+     *
+     * Response JSON payload:
+     * - 'user'  => array Normalized user.
+     * - 'token' => string Newly issued bearer token.
+     *
+     * @param Request $request HTTP request providing the authenticated user.
+     *
+     * @return JsonResponse JSON response containing the new token.
+     */
+    public function refresh(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $user->currentAccessToken()?->delete();
+
+        $token = $user->createToken('kcdle-app')->plainTextToken;
+
+        return response()->json([
+            'user' => $this->formatUser($user),
+            'token' => $token,
+        ]);
+    }
+
+    /**
      * Normalize a User model into a public API-safe array.
      *
      * @param User $user User instance to normalize.

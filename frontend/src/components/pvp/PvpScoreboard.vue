@@ -108,10 +108,10 @@ const metaLine = computed(() => {
 
 .row {
   display: flex;
-  align-items: baseline;
   justify-content: center;
   gap: 10px;
   flex-wrap: nowrap;
+  align-items: center;
 }
 
 .name {

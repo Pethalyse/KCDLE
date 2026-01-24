@@ -1,4 +1,5 @@
 <?php
+use App\Http\Middleware\AddAppVersionHeader;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Foundation\Application;
@@ -27,6 +28,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(AddAppVersionHeader::class);
+
         $middleware->trustProxies(
             at: '*',
             headers: SymfonyRequest::HEADER_X_FORWARDED_FOR |

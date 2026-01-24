@@ -46,9 +46,8 @@ const gamesEntries = computed(() => {
 })
 
 const achievementsPct = computed(() => {
-  if (!profile.value) return 0
-  const total = profile.value.achievements.total || 0
-  const unlocked = profile.value.achievements.unlocked || 0
+  const total = Number(profile.value?.achievements?.total ?? 0)
+  const unlocked = Number(profile.value?.achievements?.unlocked ?? 0)
   if (total <= 0) return 0
   return Math.round((unlocked / total) * 100)
 })
@@ -120,7 +119,9 @@ async function saveProfileCustomization() {
     })
 
     if (avatarPreview.value) {
-      try { URL.revokeObjectURL(avatarPreview.value) } catch {}
+      try {
+        URL.revokeObjectURL(avatarPreview.value)
+      } catch {}
     }
     avatarFile.value = null
     avatarPreview.value = null
@@ -135,7 +136,7 @@ async function saveProfileCustomization() {
 
 onMounted(async () => {
   if (!auth.isAuthenticated) {
-    await router.push({name: 'home'})
+    await router.push({ name: 'home' })
     return
   }
 
@@ -164,27 +165,59 @@ onMounted(async () => {
       <div v-else-if="hasProfile && profile" class="profile-layout">
         <header class="profile-overview">
           <section class="profile-card profile-identity">
-            <div class="identity-top">
-              <div class="identity-avatar">
-                <UserBadge
-                  :name="profile.user.name"
-                  :avatar-url="avatarPreview ?? profile.user.avatar_url ?? null"
-                  :frame-color="frameColor"
-                  :size="74"
-                  :show-name="false"
-                  :admin="Boolean(profile.user.is_admin)"
-                />
+            <div class="identity-grid">
+              <div class="identity-left">
+                <div class="identity-head">
+                  <UserBadge
+                    :name="profile.user.name"
+                    :avatar-url="avatarPreview ?? profile.user.avatar_url ?? null"
+                    :frame-color="frameColor"
+                    :size="88"
+                    :show-name="false"
+                    :admin="Boolean(profile.user.is_admin)"
+                  />
 
-                <div class="avatar-actions">
-                  <label class="avatar-upload">
-                    <span class="avatar-upload-text">Changer la photo</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      class="avatar-upload-input"
-                      @change="onSelectAvatar"
-                    />
-                  </label>
+                  <div class="identity-info">
+                    <h1 class="profile-title">Mon profil</h1>
+
+                    <div class="identity-meta">
+                      <div class="meta-line">
+                        <span class="meta-label">Pseudo</span>
+                        <span class="meta-value">{{ profile.user.name }}</span>
+                      </div>
+                      <div class="meta-line">
+                        <span class="meta-label">Email</span>
+                        <span class="meta-value">{{ profile.user.email }}</span>
+                      </div>
+                      <div class="meta-line">
+                        <span class="meta-label">Inscription</span>
+                        <span class="meta-value">{{ formatDate(profile.user.created_at) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="identity-custom">
+                  <div class="custom-row">
+                    <label class="avatar-upload">
+                      <span class="avatar-upload-text">Changer la photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        class="avatar-upload-input"
+                        @change="onSelectAvatar"
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      class="avatar-save"
+                      :disabled="saving"
+                      @click="saveProfileCustomization"
+                    >
+                      {{ saving ? 'Enregistrement…' : 'Enregistrer' }}
+                    </button>
+                  </div>
 
                   <div class="frame-picker">
                     <div class="frame-label">Cadre</div>
@@ -206,34 +239,6 @@ onMounted(async () => {
                         aria-label="Couleur personnalisée"
                       />
                     </div>
-                    <div v-if="!auth.user?.is_admin" class="frame-hint">GIF réservés aux admins.</div>
-                  </div>
-
-                  <button
-                    type="button"
-                    class="avatar-save"
-                    :disabled="saving"
-                    @click="saveProfileCustomization"
-                  >
-                    {{ saving ? 'Enregistrement…' : 'Enregistrer' }}
-                  </button>
-                </div>
-              </div>
-
-              <div class="identity-main">
-                <h1 class="profile-title">Mon profil</h1>
-                <div class="identity-meta">
-                  <div class="meta-line">
-                    <span class="meta-label">Pseudo</span>
-                    <span class="meta-value">{{ profile.user.name }}</span>
-                  </div>
-                  <div class="meta-line">
-                    <span class="meta-label">Email</span>
-                    <span class="meta-value">{{ profile.user.email }}</span>
-                  </div>
-                  <div class="meta-line">
-                    <span class="meta-label">Inscription</span>
-                    <span class="meta-value">{{ formatDate(profile.user.created_at) }}</span>
                   </div>
                 </div>
               </div>
@@ -511,7 +516,7 @@ onMounted(async () => {
 
 .profile-card {
   background: rgba(10, 12, 20, 0.9);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
@@ -521,11 +526,13 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
   gap: 14px;
+  align-items: start;
 }
 
 .profile-title {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 1.6rem;
+  line-height: 1.15;
 }
 
 .section-title {
@@ -533,23 +540,75 @@ onMounted(async () => {
   font-size: 1.1rem;
 }
 
-.profile-identity .identity-top {
+.identity-grid {
   display: grid;
-  grid-template-columns: 0.55fr 1.2fr 0.8fr;
+  grid-template-columns: 1fr 0.62fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.identity-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.identity-head {
+  display: flex;
   gap: 14px;
-  align-items: start;
+  align-items: center;
+  min-width: 0;
 }
 
-.identity-avatar {
+.identity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.identity-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.meta-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.meta-label {
+  opacity: 0.78;
+}
+
+.meta-value {
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 65%;
+  text-align: right;
+}
+
+.identity-custom {
+  background: rgba(15, 18, 28, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.avatar-actions {
+.custom-row {
   display: flex;
-  flex-direction: column;
   gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .avatar-upload {
@@ -558,7 +617,7 @@ onMounted(async () => {
   justify-content: center;
   gap: 8px;
   width: fit-content;
-  padding: 7px 10px;
+  padding: 8px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
@@ -574,61 +633,17 @@ onMounted(async () => {
 }
 
 .avatar-upload-text {
-  font-size: 0.86rem;
+  font-size: 0.9rem;
   opacity: 0.95;
 }
 
-.frame-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.frame-label {
-  font-size: 0.86rem;
-  opacity: 0.9;
-}
-
-.frame-colors {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.frame-color {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  cursor: pointer;
-}
-
-.frame-color.active {
-  border-color: rgba(255, 255, 255, 0.85);
-}
-
-.frame-custom {
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-.frame-hint {
-  font-size: 0.8rem;
-  opacity: 0.75;
-}
-
 .avatar-save {
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
   border: 1px solid rgba(0, 166, 255, 0.55);
   background: rgba(0, 166, 255, 0.18);
   color: #d9f3ff;
-  font-weight: 700;
+  font-weight: 750;
   cursor: pointer;
 }
 
@@ -641,48 +656,77 @@ onMounted(async () => {
   background: rgba(0, 166, 255, 0.25);
 }
 
-.identity-meta {
+.frame-picker {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.meta-line {
+.frame-label {
+  font-size: 0.9rem;
+  opacity: 0.92;
+  font-weight: 650;
+}
+
+.frame-colors {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
-.meta-label {
-  opacity: 0.8;
+.frame-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
 }
 
-.meta-value {
-  font-weight: 600;
+.frame-color.active {
+  border-color: rgba(255, 255, 255, 0.85);
+}
+
+.frame-custom {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.frame-hint {
+  font-size: 0.8rem;
+  opacity: 0.75;
 }
 
 .identity-achievements {
-  background: rgba(15, 18, 28, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
-  padding: 10px 10px;
+  background: rgba(15, 18, 28, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .ach-title {
   font-size: 0.95rem;
   opacity: 0.9;
+  font-weight: 650;
 }
 
 .ach-kpi {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .ach-big {
-  font-size: 1.6rem;
-  font-weight: 700;
+  font-size: 1.8rem;
+  font-weight: 800;
 }
 
 .ach-sep {
@@ -691,12 +735,12 @@ onMounted(async () => {
 
 .ach-small {
   opacity: 0.9;
-  font-weight: 700;
+  font-weight: 750;
 }
 
 .ach-bar {
-  margin-top: 8px;
-  height: 8px;
+  margin-top: 10px;
+  height: 9px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
@@ -708,21 +752,21 @@ onMounted(async () => {
 }
 
 .ach-sub {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 0.85rem;
   opacity: 0.85;
 }
 
 .profile-achievements-btn {
-  margin-top: 10px;
+  margin-top: 12px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border: 1px solid #00a6ff;
-  border-radius: 6px;
+  border-radius: 10px;
   background: rgba(0, 166, 255, 0.15);
   color: #00a6ff;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   transition: background 0.15s ease;
 }
 
@@ -738,7 +782,7 @@ onMounted(async () => {
 
 .kpi-tile {
   background: rgba(15, 18, 28, 0.9);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 10px 10px;
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -789,7 +833,7 @@ onMounted(async () => {
 
 .profile-game-item {
   background: rgba(15, 18, 28, 0.9);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 10px 10px;
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -1014,8 +1058,12 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 
-  .profile-identity .identity-top {
+  .identity-grid {
     grid-template-columns: 1fr;
+  }
+
+  .meta-value {
+    max-width: 72%;
   }
 
   .kpi-grid {
@@ -1030,6 +1078,25 @@ onMounted(async () => {
 @media (max-width: 600px) {
   .kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  .identity-head {
+    align-items: flex-start;
+  }
+
+  .profile-title {
+    font-size: 1.45rem;
+  }
+
+  .meta-line {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .meta-value {
+    max-width: 100%;
+    text-align: left;
   }
 }
 </style>
