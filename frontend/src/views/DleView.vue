@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/api'
 import SimpleImg from '@/components/SimpleImg.vue'
@@ -39,6 +39,16 @@ const lastClearKey = computed(() => `${dleCode.value}_lastClearTime`)
 const hasWon = computed(() => guesses.value.some(g => g.correct === true))
 const wonData = ref<GuessResponse>();
 const wonDataAnimationFinished = ref<boolean>(false)
+
+const ggPopupOpen = ref(false)
+
+watch(
+  () => [hasWon.value, wonDataAnimationFinished.value] as const,
+  ([won, finished]) => {
+    if (won && finished) ggPopupOpen.value = true
+  },
+  { immediate: true },
+)
 
 function clearLocalStorageDaily(): boolean {
   const now = new Date()
@@ -251,6 +261,12 @@ const guessedIds = computed<number[]>(() =>
         </div>
       </div>
 
+      <div v-if="hasWon && wonDataAnimationFinished" class="gg-open-wrapper">
+        <button type="button" class="gg-open-btn" @click="ggPopupOpen = true">
+          Résultats
+        </button>
+      </div>
+
       <SearchBar
         v-if="!hasWon || !wonDataAnimationFinished"
         class="containt-name"
@@ -287,6 +303,8 @@ const guessedIds = computed<number[]>(() =>
           v-if="hasWon && wonDataAnimationFinished"
           :dle-code="dleCode"
           :guesses="guesses"
+          :open="ggPopupOpen"
+          @close="ggPopupOpen = false"
         />
       </template>
     </div>
@@ -307,5 +325,29 @@ const guessedIds = computed<number[]>(() =>
 .dle-ad-under-grid {
   margin: 12px 0 8px;
 }
-</style>
 
+.gg-open-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.gg-open-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--dle-accent-pill-border, rgba(255, 255, 255, 0.25));
+  background: var(--dle-accent-pill, rgba(255, 255, 255, 0.08));
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.gg-open-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.14);
+}
+</style>
