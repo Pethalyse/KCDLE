@@ -7,24 +7,21 @@ use App\Models\UserGameResult;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
+/**
+ * Service responsible for aggregating per-user statistics for daily games.
+ *
+ * It computes win count, average guesses, current streak and historical max streak
+ * for a given user and a given game identifier.
+ */
 class UserGameStatsService
 {
     /**
      * Compute aggregated win statistics for a given user and game.
      *
-     * This method queries the UserGameResult table for the specified user and game,
-     * then derives:
-     * - the total number of wins,
-     * - the average number of guesses used to win,
-     * - the current winning streak (consecutive days with a win up to the most recent),
-     * - the maximum historical winning streak.
-     *
-     * If the user has no wins for the given game, it returns zeroed/default values.
-     *
      * Returned array shape:
      * - 'wins'            => int                 Total number of wins.
      * - 'average_guesses' => float|null          Average guesses per win, rounded to 2 decimals, or null if no data.
-     * - 'current_streak'  => int                 Number of consecutive days ending at the latest win date.
+     * - 'current_streak'  => int                 Number of consecutive days ending at the most recent win day.
      * - 'max_streak'      => int                 Maximum streak observed over the entire history.
      *
      * @param User   $user User for whom statistics are computed.
@@ -60,7 +57,7 @@ class UserGameStatsService
 
         $dates = $rows->pluck('selected_for_date')
             ->map(function ($value) {
-                return Carbon::parse($value)->startOfDay();
+                return Carbon::parse($value);
             })
             ->values();
 
@@ -77,31 +74,48 @@ class UserGameStatsService
     /**
      * Compute the current and maximum win streaks from a list of win dates.
      *
-     * The input collection is expected to contain Carbon instances representing
-     * the days on which the user has won, sorted in ascending chronological order.
-     *
-     * The method first determines the maximum streak of consecutive days with wins
-     * over the entire history, then computes the current streak ending at the
-     * most recent win date (i.e. counting backwards day by day until a gap is found).
+     * The method normalizes entries to calendar days (startOfDay), deduplicates by day,
+     * sorts chronologically, then computes:
+     * - max streak over the full history
+     * - current streak ending at today (if won today) or yesterday (if last win is yesterday)
      *
      * Returned array:
      * - index 0: current streak (int)
      * - index 1: maximum streak (int)
      *
-     * @param Collection<int, Carbon> $dates Sorted collection of win dates at day precision.
+     * @param Collection<int, Carbon|string> $dates Win dates (any precision/order).
      *
      * @return array{0:int, 1:int} [currentStreak, maxStreak]
      */
     protected function computeStreaks(Collection $dates): array
     {
+        $days = $dates
+            ->map(function ($date) {
+                return $date instanceof Carbon ? $date->copy() : Carbon::parse($date);
+            })
+            ->map(function (Carbon $date) {
+                return $date->startOfDay();
+            })
+            ->unique(function (Carbon $date) {
+                return $date->toDateString();
+            })
+            ->sortBy(function (Carbon $date) {
+                return $date->getTimestamp();
+            })
+            ->values();
+
+        if ($days->isEmpty()) {
+            return [0, 0];
+        }
+
         $maxStreak = 0;
         $currentRun = 0;
         $lastDate = null;
 
-        foreach ($dates as $date) {
+        foreach ($days as $date) {
             if ($lastDate === null) {
                 $currentRun = 1;
-            } elseif ($date->diffInDays($lastDate) === 1) {
+            } elseif ($lastDate->copy()->addDay()->isSameDay($date)) {
                 $currentRun++;
             } else {
                 $currentRun = 1;
@@ -115,11 +129,11 @@ class UserGameStatsService
         }
 
         $set = [];
-        foreach ($dates as $date) {
+        foreach ($days as $date) {
             $set[$date->toDateString()] = true;
         }
 
-        $today = Carbon::today();
+        $today = Carbon::today()->startOfDay();
         $reference = null;
 
         if (isset($set[$today->toDateString()])) {
