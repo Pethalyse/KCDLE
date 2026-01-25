@@ -332,16 +332,18 @@ watch(
               {{ row.rank }}
             </td>
             <td class="col-user">
-              <UserBadge
-                v-if="row.user"
-                :name="row.user.name"
-                :avatar-url="row.user.avatar_url"
-                :frame-color="row.user.avatar_frame_color"
-                :size="32"
-                :show-name="true"
-                :admin="row.user.is_admin"
-              />
-              <span v-else class="user-name">Joueur inconnu</span>
+              <div class="col-user__content">
+                <UserBadge
+                  v-if="row.user"
+                  :name="row.user.name"
+                  :avatar-url="row.user.avatar_url"
+                  :frame-color="row.user.avatar_frame_color"
+                  :size="32"
+                  :show-name="true"
+                  :admin="row.user.is_admin"
+                />
+                <span v-else class="user-name">Joueur inconnu</span>
+              </div>
             </td>
             <td class="col-wins">
               {{ row.wins }}
@@ -575,6 +577,24 @@ watch(
 .col-rank {
   width: 40px;
   text-align: center;
+}
+
+.col-user {
+  text-align: left;
+}
+
+.col-user__content {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  width: 100%;
+}
+
+.col-user__content :deep(.user-badge) {
+  width: 100%;
+  justify-content: flex-start;
+  min-width: 0;
 }
 
 .col-user .user-name {

@@ -75,6 +75,9 @@ const rootClass = computed(() => {
   align-items: center;
   gap: 10px;
   min-width: 0;
+  justify-content: flex-start;
+  align-self: stretch;
+  justify-self: stretch;
 }
 
 .user-badge.is-reverse {
