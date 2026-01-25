@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CreditController;
 use App\Http\Controllers\Api\DailyGameController;
 use App\Http\Controllers\Api\EmailVerificationController;
 use App\Http\Controllers\Api\EmailVerificationNotificationController;
+use App\Http\Controllers\Api\ForgotPasswordController;
 use App\Http\Controllers\Api\FriendGroupController;
 use App\Http\Controllers\Api\GameGuessController;
 use App\Http\Controllers\Api\GamePlayerController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Api\Meta\LolRoleController;
 use App\Http\Controllers\Api\Meta\RoleController;
 use App\Http\Controllers\Api\Meta\TeamController;
 use App\Http\Controllers\Api\PrivacyPolicyController;
+use App\Http\Controllers\Api\ResetPasswordController;
 use App\Http\Controllers\Api\Pvp\PvpEventController;
 use App\Http\Controllers\Api\Pvp\PvpHeartbeatController;
 use App\Http\Controllers\Api\Pvp\PvpLobbyController;
@@ -49,6 +51,10 @@ Route::prefix('auth')
     ->group(function () {
         Route::post('register', [AuthController::class, 'register']);
         Route::post('login', [AuthController::class, 'login']);
+        Route::post('password/forgot', [ForgotPasswordController::class, 'store'])
+            ->middleware(['throttle:6,1']);
+        Route::post('password/reset', [ResetPasswordController::class, 'store'])
+            ->middleware(['throttle:6,1']);
         Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
             ->middleware(['throttle:6,1']);
         Route::get('email/verify/{id}/{hash}', EmailVerificationController::class)

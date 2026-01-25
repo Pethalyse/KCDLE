@@ -104,6 +104,16 @@ export const useAuthStore = defineStore('auth', {
       return data
     },
 
+    async forgotPassword(payload: { email: string }) {
+      const { data } = await api.post('/auth/password/forgot', payload)
+      return data
+    },
+
+    async resetPassword(payload: { token: string; email: string; password: string; password_confirmation: string }) {
+      const { data } = await api.post('/auth/password/reset', payload)
+      return data
+    },
+
     async refreshToken() {
       if (!this.token) return null
       const { data } = await api.post('/auth/refresh')

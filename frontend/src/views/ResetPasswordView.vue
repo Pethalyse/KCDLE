@@ -1,44 +1,33 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import SimpleImg from '@/components/SimpleImg.vue'
-import Credit from '@/components/Credit.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useFlashStore } from '@/stores/flash'
 import { handleError } from '@/utils/handleError'
 
-const router = useRouter()
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 const flash = useFlashStore()
 
+const token = computed(() => (typeof route.query.token === 'string' ? route.query.token : ''))
+const email = computed(() => (typeof route.query.email === 'string' ? route.query.email : ''))
+
 const form = reactive({
-  email: '',
   password: '',
+  password_confirmation: '',
 })
 
-const fieldErrors = reactive<{
-  email?: string
-  password?: string
-}>({})
-
+const fieldErrors = reactive<{ password?: string; password_confirmation?: string; token?: string }>({})
 const submitting = ref(false)
-const unverifiedEmail = ref<string | null>(null)
-const resendLoading = ref(false)
 const showPassword = ref(false)
-
-function getSafeRedirect(v: unknown): string {
-  if (typeof v !== 'string') return '/'
-  if (!v.startsWith('/')) return '/'
-  return v
-}
-
-const redirectTo = computed(() => getSafeRedirect(route.query.redirect))
+const showPasswordConfirm = ref(false)
 
 function resetErrors() {
-  fieldErrors.email = undefined
   fieldErrors.password = undefined
-  unverifiedEmail.value = null
+  fieldErrors.password_confirmation = undefined
+  fieldErrors.token = undefined
 }
 
 async function handleSubmit() {
@@ -48,51 +37,26 @@ async function handleSubmit() {
   submitting.value = true
 
   try {
-    const data = await auth.login({
-      email: form.email,
+    await auth.resetPassword({
+      token: token.value,
+      email: email.value,
       password: form.password,
+      password_confirmation: form.password_confirmation,
     })
 
-    if (data && Array.isArray(data.unlocked_achievements) && data.unlocked_achievements.length > 0) {
-      data.unlocked_achievements.forEach((achievement: any) => {
-        if (!achievement || !achievement.name) return
-        flash.push('success', achievement.name, 'Succès débloqué')
-      })
-    }
-
-    flash.success('Connexion réussie.', 'Bienvenue sur KCDLE')
-    await router.push(redirectTo.value)
+    flash.success('Mot de passe réinitialisé. Tu peux te connecter.', 'Réinitialisation')
+    await router.push({ name: 'login' })
   } catch (error: any) {
     const status = error?.response?.status
     const data = error?.response?.data
 
-    if (status === 403 && data?.code === 'email_not_verified') {
-      unverifiedEmail.value = form.email
-      flash.warning(
-        'Ton adresse e-mail n’est pas encore vérifiée. Vérifie ta boîte mail ou renvoie un e-mail de validation.',
-        'Adresse e-mail non vérifiée',
-      )
-      return
-    }
+    if (status === 422 && data?.errors) {
+      if (Array.isArray(data.errors.password)) fieldErrors.password = data.errors.password[0]
+      if (Array.isArray(data.errors.password_confirmation)) fieldErrors.password_confirmation = data.errors.password_confirmation[0]
+      if (Array.isArray(data.errors.token)) fieldErrors.token = data.errors.token[0]
 
-    if (status === 422) {
-      if (data?.errors) {
-        if (Array.isArray(data.errors.email)) fieldErrors.email = data.errors.email[0]
-        if (Array.isArray(data.errors.password)) fieldErrors.password = data.errors.password[0]
-
-        const first = fieldErrors.email || fieldErrors.password || (typeof data?.message === 'string' ? data.message : null)
-        flash.error(first || 'Impossible de se connecter.', 'Connexion')
-        return
-      }
-
-      if (typeof data?.message === 'string') {
-        flash.error(data.message, 'Connexion')
-        return
-      }
-    }
-
-    if (status === 401) {
-      flash.error('Identifiants invalides.', 'Connexion')
+      const first = fieldErrors.token || fieldErrors.password || fieldErrors.password_confirmation || (typeof data?.message === 'string' ? data.message : null)
+      flash.error(first || 'Impossible de réinitialiser le mot de passe.', 'Réinitialisation')
       return
     }
 
@@ -102,52 +66,21 @@ async function handleSubmit() {
   }
 }
 
-async function resendVerification() {
-  if (!unverifiedEmail.value || resendLoading.value) return
-
-  resendLoading.value = true
-  try {
-    const data = await auth.resendEmailVerification({ email: unverifiedEmail.value })
-    if (data?.code === 'already_verified') {
-      flash.success('Ton adresse e-mail est déjà vérifiée. Tu peux te connecter.', 'Adresse e-mail vérifiée')
-    } else {
-      flash.success('E-mail de vérification envoyé. Pense à regarder tes spams.', 'E-mail envoyé')
-    }
-  } catch (error) {
-    handleError(error)
-  } finally {
-    resendLoading.value = false
-  }
-}
-
 function goHome() {
   void router.push({ name: 'home' })
 }
 
 onMounted(() => {
-  const token = typeof route.query.token === 'string' ? route.query.token : null
-
-  if (token) {
-    void (async () => {
-      try {
-        await auth.loginWithToken(token)
-        flash.success('Adresse e-mail vérifiée. Connexion effectuée.', 'Validation réussie')
-        await router.push(redirectTo.value)
-      } catch (error) {
-        handleError(error)
-      }
-    })()
-    return
+  if (!token.value || !email.value) {
+    flash.error('Lien de réinitialisation invalide.', 'Réinitialisation')
   }
-
-  if (route.query.verified === '1') flash.success('Adresse e-mail vérifiée. Tu peux te connecter.', 'Validation réussie')
 })
 
 watch(
-  () => [form.email, form.password],
+  () => [form.password, form.password_confirmation],
   () => {
-    fieldErrors.email = undefined
     fieldErrors.password = undefined
+    fieldErrors.password_confirmation = undefined
   },
 )
 </script>
@@ -163,25 +96,17 @@ watch(
     <main class="auth-main">
       <section class="auth-card">
         <div class="auth-head">
-          <h1 class="auth-title">Connexion</h1>
-          <p class="auth-subtitle">Connecte-toi pour accéder à ton profil.</p>
+          <h1 class="auth-title">Nouveau mot de passe</h1>
+          <p class="auth-subtitle">Choisis un nouveau mot de passe pour ton compte.</p>
         </div>
 
-        <form class="auth-form" @submit.prevent="handleSubmit">
-          <div class="auth-field">
-            <label for="email">Adresse e-mail</label>
-            <input
-              id="email"
-              v-model.trim="form.email"
-              type="email"
-              autocomplete="email"
-              required
-              :disabled="submitting"
-              placeholder="Adresse e-mail"
-            />
-            <p v-if="fieldErrors.email" class="auth-error">{{ fieldErrors.email }}</p>
-          </div>
+        <div v-if="!token || !email" class="auth-alert">
+          <div class="auth-alert-title">Lien invalide</div>
+          <div class="auth-alert-text">Le lien de réinitialisation est incomplet ou a expiré.</div>
+          <RouterLink class="auth-link" :to="{ name: 'forgot_password' }">Demander un nouveau lien</RouterLink>
+        </div>
 
+        <form v-else class="auth-form" @submit.prevent="handleSubmit">
           <div class="auth-field">
             <label for="password">Mot de passe</label>
             <div class="auth-password">
@@ -189,7 +114,7 @@ watch(
                 id="password"
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
-                autocomplete="current-password"
+                autocomplete="new-password"
                 required
                 :disabled="submitting"
                 placeholder="Mot de passe"
@@ -205,32 +130,43 @@ watch(
               </button>
             </div>
             <p v-if="fieldErrors.password" class="auth-error">{{ fieldErrors.password }}</p>
-            <div class="auth-forgot">
-              <RouterLink :to="{ name: 'forgot_password' }">Mot de passe oublié ?</RouterLink>
-            </div>
           </div>
 
-          <div v-if="unverifiedEmail" class="auth-alert">
-            <div class="auth-alert-title">Adresse e-mail non vérifiée</div>
-            <div class="auth-alert-text">Tu dois valider ton e-mail pour te connecter.</div>
-            <button type="button" class="auth-secondary" :disabled="resendLoading" @click="resendVerification">
-              <span v-if="!resendLoading">Renvoyer l’e-mail</span>
-              <span v-else>Envoi en cours…</span>
-            </button>
+          <div class="auth-field">
+            <label for="password_confirmation">Confirmer le mot de passe</label>
+            <div class="auth-password">
+              <input
+                id="password_confirmation"
+                v-model="form.password_confirmation"
+                :type="showPasswordConfirm ? 'text' : 'password'"
+                autocomplete="new-password"
+                required
+                :disabled="submitting"
+                placeholder="Confirmer le mot de passe"
+              />
+              <button
+                type="button"
+                class="auth-password-toggle"
+                :disabled="submitting"
+                :aria-label="showPasswordConfirm ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                @click="showPasswordConfirm = !showPasswordConfirm"
+              >
+                {{ showPasswordConfirm ? 'Masquer' : 'Afficher' }}
+              </button>
+            </div>
+            <p v-if="fieldErrors.password_confirmation" class="auth-error">{{ fieldErrors.password_confirmation }}</p>
+            <p v-if="fieldErrors.token" class="auth-error">{{ fieldErrors.token }}</p>
           </div>
 
           <button type="submit" class="auth-submit" :disabled="submitting">
-            <span v-if="!submitting">Se connecter</span>
-            <span v-else>Connexion en cours…</span>
+            <span v-if="!submitting">Réinitialiser</span>
+            <span v-else>En cours…</span>
           </button>
         </form>
 
         <div class="auth-footer">
           <div class="auth-footer-text">
-            Pas encore de compte ?
-            <RouterLink :to="{ name: 'register', query: route.query.redirect ? { redirect: route.query.redirect } : {} }">
-              Créer un compte
-            </RouterLink>
+            <RouterLink :to="{ name: 'login' }">Retour à la connexion</RouterLink>
           </div>
         </div>
       </section>
@@ -364,24 +300,6 @@ watch(
   font-size: 0.86rem;
 }
 
-.auth-forgot {
-  margin-top: 8px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.auth-forgot a {
-  color: rgba(243, 243, 243, 0.85);
-  text-decoration: none;
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-
-.auth-forgot a:hover {
-  text-decoration: underline;
-  color: #00a6ff;
-}
-
 .auth-alert {
   border-radius: 8px;
   padding: 10px 10px;
@@ -398,6 +316,17 @@ watch(
   opacity: 0.9;
   margin-bottom: 10px;
   font-size: 0.92rem;
+}
+
+.auth-link {
+  display: inline-block;
+  color: #00a6ff;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
 }
 
 .auth-submit {
@@ -419,28 +348,6 @@ watch(
 
 .auth-submit:disabled {
   opacity: 0.65;
-  cursor: default;
-}
-
-.auth-secondary {
-  width: 100%;
-  padding: 10px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(251, 191, 36, 0.5);
-  background: transparent;
-  color: #f3f3f3;
-  cursor: pointer;
-  font-size: 0.92rem;
-  font-weight: 700;
-  transition: background 0.15s ease;
-}
-
-.auth-secondary:hover:not(:disabled) {
-  background: rgba(251, 191, 36, 0.12);
-}
-
-.auth-secondary:disabled {
-  opacity: 0.7;
   cursor: default;
 }
 
