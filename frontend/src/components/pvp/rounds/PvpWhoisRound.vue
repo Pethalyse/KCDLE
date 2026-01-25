@@ -242,11 +242,41 @@ const searchedValueItems = computed(() => {
   const q = search.value.trim().toLowerCase()
   const items = valueItems.value
   if (!q) return items
+
+  const key = selectedKey.value
+
   return items.filter((it: any) => {
-    const label =
+    let label = ''
+
+    if (key === 'player') {
+      label = (
+        it?.display_name ??
+        it?.player?.display_name ??
+        it?.name ??
+        it?.player?.name ??
+        it?.player?.slug ??
+        ''
+      ).toString().toLowerCase()
+      return label.includes(q)
+    }
+
+    if (key === 'country_code') {
+      const name = (it?.name ?? '').toString().toLowerCase()
+      const code = (it?.code ?? '').toString().toLowerCase()
+      return name.includes(q) || code.includes(q)
+    }
+
+    if (key === 'current_team_id' || key === 'previous_team_id') {
+      const dn = (it?.display_name ?? '').toString().toLowerCase()
+      const sn = (it?.short_name ?? '').toString().toLowerCase()
+      return dn.includes(q) || sn.includes(q)
+    }
+
+    label =
       (it?.name ?? it?.display_name ?? it?.label ?? it?.short_name ?? it?.code ?? it?.slug ?? '')
         .toString()
         .toLowerCase()
+
     return label.includes(q)
   })
 })
