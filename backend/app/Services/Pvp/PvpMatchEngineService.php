@@ -332,12 +332,43 @@ readonly class PvpMatchEngineService
     {
         foreach ($patch as $k => $v) {
             if (is_array($v) && isset($base[$k]) && is_array($base[$k])) {
+                if ($this->isListArray($base[$k]) || $this->isListArray($v)) {
+                    $base[$k] = $v;
+                    continue;
+                }
+
                 $base[$k] = $this->mergeState($base[$k], $v);
                 continue;
             }
             $base[$k] = $v;
         }
         return $base;
+    }
+
+    /**
+     * Determine whether the given array is a list (sequential numeric keys).
+     *
+     * List arrays must be replaced, not recursively merged, to avoid keeping stale
+     * values when the patch contains a shorter list than the base.
+     *
+     * @param array $arr
+     *
+     * @return bool
+     */
+    private function isListArray(array $arr): bool
+    {
+        if (function_exists('array_is_list')) {
+            return array_is_list($arr);
+        }
+
+        $i = 0;
+        foreach ($arr as $k => $_) {
+            if ($k !== $i) {
+                return false;
+            }
+            $i++;
+        }
+        return true;
     }
 
     /**
