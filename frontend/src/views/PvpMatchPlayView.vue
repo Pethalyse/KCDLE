@@ -54,6 +54,71 @@ const whoisEvents = ref<any[]>([])
 
 let eventsTimer: number | null = null
 let heartbeatTimer: number | null = null
+let idleTimer: number | null = null
+
+const idleMaxSeconds = computed<number | null>(() => {
+  const raw = match.value?.afk?.idle_seconds
+  const v = Number(raw)
+  return Number.isFinite(v) && v > 0 ? Math.floor(v) : null
+})
+
+const idleServerRemainingSeconds = computed<number | null>(() => {
+  const raw = match.value?.afk?.idle_remaining_seconds
+  const v = Number(raw)
+  return Number.isFinite(v) && v >= 0 ? Math.floor(v) : null
+})
+
+const idleCountdownActive = computed<boolean>(() => {
+  return !!match.value?.afk?.idle_countdown_active
+})
+
+const idleRemainingSeconds = ref<number | null>(null)
+
+function clampInt(v: number, min: number, max: number): number {
+  const x = Math.floor(v)
+  if (x < min) return min
+  if (x > max) return max
+  return x
+}
+
+function formatMmSs(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const mm = Math.floor(s / 60)
+  const ss = s % 60
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+}
+
+const idleLabel = computed<string | null>(() => {
+  if (idleRemainingSeconds.value === null) return null
+  return formatMmSs(idleRemainingSeconds.value)
+})
+
+const idleDanger = computed<boolean>(() => {
+  return idleCountdownActive.value && (idleRemainingSeconds.value ?? 999999) <= 10
+})
+
+function startIdleTimer() {
+  if (idleTimer !== null) return
+  idleTimer = window.setInterval(() => {
+    const max = idleMaxSeconds.value
+    if (!max) return
+
+    if (!idleCountdownActive.value) {
+      idleRemainingSeconds.value = max
+      return
+    }
+
+    if (idleRemainingSeconds.value === null) {
+      const srv = idleServerRemainingSeconds.value
+      idleRemainingSeconds.value = clampInt(srv ?? max, 0, max)
+      return
+    }
+
+    if (idleRemainingSeconds.value > 0) {
+      idleRemainingSeconds.value = idleRemainingSeconds.value - 1
+    }
+  }, 1000)
+}
 
 const revealRaceLastRevealedSig = ref<string>('')
 
@@ -112,7 +177,31 @@ function stopTimers() {
     window.clearInterval(heartbeatTimer)
     heartbeatTimer = null
   }
+  if (idleTimer !== null) {
+    window.clearInterval(idleTimer)
+    idleTimer = null
+  }
 }
+
+watch(
+  () => [idleMaxSeconds.value, idleServerRemainingSeconds.value, idleCountdownActive.value],
+  () => {
+    const max = idleMaxSeconds.value
+    if (!max) {
+      idleRemainingSeconds.value = null
+      return
+    }
+
+    if (!idleCountdownActive.value) {
+      idleRemainingSeconds.value = max
+      return
+    }
+
+    const srv = idleServerRemainingSeconds.value
+    idleRemainingSeconds.value = clampInt(srv ?? max, 0, max)
+  },
+  { immediate: true },
+)
 
 function winnerNameFromMatch(winnerId: number): string {
   const list = Array.isArray(match.value?.players) ? match.value.players : []
@@ -251,8 +340,7 @@ async function poll() {
     if (events.length === 0) {
       if (roundType.value === 'reveal_race' || roundType.value === 'reveal_face') {
         revealRaceIdleRefreshTick += 1
-        if (revealRaceIdleRefreshTick >= 3) {
-          revealRaceIdleRefreshTick = 0
+        if (revealRaceIdleRefreshTick % 4 === 0) {
           match.value = await pvpGetMatch(matchId.value)
         }
       }
@@ -262,20 +350,18 @@ async function poll() {
     revealRaceIdleRefreshTick = 0
 
     pvp.setLastEventId(res.last_id)
+
     pushWhoisEvents(events)
 
-    const roundFinishedEv = events.find(ev => ev.type === 'round_finished')
-    if (roundFinishedEv) {
-      navigating.value = true
-      stopTimers()
-
+    const finishedRoundEvent = events.find((e: any) => e?.type === 'round_finished')
+    if (finishedRoundEvent) {
       const before = extractScore(match.value)
-      const m = await pvpGetMatch(matchId.value)
-      match.value = m
-      const after = extractScore(m)
+      const m2 = await pvpGetMatch(matchId.value)
+      match.value = m2
+      const after = extractScore(m2)
 
-      const wid = Number(roundFinishedEv?.payload?.winner_user_id ?? 0)
-      const sp = (roundFinishedEv?.payload?.secret_player ?? null) as any
+      const wid = Number(finishedRoundEvent?.payload?.winner_user_id ?? 0)
+      const sp = (finishedRoundEvent?.payload?.secret_player ?? null) as any
       const secretPlayer =
         sp && typeof sp === 'object'
           ? { id: Number(sp.id ?? 0), name: String(sp.name ?? ''), image_url: (sp.image_url ?? null) as string | null }
@@ -453,6 +539,7 @@ onMounted(async () => {
 
   eventsTimer = window.setInterval(poll, 1200)
   heartbeatTimer = window.setInterval(beat, 25000)
+  startIdleTimer()
 })
 
 onBeforeUnmount(() => stopTimers())
@@ -474,6 +561,15 @@ onBeforeUnmount(() => stopTimers())
             :show-leave="true"
             @leave="leave"
           />
+        </div>
+
+        <div
+          v-if="match && idleLabel && idleMaxSeconds"
+          class="afk-timer"
+          :class="{ 'afk-timer--inactive': !idleCountdownActive, 'afk-timer--danger': idleDanger }"
+        >
+          <span class="afk-timer__label">Temps restant pour jouer : </span>
+          <span class="afk-timer__value">{{ idleLabel }}</span>
         </div>
 
         <PvpRoundResultOverlay
@@ -570,6 +666,37 @@ onBeforeUnmount(() => stopTimers())
 .top {
   width: 100%;
   margin: 0 auto;
+}
+
+.afk-timer {
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(6, 8, 18, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.afk-timer__label {
+  font-size: 0.92rem;
+  opacity: 0.9;
+}
+
+.afk-timer__value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+.afk-timer--inactive {
+  opacity: 0.8;
+}
+
+.afk-timer--danger {
+  border-color: rgba(255, 120, 120, 0.55);
 }
 
 .card {
