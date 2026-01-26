@@ -38,13 +38,25 @@ class AppServiceProvider extends ServiceProvider
             $maxAttempts = $limits[0]->maxAttempts ?? 60;
             if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
                 Log::channel('guess')->warning('Throttle exceeded', [
-                    'ip'    => $request->ip(),
-                    'game'  => $request->route('game'),
-                    'path'  => $request->path(),
+                    'ip' => $request->ip(),
+                    'game' => $request->route('game'),
+                    'path' => $request->path(),
                 ]);
             }
 
             return $limits;
+        });
+
+        RateLimiter::for('discord-bot-guess', function (Request $request) {
+            $discordId = (string) $request->input('discord_id', '');
+            $game = (string) $request->route('game');
+
+            $key = ($discordId !== '' ? $discordId : (string) $request->ip()) . '|' . $game;
+
+            return [
+                Limit::perMinute(120)->by($key),
+                Limit::perHour(1500)->by($key),
+            ];
         });
     }
 }

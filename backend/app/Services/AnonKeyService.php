@@ -4,18 +4,17 @@ namespace App\Services;
 
 use Illuminate\Http\Request;
 
+/**
+ * Anonymous key generator service.
+ *
+ * This service provides deterministic keys to associate guesses to a non-authenticated identity.
+ * - Browser flow: based on IP (fromRequest)
+ * - Discord bot flow: based on a provided stable identifier (fromValue)
+ */
 class AnonKeyService
 {
     /**
      * Generate a deterministic anonymous key from the client's IP.
-     *
-     * The anonymous key is used to associate PendingGuess entries with a browser
-     * session before the user registers or logs in. It does not expose the IP
-     * directly; instead, an HMAC-SHA256 hash of the IP combined with the
-     * application key is produced.
-     *
-     * Multiple requests coming from the same IP will produce the same key,
-     * ensuring continuity of pending guesses through the anonymous session.
      *
      * @param Request $request HTTP request providing the client IP.
      *
@@ -24,6 +23,19 @@ class AnonKeyService
     public function fromRequest(Request $request): string
     {
         $ip = (string) $request->ip();
-        return hash_hmac('sha256', $ip, config('app.key'));
+
+        return $this->fromValue($ip);
+    }
+
+    /**
+     * Generate a deterministic anonymous key from an arbitrary stable value.
+     *
+     * @param string $value Stable identifier (e.g. IP, "discord:{id}", etc.).
+     *
+     * @return string Deterministic anonymous identifier.
+     */
+    public function fromValue(string $value): string
+    {
+        return hash_hmac('sha256', $value, (string) config('app.key'));
     }
 }

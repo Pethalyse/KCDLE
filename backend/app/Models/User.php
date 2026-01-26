@@ -20,7 +20,6 @@ use Laravel\Sanctum\HasApiTokens;
  * This model also stores lightweight profile customization attributes used by the frontend,
  * such as an avatar stored on the public disk and a profile-picture frame color.
  */
-
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -34,6 +33,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     protected $fillable = [
         'name',
         'email',
+        'discord_id',
         'password',
         'avatar_path',
         'avatar_frame_color',

@@ -29,6 +29,8 @@ use App\Http\Controllers\Api\Pvp\PvpRoundController;
 use App\Http\Controllers\Api\UserAchievementController;
 use App\Http\Controllers\Api\UserGameStatsController;
 use App\Http\Controllers\Api\UserProfileController;
+use App\Http\Controllers\Api\Discord\DiscordBotGuessController;
+use App\Http\Middleware\EnsureDiscordBotSecret;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -38,6 +40,13 @@ Route::prefix('games')
         Route::get('{game}/players', [GamePlayerController::class, 'index']);
         Route::post('{game}/guess', [GameGuessController::class, 'store'])
             ->middleware(['throttle:game-guess']);
+    });
+
+Route::prefix('discord/bot')
+    ->middleware([EnsureDiscordBotSecret::class])
+    ->group(function () {
+        Route::post('games/{game}/guess', [DiscordBotGuessController::class, 'guess'])
+            ->middleware(['throttle:discord-bot-guess']);
     });
 
 Route::prefix('games/kcdle/trophies-higher-lower')
@@ -151,6 +160,6 @@ Route::get('/health', function () {
 
     return response()->json([
         'app' => true,
-        'db'  => $db,
+        'db' => $db,
     ], $db ? 200 : 500);
 });

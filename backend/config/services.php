@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'discord' => [
+        'bot_secret' => env('DISCORD_BOT_SECRET'),
+    ],
+
 ];
