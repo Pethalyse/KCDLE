@@ -232,7 +232,7 @@ class AuthController extends Controller
      *
      * @param User $user User instance to normalize.
      *
-     * @return array{id:int, name:string, email:string|null, email_verified:bool, is_admin:bool, avatar_url:string, avatar_frame_color:string} Normalized user data.
+     * @return array{id:int, name:string, email:string|null, email_verified:bool, is_admin:bool, avatar_url:string, avatar_frame_color:string, discord_id:string|null} Normalized user data.
      */
     protected function formatUser(User $user): array
     {
@@ -244,6 +244,7 @@ class AuthController extends Controller
             'is_admin' => (bool) $user->getAttribute('is_admin'),
             'avatar_url' => (string) $user->getAttribute('avatar_url'),
             'avatar_frame_color' => (string) $user->getAttribute('avatar_frame_color'),
+            'discord_id' => $user->getAttribute('discord_id'),
         ];
     }
 }

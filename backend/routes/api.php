@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AchievementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CreditController;
 use App\Http\Controllers\Api\DailyGameController;
+use App\Http\Controllers\Api\Discord\DiscordAuthController;
 use App\Http\Controllers\Api\EmailVerificationController;
 use App\Http\Controllers\Api\EmailVerificationNotificationController;
 use App\Http\Controllers\Api\ForgotPasswordController;
@@ -69,6 +70,9 @@ Route::prefix('auth')
         Route::get('email/verify/{id}/{hash}', EmailVerificationController::class)
             ->middleware(['signed'])
             ->name('verification.verify');
+
+        Route::get('discord/url', [DiscordAuthController::class, 'url']);
+        Route::post('discord/exchange', [DiscordAuthController::class, 'exchange']);
     });
 
 Route::prefix('auth')
@@ -77,6 +81,7 @@ Route::prefix('auth')
         Route::post('logout', [AuthController::class, 'logout']);
         Route::post('refresh', [AuthController::class, 'refresh']);
         Route::get('me', [AuthController::class, 'me']);
+        Route::post('discord/unlink', [DiscordAuthController::class, 'unlink']);
     });
 
 Route::prefix('user')
