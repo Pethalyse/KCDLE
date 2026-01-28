@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use App\Notifications\VerifyEmailNotification;
 use App\Notifications\ResetPasswordNotification;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\VerifyEmailNotification;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -34,6 +34,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'name',
         'email',
         'discord_id',
+        'discord_avatar_hash',
         'password',
         'avatar_path',
         'avatar_frame_color',
@@ -73,17 +74,49 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     }
 
     /**
+     * Determine whether the user has set a custom KCDLE avatar.
+     *
+     * @return bool
+     */
+    public function hasCustomAvatar(): bool
+    {
+        $path = (string) ($this->getAttribute('avatar_path') ?? '');
+
+        if ($path === '') {
+            return false;
+        }
+
+        return ltrim($path, '/') !== 'users/defaut.png';
+    }
+
+    /**
      * Resolve the public URL for the user's avatar.
      *
-     * If the user has not uploaded a custom avatar yet, the default avatar is returned.
+     * Priority:
+     * 1) Custom KCDLE avatar (stored on public disk)
+     * 2) Discord avatar (when linked and stored, only if no custom KCDLE avatar)
+     * 3) Default KCDLE avatar
      *
      * @return string
      */
     public function getAvatarUrlAttribute(): string
     {
-        $path = (string) ($this->getAttribute('avatar_path') ?: 'users/defaut.png');
+        if ($this->hasCustomAvatar()) {
+            $path = (string) $this->getAttribute('avatar_path');
 
-        return asset('storage/' . ltrim($path, '/'));
+            return asset('storage/' . ltrim($path, '/'));
+        }
+
+        $discordId = (string) ($this->getAttribute('discord_id') ?? '');
+        $discordAvatarHash = (string) ($this->getAttribute('discord_avatar_hash') ?? '');
+
+        if ($discordId !== '' && $discordAvatarHash !== '') {
+            return 'https://cdn.discordapp.com/avatars/' . rawurlencode($discordId) . '/' . rawurlencode($discordAvatarHash) . '.png?size=256';
+        }
+
+        $defaultPath = 'users/defaut.png';
+
+        return asset('storage/' . ltrim($defaultPath, '/'));
     }
 
     /**

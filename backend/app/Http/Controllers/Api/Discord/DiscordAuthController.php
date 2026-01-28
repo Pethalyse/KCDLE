@@ -156,6 +156,8 @@ class DiscordAuthController extends Controller
         $discordId = (string) ($discord['id'] ?? '');
         $discordEmail = (string) ($discord['email'] ?? '');
         $discordUsername = (string) (($discord['global_name'] ?? '') !== '' ? ($discord['global_name'] ?? '') : ($discord['username'] ?? ''));
+        $discordAvatarHashRaw = $discord['avatar'] ?? null;
+        $discordAvatarHash = is_string($discordAvatarHashRaw) && $discordAvatarHashRaw !== '' ? $discordAvatarHashRaw : null;
 
         if ($discordId === '') {
             return response()->json([
@@ -182,11 +184,12 @@ class DiscordAuthController extends Controller
             $alreadyLinkedUser = User::query()->where('discord_id', $discordId)->first();
 
             if ($alreadyLinkedUser instanceof User && (int) $alreadyLinkedUser->getAttribute('id') !== (int) $currentUser->getAttribute('id')) {
+                $this->syncDiscordIdentity($alreadyLinkedUser, $discordId, $discordAvatarHash);
+
                 return $this->respondLogin($alreadyLinkedUser, $request);
             }
 
-            $currentUser->setAttribute('discord_id', $discordId);
-            $currentUser->save();
+            $this->syncDiscordIdentity($currentUser, $discordId, $discordAvatarHash);
 
             $fresh = $currentUser->fresh();
             if (! $fresh instanceof User) {
@@ -204,6 +207,8 @@ class DiscordAuthController extends Controller
         $linked = User::query()->where('discord_id', $discordId)->first();
 
         if ($linked instanceof User) {
+            $this->syncDiscordIdentity($linked, $discordId, $discordAvatarHash);
+
             return $this->respondLogin($linked, $request);
         }
 
@@ -227,13 +232,12 @@ class DiscordAuthController extends Controller
                 ], Response::HTTP_CONFLICT);
             }
 
-            $existingByEmail->setAttribute('discord_id', $discordId);
+            $this->syncDiscordIdentity($existingByEmail, $discordId, $discordAvatarHash);
 
             if (! $existingByEmail->hasVerifiedEmail()) {
                 $existingByEmail->setAttribute('email_verified_at', now());
+                $existingByEmail->save();
             }
-
-            $existingByEmail->save();
 
             return $this->respondLogin($existingByEmail, $request, Response::HTTP_OK);
         }
@@ -250,6 +254,7 @@ class DiscordAuthController extends Controller
             'email' => $discordEmail,
             'password' => Hash::make(Str::random(64)),
             'discord_id' => $discordId,
+            'discord_avatar_hash' => $discordAvatarHash,
         ]);
         $user->setAttribute('email_verified_at', now());
         $user->save();
@@ -275,6 +280,7 @@ class DiscordAuthController extends Controller
         }
 
         $user->setAttribute('discord_id', null);
+        $user->setAttribute('discord_avatar_hash', null);
         $user->save();
 
         $fresh = $user->fresh();
@@ -312,6 +318,25 @@ class DiscordAuthController extends Controller
         $tokenable = $token->tokenable;
 
         return $tokenable instanceof User ? $tokenable : null;
+    }
+
+    /**
+     * Synchronize the Discord identity data on a user.
+     *
+     * @param User $user Target user.
+     * @param string $discordId Discord user id.
+     * @param string|null $discordAvatarHash Discord avatar hash.
+     *
+     * @return void
+     */
+    protected function syncDiscordIdentity(User $user, string $discordId, ?string $discordAvatarHash): void
+    {
+        $user->setAttribute('discord_id', $discordId);
+        $user->setAttribute('discord_avatar_hash', $discordAvatarHash);
+
+        if ($user->isDirty(['discord_id', 'discord_avatar_hash'])) {
+            $user->save();
+        }
     }
 
     /**
