@@ -33,7 +33,9 @@ class DiscordAuthController extends Controller
     public function __construct(
         protected DiscordOAuthService $discord,
         protected PendingGuessService $pendingGuesses
-    ) {}
+    )
+    {
+    }
 
     /**
      * Return the Discord authorization URL.
@@ -56,9 +58,9 @@ class DiscordAuthController extends Controller
      */
     public function url(Request $request): JsonResponse
     {
-        $mode = (string) $request->query('mode', 'login');
+        $mode = (string)$request->query('mode', 'login');
 
-        if (! in_array($mode, ['login', 'link'], true)) {
+        if (!in_array($mode, ['login', 'link'], true)) {
             return response()->json([
                 'message' => 'Invalid mode.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -69,7 +71,7 @@ class DiscordAuthController extends Controller
         if ($mode === 'link') {
             $user = $this->resolveBearerUser($request);
 
-            if (! ($user instanceof User)) {
+            if (!($user instanceof User)) {
                 return response()->json([
                     'message' => 'Unauthenticated.',
                 ], Response::HTTP_UNAUTHORIZED);
@@ -81,7 +83,7 @@ class DiscordAuthController extends Controller
 
         Cache::put($cacheKey, [
             'mode' => $mode,
-            'user_id' => $user instanceof User ? (int) $user->getAttribute('id') : null,
+            'user_id' => $user instanceof User ? (int)$user->getAttribute('id') : null,
         ], now()->addMinutes(10));
 
         return response()->json([
@@ -120,11 +122,11 @@ class DiscordAuthController extends Controller
             'state' => ['required', 'string'],
         ]);
 
-        $state = (string) $data['state'];
+        $state = (string)$data['state'];
         $cacheKey = $this->stateCacheKey($state);
 
         $statePayload = Cache::get($cacheKey);
-        if (! is_array($statePayload) || ! isset($statePayload['mode'])) {
+        if (!is_array($statePayload) || !isset($statePayload['mode'])) {
             return response()->json([
                 'message' => 'Invalid or expired state.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -132,15 +134,15 @@ class DiscordAuthController extends Controller
 
         Cache::forget($cacheKey);
 
-        $mode = (string) ($statePayload['mode'] ?? 'login');
+        $mode = (string)($statePayload['mode'] ?? 'login');
         $linkUserId = $statePayload['user_id'] ?? null;
 
-        $tokenRes = $this->discord->exchangeCode((string) $data['code']);
-        if (! $tokenRes['ok']) {
-            return response()->json($tokenRes['payload'], (int) ($tokenRes['status'] ?? 400));
+        $tokenRes = $this->discord->exchangeCode((string)$data['code']);
+        if (!$tokenRes['ok']) {
+            return response()->json($tokenRes['payload'], (int)($tokenRes['status'] ?? 400));
         }
 
-        $accessToken = (string) ($tokenRes['payload']['access_token'] ?? '');
+        $accessToken = (string)($tokenRes['payload']['access_token'] ?? '');
         if ($accessToken === '') {
             return response()->json([
                 'message' => 'Discord token response missing access_token.',
@@ -148,14 +150,14 @@ class DiscordAuthController extends Controller
         }
 
         $userRes = $this->discord->fetchUser($accessToken);
-        if (! $userRes['ok']) {
-            return response()->json($userRes['payload'], (int) ($userRes['status'] ?? 400));
+        if (!$userRes['ok']) {
+            return response()->json($userRes['payload'], (int)($userRes['status'] ?? 400));
         }
 
         $discord = $userRes['payload'];
-        $discordId = (string) ($discord['id'] ?? '');
-        $discordEmail = (string) ($discord['email'] ?? '');
-        $discordUsername = (string) (($discord['global_name'] ?? '') !== '' ? ($discord['global_name'] ?? '') : ($discord['username'] ?? ''));
+        $discordId = (string)($discord['id'] ?? '');
+        $discordEmail = (string)($discord['email'] ?? '');
+        $discordUsername = (string)(($discord['global_name'] ?? '') !== '' ? ($discord['global_name'] ?? '') : ($discord['username'] ?? ''));
         $discordAvatarHashRaw = $discord['avatar'] ?? null;
         $discordAvatarHash = is_string($discordAvatarHashRaw) && $discordAvatarHashRaw !== '' ? $discordAvatarHashRaw : null;
 
@@ -166,15 +168,15 @@ class DiscordAuthController extends Controller
         }
 
         if ($mode === 'link') {
-            if (! is_int($linkUserId) && ! ctype_digit((string) $linkUserId)) {
+            if (!is_int($linkUserId) && !ctype_digit((string)$linkUserId)) {
                 return response()->json([
                     'message' => 'Invalid link state.',
                 ], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
 
             /** @var User|null $currentUser */
-            $currentUser = User::query()->find((int) $linkUserId);
-            if (! $currentUser instanceof User) {
+            $currentUser = User::query()->find((int)$linkUserId);
+            if (!$currentUser instanceof User) {
                 return response()->json([
                     'message' => 'User not found.',
                 ], Response::HTTP_NOT_FOUND);
@@ -183,7 +185,7 @@ class DiscordAuthController extends Controller
             /** @var User|null $alreadyLinkedUser */
             $alreadyLinkedUser = User::query()->where('discord_id', $discordId)->first();
 
-            if ($alreadyLinkedUser instanceof User && (int) $alreadyLinkedUser->getAttribute('id') !== (int) $currentUser->getAttribute('id')) {
+            if ($alreadyLinkedUser instanceof User && (int)$alreadyLinkedUser->getAttribute('id') !== (int)$currentUser->getAttribute('id')) {
                 $this->syncDiscordIdentity($alreadyLinkedUser, $discordId, $discordAvatarHash);
 
                 return $this->respondLogin($alreadyLinkedUser, $request);
@@ -192,7 +194,7 @@ class DiscordAuthController extends Controller
             $this->syncDiscordIdentity($currentUser, $discordId, $discordAvatarHash);
 
             $fresh = $currentUser->fresh();
-            if (! $fresh instanceof User) {
+            if (!$fresh instanceof User) {
                 return response()->json([
                     'message' => 'Unexpected error.',
                 ], Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -225,7 +227,7 @@ class DiscordAuthController extends Controller
         if ($existingByEmail instanceof User) {
             $existingDiscordId = $existingByEmail->getAttribute('discord_id');
 
-            if ($existingDiscordId && (string) $existingDiscordId !== $discordId) {
+            if ($existingDiscordId && (string)$existingDiscordId !== $discordId) {
                 return response()->json([
                     'message' => 'This email is already used by an account linked to another Discord identity.',
                     'code' => 'discord_email_already_used',
@@ -234,7 +236,7 @@ class DiscordAuthController extends Controller
 
             $this->syncDiscordIdentity($existingByEmail, $discordId, $discordAvatarHash);
 
-            if (! $existingByEmail->hasVerifiedEmail()) {
+            if (!$existingByEmail->hasVerifiedEmail()) {
                 $existingByEmail->setAttribute('email_verified_at', now());
                 $existingByEmail->save();
             }
@@ -273,7 +275,7 @@ class DiscordAuthController extends Controller
     {
         $user = $request->user();
 
-        if (! $user instanceof User) {
+        if (!$user instanceof User) {
             return response()->json([
                 'message' => 'Unauthenticated.',
             ], Response::HTTP_UNAUTHORIZED);
@@ -284,7 +286,7 @@ class DiscordAuthController extends Controller
         $user->save();
 
         $fresh = $user->fresh();
-        if (! $fresh instanceof User) {
+        if (!$fresh instanceof User) {
             return response()->json([
                 'message' => 'Unexpected error.',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
@@ -311,7 +313,7 @@ class DiscordAuthController extends Controller
         }
 
         $token = PersonalAccessToken::findToken($bearer);
-        if (! $token) {
+        if (!$token) {
             return null;
         }
 
@@ -350,7 +352,7 @@ class DiscordAuthController extends Controller
      */
     protected function respondLogin(User $user, Request $request, int $status = Response::HTTP_OK): JsonResponse
     {
-        if (! $user->hasVerifiedEmail()) {
+        if (!$user->hasVerifiedEmail()) {
             return response()->json([
                 'message' => 'Adresse e-mail non vérifiée.',
                 'code' => 'email_not_verified',
@@ -379,13 +381,13 @@ class DiscordAuthController extends Controller
     protected function formatUser(User $user): array
     {
         return [
-            'id' => (int) $user->getAttribute('id'),
-            'name' => (string) $user->getAttribute('name'),
+            'id' => (int)$user->getAttribute('id'),
+            'name' => (string)$user->getAttribute('name'),
             'email' => $user->getAttribute('email'),
             'email_verified' => $user->hasVerifiedEmail(),
-            'is_admin' => (bool) $user->getAttribute('is_admin'),
-            'avatar_url' => (string) $user->getAttribute('avatar_url'),
-            'avatar_frame_color' => (string) $user->getAttribute('avatar_frame_color'),
+            'is_admin' => (bool)$user->getAttribute('is_admin'),
+            'avatar_url' => (string)$user->getAttribute('avatar_url'),
+            'avatar_frame_color' => (string)$user->getAttribute('avatar_frame_color'),
             'discord_id' => $user->getAttribute('discord_id'),
         ];
     }
@@ -419,17 +421,17 @@ class DiscordAuthController extends Controller
 
         $base = mb_substr($base, 0, 20);
 
-        if (! User::query()->where('name', $base)->exists()) {
+        if (!User::query()->where('name', $base)->exists()) {
             return $base;
         }
 
         for ($i = 0; $i < 60; $i++) {
-            $suffix = (string) random_int(10, 99);
+            $suffix = (string)random_int(10, 99);
             $maxBaseLen = 20 - (1 + strlen($suffix));
             $candidateBase = mb_substr($base, 0, max(1, $maxBaseLen));
             $candidate = $candidateBase . '_' . $suffix;
 
-            if (! User::query()->where('name', $candidate)->exists()) {
+            if (!User::query()->where('name', $candidate)->exists()) {
                 return $candidate;
             }
         }
