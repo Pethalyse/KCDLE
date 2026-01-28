@@ -10,6 +10,7 @@ import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import ForgotPasswordView from '@/views/ForgotPasswordView.vue'
 import ResetPasswordView from '@/views/ResetPasswordView.vue'
+import DiscordCallbackView from '@/views/DiscordCallbackView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import LeaderboardView from '@/views/LeaderboardView.vue'
 import AchievementsView from '@/views/AchievementsView.vue'
@@ -42,6 +43,8 @@ const routes: RouteRecordRaw[] = [
   { path: '/register', name: 'register', component: RegisterView, meta: { requiresNotAuth: true } },
   { path: '/forgot-password', name: 'forgot_password', component: ForgotPasswordView, meta: { requiresNotAuth: true } },
   { path: '/reset-password', name: 'reset_password', component: ResetPasswordView, meta: { requiresNotAuth: true } },
+
+  { path: '/auth/discord/callback', name: 'discord_callback', component: DiscordCallbackView },
 
   { path: '/profile', name: 'profile', component: ProfileView, meta: { requiresAuth: true } },
 

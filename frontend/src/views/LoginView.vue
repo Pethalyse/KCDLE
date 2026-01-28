@@ -6,6 +6,7 @@ import Credit from '@/components/Credit.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useFlashStore } from '@/stores/flash'
 import { handleError } from '@/utils/handleError'
+import { fetchDiscordAuthUrl } from '@/api/discordAuthApi'
 
 const router = useRouter()
 const route = useRoute()
@@ -26,6 +27,10 @@ const submitting = ref(false)
 const unverifiedEmail = ref<string | null>(null)
 const resendLoading = ref(false)
 const showPassword = ref(false)
+
+const discordLoading = ref(false)
+
+const RETURN_TO_STORAGE_KEY = 'kcdle_discord_return_to'
 
 function getSafeRedirect(v: unknown): string {
   if (typeof v !== 'string') return '/'
@@ -102,6 +107,27 @@ async function handleSubmit() {
   }
 }
 
+async function startDiscordLogin() {
+  if (discordLoading.value || submitting.value || resendLoading.value) return
+
+  discordLoading.value = true
+  try {
+    sessionStorage.setItem(RETURN_TO_STORAGE_KEY, redirectTo.value)
+
+    const data = await fetchDiscordAuthUrl('login')
+    if (!data?.url || typeof data.url !== 'string') {
+      flash.error('URL Discord invalide.', 'Discord')
+      return
+    }
+
+    window.location.href = data.url
+  } catch (e) {
+    handleError(e, 'Impossible de démarrer la connexion Discord.', 'Discord')
+  } finally {
+    discordLoading.value = false
+  }
+}
+
 async function resendVerification() {
   if (!unverifiedEmail.value || resendLoading.value) return
 
@@ -165,6 +191,20 @@ watch(
         <div class="auth-head">
           <h1 class="auth-title">Connexion</h1>
           <p class="auth-subtitle">Connecte-toi pour accéder à ton profil.</p>
+        </div>
+
+        <button
+          type="button"
+          class="auth-discord"
+          :disabled="discordLoading || submitting || resendLoading"
+          @click="startDiscordLogin"
+        >
+          <span v-if="!discordLoading">Se connecter avec Discord</span>
+          <span v-else>Redirection Discord…</span>
+        </button>
+
+        <div class="auth-sep">
+          <span>ou</span>
         </div>
 
         <form class="auth-form" @submit.prevent="handleSubmit">
@@ -293,6 +333,50 @@ watch(
   opacity: 0.85;
   text-align: center;
   font-size: 0.95rem;
+}
+
+.auth-discord {
+  width: 100%;
+  padding: 10px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(88, 101, 242, 0.9);
+  background: rgba(88, 101, 242, 0.18);
+  color: #dfe3ff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 800;
+  transition: background 0.15s ease;
+}
+
+.auth-discord:hover:not(:disabled) {
+  background: rgba(88, 101, 242, 0.28);
+}
+
+.auth-discord:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.auth-sep {
+  margin: 12px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.auth-sep::before,
+.auth-sep::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-sep span {
+  padding: 0 10px;
 }
 
 .auth-form {

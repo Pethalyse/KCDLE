@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\PersonalAccessToken;
 use Random\RandomException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -38,8 +39,9 @@ class DiscordAuthController extends Controller
      * Return the Discord authorization URL.
      *
      * Modes:
-     * - login: creates or logs into an account linked by discord_id.
-     * - link: links the Discord account to the currently authenticated user.
+     * - login: logs in (or creates) an account from a Discord identity.
+     * - link: links the Discord identity to the currently authenticated user, or
+     *         if already linked, switches the session to the linked account.
      *
      * Request query:
      * - mode: 'login'|'link'
@@ -62,11 +64,16 @@ class DiscordAuthController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $user = $request->user();
-        if ($mode === 'link' && ! ($user instanceof User)) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], Response::HTTP_UNAUTHORIZED);
+        $user = null;
+
+        if ($mode === 'link') {
+            $user = $this->resolveBearerUser($request);
+
+            if (! ($user instanceof User)) {
+                return response()->json([
+                    'message' => 'Unauthenticated.',
+                ], Response::HTTP_UNAUTHORIZED);
+            }
         }
 
         $state = Str::random(40);
@@ -90,14 +97,15 @@ class DiscordAuthController extends Controller
      * - code: string
      * - state: string
      *
-     * For mode=login:
-     * - returns { user, token, unlocked_achievements }
-     * - creates an account if no discord_id match and the Discord email is not used.
-     * - if the Discord email already exists but is not linked, returns 409 (link required).
-     *
-     * For mode=link:
-     * - requires an authenticated user in the cached state
-     * - returns { user }
+     * Behavior:
+     * - login:
+     *   - if users.discord_id exists -> login to that user
+     *   - else if an account exists with the same email -> link discord_id to it, verify email if needed, then login
+     *   - else -> create an account (verified email) and login
+     * - link:
+     *   - requires a logged-in user_id in state
+     *   - if discord_id is already linked to another user -> login to that linked user (switch account)
+     *   - else -> link current user to discord_id and return updated user
      *
      * @param Request $request Incoming request.
      *
@@ -162,30 +170,25 @@ class DiscordAuthController extends Controller
                 ], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            /** @var User|null $user */
-            $user = User::query()->find((int) $linkUserId);
-            if (! $user instanceof User) {
+            /** @var User|null $currentUser */
+            $currentUser = User::query()->find((int) $linkUserId);
+            if (! $currentUser instanceof User) {
                 return response()->json([
                     'message' => 'User not found.',
                 ], Response::HTTP_NOT_FOUND);
             }
 
-            $already = User::query()
-                ->where('discord_id', $discordId)
-                ->where('id', '!=', $user->getAttribute('id'))
-                ->exists();
+            /** @var User|null $alreadyLinkedUser */
+            $alreadyLinkedUser = User::query()->where('discord_id', $discordId)->first();
 
-            if ($already) {
-                return response()->json([
-                    'message' => 'This Discord account is already linked to another user.',
-                    'code' => 'discord_already_linked',
-                ], Response::HTTP_CONFLICT);
+            if ($alreadyLinkedUser instanceof User && (int) $alreadyLinkedUser->getAttribute('id') !== (int) $currentUser->getAttribute('id')) {
+                return $this->respondLogin($alreadyLinkedUser, $request);
             }
 
-            $user->setAttribute('discord_id', $discordId);
-            $user->save();
+            $currentUser->setAttribute('discord_id', $discordId);
+            $currentUser->save();
 
-            $fresh = $user->fresh();
+            $fresh = $currentUser->fresh();
             if (! $fresh instanceof User) {
                 return response()->json([
                     'message' => 'Unexpected error.',
@@ -198,28 +201,10 @@ class DiscordAuthController extends Controller
         }
 
         /** @var User|null $linked */
-        $linked = User::query()
-            ->where('discord_id', $discordId)
-            ->first();
+        $linked = User::query()->where('discord_id', $discordId)->first();
 
         if ($linked instanceof User) {
-            if (! $linked->hasVerifiedEmail()) {
-                return response()->json([
-                    'message' => 'Adresse e-mail non vérifiée.',
-                    'code' => 'email_not_verified',
-                ], Response::HTTP_FORBIDDEN);
-            }
-
-            $linked->tokens()->delete();
-
-            $token = $linked->createToken('kcdle-app')->plainTextToken;
-            $unlocked = $this->pendingGuesses->import($linked, $request);
-
-            return response()->json([
-                'user' => $this->formatUser($linked),
-                'token' => $token,
-                'unlocked_achievements' => $unlocked->values(),
-            ], Response::HTTP_OK);
+            return $this->respondLogin($linked, $request);
         }
 
         if ($discordEmail === '') {
@@ -231,11 +216,26 @@ class DiscordAuthController extends Controller
 
         /** @var User|null $existingByEmail */
         $existingByEmail = User::query()->where('email', $discordEmail)->first();
+
         if ($existingByEmail instanceof User) {
-            return response()->json([
-                'message' => 'An account already exists with this email. Please login normally and link Discord from your profile.',
-                'code' => 'discord_link_required',
-            ], Response::HTTP_CONFLICT);
+            $existingDiscordId = $existingByEmail->getAttribute('discord_id');
+
+            if ($existingDiscordId && (string) $existingDiscordId !== $discordId) {
+                return response()->json([
+                    'message' => 'This email is already used by an account linked to another Discord identity.',
+                    'code' => 'discord_email_already_used',
+                ], Response::HTTP_CONFLICT);
+            }
+
+            $existingByEmail->setAttribute('discord_id', $discordId);
+
+            if (! $existingByEmail->hasVerifiedEmail()) {
+                $existingByEmail->setAttribute('email_verified_at', now());
+            }
+
+            $existingByEmail->save();
+
+            return $this->respondLogin($existingByEmail, $request, Response::HTTP_OK);
         }
 
         $baseName = trim($discordUsername);
@@ -252,17 +252,9 @@ class DiscordAuthController extends Controller
             'discord_id' => $discordId,
         ]);
         $user->setAttribute('email_verified_at', now());
+        $user->save();
 
-        $user->tokens()->delete();
-
-        $token = $user->createToken('kcdle-app')->plainTextToken;
-        $unlocked = $this->pendingGuesses->import($user, $request);
-
-        return response()->json([
-            'user' => $this->formatUser($user),
-            'token' => $token,
-            'unlocked_achievements' => $unlocked->values(),
-        ], Response::HTTP_CREATED);
+        return $this->respondLogin($user, $request, Response::HTTP_CREATED);
     }
 
     /**
@@ -295,6 +287,61 @@ class DiscordAuthController extends Controller
         return response()->json([
             'user' => $this->formatUser($fresh),
         ], Response::HTTP_OK);
+    }
+
+    /**
+     * Resolve the authenticated user from the bearer token, without relying on
+     * middleware groups or the default guard.
+     *
+     * @param Request $request HTTP request possibly carrying a bearer token.
+     *
+     * @return User|null
+     */
+    protected function resolveBearerUser(Request $request): ?User
+    {
+        $bearer = $request->bearerToken() ?? '';
+        if ($bearer === '') {
+            return null;
+        }
+
+        $token = PersonalAccessToken::findToken($bearer);
+        if (! $token) {
+            return null;
+        }
+
+        $tokenable = $token->tokenable;
+
+        return $tokenable instanceof User ? $tokenable : null;
+    }
+
+    /**
+     * Create a fresh token for a user and return a consistent login payload.
+     *
+     * @param User $user User to authenticate.
+     * @param Request $request HTTP request for pending guesses import.
+     * @param int $status HTTP response status code.
+     *
+     * @return JsonResponse
+     */
+    protected function respondLogin(User $user, Request $request, int $status = Response::HTTP_OK): JsonResponse
+    {
+        if (! $user->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Adresse e-mail non vérifiée.',
+                'code' => 'email_not_verified',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        $user->tokens()->delete();
+
+        $token = $user->createToken('kcdle-app')->plainTextToken;
+        $unlocked = $this->pendingGuesses->import($user, $request);
+
+        return response()->json([
+            'user' => $this->formatUser($user),
+            'token' => $token,
+            'unlocked_achievements' => $unlocked->values(),
+        ], $status);
     }
 
     /**

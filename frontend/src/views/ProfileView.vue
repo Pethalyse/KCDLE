@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { fetchUserProfile, updateUserProfile } from '@/api/userProfileApi'
+import { fetchDiscordAuthUrl, unlinkDiscord } from '@/api/discordAuthApi'
 import type { UserProfileGameStats, UserProfileResponse } from '@/types/userProfile'
 import { handleError } from '@/utils/handleError'
 import AdSlot from '@/components/AdSlot.vue'
@@ -38,7 +39,15 @@ const presetColors = [
 const tab = ref<TabKey>('games')
 const showAllPrivateOpponents = ref(false)
 
+const discordLinkLoading = ref(false)
+const discordUnlinkLoading = ref(false)
+
 const hasProfile = computed(() => !!profile.value)
+
+const isDiscordLinked = computed(() => {
+  const id = profile.value?.user?.discord_id ?? (auth.user as any)?.discord_id
+  return Boolean(id && String(id).trim().length > 0)
+})
 
 const gamesEntries = computed(() => {
   if (!profile.value) return []
@@ -131,6 +140,40 @@ async function saveProfileCustomization() {
     flash.error('Impossible de mettre à jour ton profil.', 'Profil')
   } finally {
     saving.value = false
+  }
+}
+
+async function startDiscordLink() {
+  discordLinkLoading.value = true
+  try {
+    const { url } = await fetchDiscordAuthUrl('link')
+    sessionStorage.setItem('kcdle_discord_return_to', router.currentRoute.value.fullPath)
+    window.location.href = url
+  } catch (e: any) {
+    handleError(e)
+    flash.error('Impossible de lancer la liaison Discord.', 'Discord')
+  } finally {
+    discordLinkLoading.value = false
+  }
+}
+
+async function unlinkDiscordFromProfile() {
+  discordUnlinkLoading.value = true
+  try {
+    const data = await unlinkDiscord()
+    auth.updateUser({
+      ...(auth.user as any),
+      ...(data.user as any),
+    })
+
+    profile.value = await fetchUserProfile()
+    syncEditorFromProfile()
+    flash.success('Compte Discord dissocié.', 'Discord')
+  } catch (e: any) {
+    handleError(e)
+    flash.error('Impossible de dissocier ton compte Discord.', 'Discord')
+  } finally {
+    discordUnlinkLoading.value = false
   }
 }
 
@@ -238,6 +281,45 @@ onMounted(async () => {
                         class="frame-custom"
                         aria-label="Couleur personnalisée"
                       />
+                    </div>
+
+                    <div class="discord-link-box">
+                      <div class="discord-link-head">
+                        <div class="discord-label">Discord</div>
+                        <div class="discord-status" :class="{ linked: isDiscordLinked }">
+                          {{ isDiscordLinked ? 'Lié' : 'Non lié' }}
+                        </div>
+                      </div>
+
+                      <div class="discord-actions">
+                        <button
+                          v-if="!isDiscordLinked"
+                          type="button"
+                          class="discord-btn"
+                          :disabled="discordLinkLoading"
+                          @click="startDiscordLink"
+                        >
+                          {{ discordLinkLoading ? 'Ouverture…' : 'Lier mon compte Discord' }}
+                        </button>
+
+                        <button
+                          v-else
+                          type="button"
+                          class="discord-btn danger"
+                          :disabled="discordUnlinkLoading"
+                          @click="unlinkDiscordFromProfile"
+                        >
+                          {{ discordUnlinkLoading ? 'Dissociation…' : 'Dissocier Discord' }}
+                        </button>
+
+                        <div class="discord-help">
+                          {{
+                            isDiscordLinked
+                              ? "Ton Discord est lié : tes parties jouées via le bot seront comptées sur ton compte KCDLE."
+                              : "Lie ton Discord pour que tes parties jouées via le bot soient comptées sur ton compte KCDLE."
+                          }}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -696,9 +778,77 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-.frame-hint {
-  font-size: 0.8rem;
-  opacity: 0.75;
+.discord-link-box {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(15, 18, 28, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.discord-link-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.discord-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.discord-status {
+  font-size: 0.85rem;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 0.9;
+}
+
+.discord-status.linked {
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.22);
+}
+
+.discord-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.discord-btn {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: #f0f0f0;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.discord-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.discord-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.discord-btn.danger {
+  background: rgba(225, 29, 72, 0.18);
+}
+
+.discord-btn.danger:hover {
+  background: rgba(225, 29, 72, 0.24);
+}
+
+.discord-help {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  line-height: 1.35;
 }
 
 .identity-achievements {

@@ -9,6 +9,7 @@ export interface AuthUser {
   is_admin?: boolean
   avatar_url?: string | null
   avatar_frame_color?: string | null
+  discord_id?: string | null
 }
 
 interface AuthState {
