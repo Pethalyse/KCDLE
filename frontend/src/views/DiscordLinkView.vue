@@ -128,117 +128,65 @@ onMounted(async () => {
 <style scoped>
 .discord-auth-page {
   min-height: 100vh;
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 22px;
+  padding: 20px;
   color: #f0f0f0;
   background: radial-gradient(circle at top, #20263a 0, #05060a 75%);
-  overflow: hidden;
 }
 
 .discord-auth-bg {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.75;
-  background:
-    radial-gradient(circle at 18% 14%, rgba(88, 101, 242, 0.18), transparent 48%),
-    radial-gradient(circle at 82% 22%, rgba(255, 255, 255, 0.06), transparent 52%),
-    radial-gradient(circle at 50% 92%, rgba(88, 101, 242, 0.10), transparent 55%);
-}
-
-.discord-auth-bg::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  opacity: 0.25;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 44px 44px;
-  transform: perspective(900px) rotateX(58deg) translateY(-18%);
-  transform-origin: top;
-  filter: blur(0.1px);
+  display: none;
 }
 
 .discord-auth-shell {
   width: 100%;
   max-width: 560px;
-  position: relative;
-  z-index: 1;
 }
 
 .discord-auth-card {
-  position: relative;
-  background: rgba(10, 12, 20, 0.92);
-  border-radius: 14px;
-  padding: 16px 16px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.42),
-    0 0 0 1px rgba(88, 101, 242, 0.06) inset;
-  overflow: hidden;
+  background: rgba(10, 12, 20, 0.9);
+  border-radius: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
 }
 
-.discord-auth-card::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  background: linear-gradient(120deg, rgba(88, 101, 242, 0.35), rgba(255, 255, 255, 0.08), rgba(88, 101, 242, 0.22));
-  opacity: 0.55;
-  filter: blur(16px);
-  pointer-events: none;
-}
-
+.discord-auth-card::before,
 .discord-auth-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 14% 0%, rgba(88, 101, 242, 0.18), transparent 40%);
-  pointer-events: none;
+  content: none;
 }
 
 .discord-auth-head {
   display: flex;
   align-items: center;
   gap: 12px;
-  position: relative;
-  z-index: 1;
-  padding: 6px 6px 10px;
+  margin-bottom: 12px;
 }
 
 .discord-auth-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(88, 101, 242, 0.18);
-  border: 1px solid rgba(88, 101, 242, 0.45);
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   display: grid;
   place-items: center;
-  position: relative;
-  overflow: hidden;
+  flex: 0 0 auto;
 }
 
 .discord-auth-icon::before {
-  content: '';
-  position: absolute;
-  inset: -40%;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), transparent 55%);
-  transform: rotate(20deg);
-  opacity: 0.65;
+  content: none;
 }
 
+/* Les 3 dots restent, mais sans glow futuriste */
 .discord-auth-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: rgba(223, 227, 255, 0.95);
-  box-shadow: 0 0 12px rgba(88, 101, 242, 0.65);
+  background: rgba(240, 240, 240, 0.9);
+  box-shadow: none;
 }
 
 .discord-auth-dot:nth-child(1) { justify-self: start; margin-left: 10px; }
@@ -249,23 +197,45 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .discord-auth-title {
-  font-size: 1.2rem;
-  font-weight: 900;
-  letter-spacing: 0.2px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: 0;
 }
 
 .discord-auth-subtitle {
   font-size: 0.9rem;
-  opacity: 0.82;
+  opacity: 0.85;
+}
+
+.discord-auth-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  flex: 0 0 auto;
+}
+
+.discord-auth-chip--ok {
+  border-color: rgba(0, 166, 255, 0.45);
+  background: rgba(0, 166, 255, 0.12);
+  color: #d9f3ff;
+}
+
+.discord-auth-chip--error {
+  border-color: rgba(255, 107, 107, 0.45);
+  background: rgba(255, 107, 107, 0.10);
+  color: rgba(255, 200, 200, 0.95);
 }
 
 .discord-auth-body {
-  position: relative;
-  z-index: 1;
-  padding: 10px 6px 8px;
+  padding: 0;
 }
 
 .discord-auth-state {
@@ -273,32 +243,51 @@ onMounted(async () => {
   align-items: flex-start;
   gap: 12px;
   padding: 12px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(15, 18, 28, 0.72);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(15, 18, 28, 0.9);
 }
 
 .discord-auth-state--error {
-  border-color: rgba(255, 90, 90, 0.25);
-  background: rgba(40, 12, 16, 0.45);
+  border-color: rgba(255, 107, 107, 0.25);
+  background: rgba(40, 12, 16, 0.35);
 }
 
 .discord-auth-spinner {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  border: 2px solid rgba(223, 227, 255, 0.18);
-  border-top-color: rgba(88, 101, 242, 0.95);
-  box-shadow: 0 0 14px rgba(88, 101, 242, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-top-color: rgba(0, 166, 255, 0.95);
   animation: spin 0.9s linear infinite;
   flex: 0 0 auto;
   margin-top: 2px;
 }
 
+.discord-auth-indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.06);
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.discord-auth-indicator--ok {
+  border-color: rgba(0, 166, 255, 0.35);
+  background: rgba(0, 166, 255, 0.12);
+}
+
+.discord-auth-indicator--error {
+  border-color: rgba(255, 107, 107, 0.35);
+  background: rgba(255, 107, 107, 0.10);
+}
+
 .discord-auth-text {
   font-size: 0.95rem;
   line-height: 1.25rem;
-  opacity: 0.96;
+  opacity: 0.95;
 }
 
 .discord-auth-hint {
@@ -314,16 +303,16 @@ onMounted(async () => {
   padding: 6px 10px;
   border-radius: 999px;
   font-size: 0.82rem;
-  font-weight: 900;
-  letter-spacing: 0.2px;
+  font-weight: 800;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.08);
   margin-right: 10px;
+  flex: 0 0 auto;
 }
 
 .discord-auth-badge--error {
-  border-color: rgba(255, 90, 90, 0.35);
-  background: rgba(255, 90, 90, 0.10);
+  border-color: rgba(255, 107, 107, 0.45);
+  background: rgba(255, 107, 107, 0.10);
   color: rgba(255, 200, 200, 0.95);
 }
 
@@ -335,29 +324,26 @@ onMounted(async () => {
 
 .discord-auth-btn {
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.10);
   background: rgba(255, 255, 255, 0.10);
   color: #f0f0f0;
   cursor: pointer;
   font-weight: 800;
-  transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .discord-auth-btn:hover {
   background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(88, 101, 242, 0.25);
-  transform: translateY(-1px);
 }
 
-.discord-auth-btn:active {
-  transform: translateY(0);
+.discord-auth-btn:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 
 .discord-auth-foot {
-  position: relative;
-  z-index: 1;
-  padding: 10px 6px 2px;
+  margin-top: 12px;
   opacity: 0.78;
 }
 
@@ -387,4 +373,20 @@ onMounted(async () => {
     transition: none;
   }
 }
+
+@media (max-width: 420px) {
+  .discord-auth-page {
+    padding: 16px 12px 20px;
+  }
+
+  .discord-auth-card {
+    padding: 14px 14px;
+  }
+
+  .discord-auth-icon {
+    width: 40px;
+    height: 40px;
+  }
+}
+
 </style>

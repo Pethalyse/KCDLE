@@ -208,137 +208,109 @@ onMounted(async () => {
       <div v-else-if="hasProfile && profile" class="profile-layout">
         <header class="profile-overview">
           <section class="profile-card profile-identity">
-            <div class="identity-grid">
-              <div class="identity-left">
-                <div class="identity-head">
-                  <UserBadge
-                    :name="profile.user.name"
-                    :avatar-url="avatarPreview ?? profile.user.avatar_url ?? null"
-                    :frame-color="frameColor"
-                    :size="88"
-                    :show-name="false"
-                    :admin="Boolean(profile.user.is_admin)"
-                  />
+            <div class="identity-left">
+              <div class="identity-head">
+                <div class="identity-info">
+                  <h1 class="profile-title">Mon profil</h1>
 
-                  <div class="identity-info">
-                    <h1 class="profile-title">Mon profil</h1>
-
-                    <div class="identity-meta">
-                      <div class="meta-line">
-                        <span class="meta-label">Pseudo</span>
-                        <span class="meta-value">{{ profile.user.name }}</span>
-                      </div>
-                      <div class="meta-line">
-                        <span class="meta-label">Email</span>
-                        <span class="meta-value">{{ profile.user.email }}</span>
-                      </div>
-                      <div class="meta-line">
-                        <span class="meta-label">Inscription</span>
-                        <span class="meta-value">{{ formatDate(profile.user.created_at) }}</span>
-                      </div>
+                  <div class="identity-meta">
+                    <div class="meta-line">
+                      <span class="meta-label">Pseudo</span>
+                      <span class="meta-value">{{ profile.user.name }}</span>
+                    </div>
+                    <div class="meta-line">
+                      <span class="meta-label">Email</span>
+                      <span class="meta-value">{{ profile.user.email }}</span>
+                    </div>
+                    <div class="meta-line">
+                      <span class="meta-label">Inscription</span>
+                      <span class="meta-value">{{ formatDate(profile.user.created_at) }}</span>
                     </div>
                   </div>
                 </div>
 
-                <div class="identity-custom">
-                  <div class="custom-row">
-                    <label class="avatar-upload">
-                      <span class="avatar-upload-text">Changer la photo</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        class="avatar-upload-input"
-                        @change="onSelectAvatar"
-                      />
-                    </label>
+                <UserBadge
+                  :name="profile.user.name"
+                  :avatar-url="avatarPreview ?? profile.user.avatar_url ?? null"
+                  :frame-color="frameColor"
+                  :size="88"
+                  :show-name="false"
+                  :admin="Boolean(profile.user.is_admin)"
+                />
+              </div>
 
+              <div class="identity-custom">
+                <div class="custom-row">
+                  <label class="avatar-upload">
+                    <span class="avatar-upload-text">Changer la photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      class="avatar-upload-input"
+                      @change="onSelectAvatar"
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    class="avatar-save"
+                    :disabled="saving"
+                    @click="saveProfileCustomization"
+                  >
+                    {{ saving ? 'Enregistrement…' : 'Enregistrer' }}
+                  </button>
+                </div>
+
+                <div class="frame-picker">
+                  <div class="frame-label">Cadre</div>
+                  <div class="frame-colors">
                     <button
+                      v-for="c in presetColors"
+                      :key="c"
                       type="button"
-                      class="avatar-save"
-                      :disabled="saving"
-                      @click="saveProfileCustomization"
-                    >
-                      {{ saving ? 'Enregistrement…' : 'Enregistrer' }}
-                    </button>
-                  </div>
-
-                  <div class="frame-picker">
-                    <div class="frame-label">Cadre</div>
-                    <div class="frame-colors">
-                      <button
-                        v-for="c in presetColors"
-                        :key="c"
-                        type="button"
-                        class="frame-color"
-                        :class="{ active: frameColor.toLowerCase() === c.toLowerCase() }"
-                        :style="{ background: c }"
-                        @click="frameColor = c"
-                        :aria-label="'Couleur ' + c"
-                      />
-                      <input
-                        v-model="frameColor"
-                        type="color"
-                        class="frame-custom"
-                        aria-label="Couleur personnalisée"
-                      />
-                    </div>
-
-                    <div class="discord-link-box">
-                      <div class="discord-link-head">
-                        <div class="discord-label">Discord</div>
-                        <div class="discord-status" :class="{ linked: isDiscordLinked }">
-                          {{ isDiscordLinked ? 'Lié' : 'Non lié' }}
-                        </div>
-                      </div>
-
-                      <div class="discord-actions">
-                        <button
-                          v-if="!isDiscordLinked"
-                          type="button"
-                          class="discord-btn"
-                          :disabled="discordLinkLoading"
-                          @click="startDiscordLink"
-                        >
-                          {{ discordLinkLoading ? 'Ouverture…' : 'Lier mon compte Discord' }}
-                        </button>
-
-                        <button
-                          v-else
-                          type="button"
-                          class="discord-btn danger"
-                          :disabled="discordUnlinkLoading"
-                          @click="unlinkDiscordFromProfile"
-                        >
-                          {{ discordUnlinkLoading ? 'Dissociation…' : 'Dissocier Discord' }}
-                        </button>
-
-                        <div class="discord-help">
-                          {{
-                            isDiscordLinked
-                              ? "Ton Discord est lié : tes parties jouées via le bot seront comptées sur ton compte KCDLE."
-                              : "Lie ton Discord pour que tes parties jouées via le bot soient comptées sur ton compte KCDLE."
-                          }}
-                        </div>
-                      </div>
-                    </div>
+                      class="frame-color"
+                      :class="{ active: frameColor.toLowerCase() === c.toLowerCase() }"
+                      :style="{ background: c }"
+                      @click="frameColor = c"
+                      :aria-label="'Couleur ' + c"
+                    />
+                    <input
+                      v-model="frameColor"
+                      type="color"
+                      class="frame-custom"
+                      aria-label="Couleur personnalisée"
+                    />
                   </div>
                 </div>
               </div>
 
-              <div class="identity-achievements">
-                <div class="ach-title">Succès</div>
-                <div class="ach-kpi">
-                  <span class="ach-big">{{ profile.achievements.unlocked }}</span>
-                  <span class="ach-sep">/</span>
-                  <span class="ach-small">{{ profile.achievements.total }}</span>
-                </div>
-                <div class="ach-bar">
-                  <div class="ach-bar-fill" :style="{ width: achievementsPct + '%' }" />
-                </div>
-                <div class="ach-sub">{{ achievementsPct }}%</div>
+              <div class="identity-links">
+                <button
+                  v-if="!isDiscordLinked"
+                  type="button"
+                  class="link-icon-btn"
+                  :disabled="discordLinkLoading"
+                  aria-label="Discord"
+                  title="Discord"
+                  @click="startDiscordLink"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-discord" viewBox="0 0 16 16">
+                    <path d="M13.545 2.907a13.2 13.2 0 0 0-3.257-1.011.05.05 0 0 0-.052.025c-.141.25-.297.577-.406.833a12.2 12.2 0 0 0-3.658 0 8 8 0 0 0-.412-.833.05.05 0 0 0-.052-.025c-1.125.194-2.22.534-3.257 1.011a.04.04 0 0 0-.021.018C.356 6.024-.213 9.047.066 12.032q.003.022.021.037a13.3 13.3 0 0 0 3.995 2.02.05.05 0 0 0 .056-.019q.463-.63.818-1.329a.05.05 0 0 0-.01-.059l-.018-.011a9 9 0 0 1-1.248-.595.05.05 0 0 1-.02-.066l.015-.019q.127-.095.248-.195a.05.05 0 0 1 .051-.007c2.619 1.196 5.454 1.196 8.041 0a.05.05 0 0 1 .053.007q.121.1.248.195a.05.05 0 0 1-.004.085 8 8 0 0 1-1.249.594.05.05 0 0 0-.03.03.05.05 0 0 0 .003.041c.24.465.515.909.817 1.329a.05.05 0 0 0 .056.019 13.2 13.2 0 0 0 4.001-2.02.05.05 0 0 0 .021-.037c.334-3.451-.559-6.449-2.366-9.106a.03.03 0 0 0-.02-.019m-8.198 7.307c-.789 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.45.73 1.438 1.613 0 .888-.637 1.612-1.438 1.612m5.316 0c-.788 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.451.73 1.438 1.613 0 .888-.631 1.612-1.438 1.612"/>
+                  </svg>
+                </button>
 
-                <button type="button" class="profile-achievements-btn" @click="goAchievements">
-                  Voir tous mes succès
+                <button
+                  v-else
+                  type="button"
+                  class="link-icon-btn danger"
+                  :disabled="discordUnlinkLoading"
+                  aria-label="Discord"
+                  title="Discord"
+                  @click="unlinkDiscordFromProfile"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-discord" viewBox="0 0 16 16">
+                    <path d="M13.545 2.907a13.2 13.2 0 0 0-3.257-1.011.05.05 0 0 0-.052.025c-.141.25-.297.577-.406.833a12.2 12.2 0 0 0-3.658 0 8 8 0 0 0-.412-.833.05.05 0 0 0-.052-.025c-1.125.194-2.22.534-3.257 1.011a.04.04 0 0 0-.021.018C.356 6.024-.213 9.047.066 12.032q.003.022.021.037a13.3 13.3 0 0 0 3.995 2.02.05.05 0 0 0 .056-.019q.463-.63.818-1.329a.05.05 0 0 0-.01-.059l-.018-.011a9 9 0 0 1-1.248-.595.05.05 0 0 1-.02-.066l.015-.019q.127-.095.248-.195a.05.05 0 0 1 .051-.007c2.619 1.196 5.454 1.196 8.041 0a.05.05 0 0 1 .053.007q.121.1.248.195a.05.05 0 0 1-.004.085 8 8 0 0 1-1.249.594.05.05 0 0 0-.03.03.05.05 0 0 0 .003.041c.24.465.515.909.817 1.329a.05.05 0 0 0 .056.019 13.2 13.2 0 0 0 4.001-2.02.05.05 0 0 0 .021-.037c.334-3.451-.559-6.449-2.366-9.106a.03.03 0 0 0-.02-.019m-8.198 7.307c-.789 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.45.73 1.438 1.613 0 .888-.637 1.612-1.438 1.612m5.316 0c-.788 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.451.73 1.438 1.613 0 .888-.631 1.612-1.438 1.612"/>
+                  </svg>
                 </button>
               </div>
             </div>
@@ -384,6 +356,25 @@ onMounted(async () => {
             </div>
 
             <AdSlot id="profile-inline-1" kind="inline" />
+          </section>
+
+          <section class="profile-card">
+            <div class="profile-achievements-card">
+              <div class="ach-title">Succès</div>
+              <div class="ach-kpi">
+                <span class="ach-big">{{ profile.achievements.unlocked }}</span>
+                <span class="ach-sep">/</span>
+                <span class="ach-small">{{ profile.achievements.total }}</span>
+              </div>
+              <div class="ach-bar">
+                <div class="ach-bar-fill" :style="{ width: achievementsPct + '%' }" />
+              </div>
+              <div class="ach-sub">{{ achievementsPct }}%</div>
+
+              <button type="button" class="profile-achievements-btn" @click="goAchievements">
+                Voir tous mes succès
+              </button>
+            </div>
           </section>
         </header>
 
@@ -622,23 +613,17 @@ onMounted(async () => {
   font-size: 1.1rem;
 }
 
-.identity-grid {
-  display: grid;
-  grid-template-columns: 1fr 0.62fr;
-  gap: 12px;
-  align-items: stretch;
-}
-
 .identity-left {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
 }
 
 .identity-head {
+  justify-content: center;
   display: flex;
-  gap: 14px;
+  gap: 30px;
   align-items: center;
   min-width: 0;
 }
@@ -778,87 +763,54 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-.discord-link-box {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 10px;
-  background: rgba(15, 18, 28, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+.identity-links {
+  display: flex;
+  justify-content: flex-start;
 }
 
-.discord-link-head {
-  display: flex;
+.link-icon-btn {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.discord-label {
-  font-size: 0.95rem;
-  font-weight: 700;
-}
-
-.discord-status {
-  font-size: 0.85rem;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  opacity: 0.9;
-}
-
-.discord-status.linked {
-  background: rgba(34, 197, 94, 0.18);
-  border: 1px solid rgba(34, 197, 94, 0.22);
-}
-
-.discord-actions {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.discord-btn {
-  width: 100%;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 12px;
-  cursor: pointer;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
   color: #f0f0f0;
-  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
 }
 
-.discord-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
+.link-icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
 }
 
-.discord-btn:disabled {
+.link-icon-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.link-icon-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
 
-.discord-btn.danger {
-  background: rgba(225, 29, 72, 0.18);
+.link-icon-btn.danger {
+  border-color: rgba(225, 29, 72, 0.45);
+  background: rgba(225, 29, 72, 0.14);
 }
 
-.discord-btn.danger:hover {
-  background: rgba(225, 29, 72, 0.24);
+.link-icon-btn.danger:hover:not(:disabled) {
+  background: rgba(225, 29, 72, 0.2);
 }
 
-.discord-help {
-  font-size: 0.85rem;
-  opacity: 0.85;
-  line-height: 1.35;
-}
-
-.identity-achievements {
+.profile-achievements-card {
   background: rgba(15, 18, 28, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 10px;
   padding: 12px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
 }
 
 .ach-title {
@@ -1208,10 +1160,6 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 
-  .identity-grid {
-    grid-template-columns: 1fr;
-  }
-
   .meta-value {
     max-width: 72%;
   }
@@ -1247,6 +1195,10 @@ onMounted(async () => {
   .meta-value {
     max-width: 100%;
     text-align: left;
+  }
+
+  .identity-links {
+    justify-content: flex-start;
   }
 }
 </style>

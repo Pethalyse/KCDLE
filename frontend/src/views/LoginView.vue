@@ -85,7 +85,10 @@ async function handleSubmit() {
         if (Array.isArray(data.errors.email)) fieldErrors.email = data.errors.email[0]
         if (Array.isArray(data.errors.password)) fieldErrors.password = data.errors.password[0]
 
-        const first = fieldErrors.email || fieldErrors.password || (typeof data?.message === 'string' ? data.message : null)
+        const first =
+          fieldErrors.email ||
+          fieldErrors.password ||
+          (typeof data?.message === 'string' ? data.message : null)
         flash.error(first || 'Impossible de se connecter.', 'Connexion')
         return
       }
@@ -193,20 +196,6 @@ watch(
           <p class="auth-subtitle">Connecte-toi pour accéder à ton profil.</p>
         </div>
 
-        <button
-          type="button"
-          class="auth-discord"
-          :disabled="discordLoading || submitting || resendLoading"
-          @click="startDiscordLogin"
-        >
-          <span v-if="!discordLoading">Se connecter avec Discord</span>
-          <span v-else>Redirection Discord…</span>
-        </button>
-
-        <div class="auth-sep">
-          <span>ou</span>
-        </div>
-
         <form class="auth-form" @submit.prevent="handleSubmit">
           <div class="auth-field">
             <label for="email">Adresse e-mail</label>
@@ -264,6 +253,25 @@ watch(
             <span v-else>Connexion en cours…</span>
           </button>
         </form>
+
+        <div class="auth-sep">
+          <span>ou</span>
+        </div>
+
+        <div class="auth-discord-row">
+          <button
+            type="button"
+            class="auth-discord-icon"
+            :disabled="discordLoading || submitting || resendLoading"
+            aria-label="Discord"
+            title="Discord"
+            @click="startDiscordLogin"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-discord" viewBox="0 0 16 16">
+              <path d="M13.545 2.907a13.2 13.2 0 0 0-3.257-1.011.05.05 0 0 0-.052.025c-.141.25-.297.577-.406.833a12.2 12.2 0 0 0-3.658 0 8 8 0 0 0-.412-.833.05.05 0 0 0-.052-.025c-1.125.194-2.22.534-3.257 1.011a.04.04 0 0 0-.021.018C.356 6.024-.213 9.047.066 12.032q.003.022.021.037a13.3 13.3 0 0 0 3.995 2.02.05.05 0 0 0 .056-.019q.463-.63.818-1.329a.05.05 0 0 0-.01-.059l-.018-.011a9 9 0 0 1-1.248-.595.05.05 0 0 1-.02-.066l.015-.019q.127-.095.248-.195a.05.05 0 0 1 .051-.007c2.619 1.196 5.454 1.196 8.041 0a.05.05 0 0 1 .053.007q.121.1.248.195a.05.05 0 0 1-.004.085 8 8 0 0 1-1.249.594.05.05 0 0 0-.03.03.05.05 0 0 0 .003.041c.24.465.515.909.817 1.329a.05.05 0 0 0 .056.019 13.2 13.2 0 0 0 4.001-2.02.05.05 0 0 0 .021-.037c.334-3.451-.559-6.449-2.366-9.106a.03.03 0 0 0-.02-.019m-8.198 7.307c-.789 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.45.73 1.438 1.613 0 .888-.637 1.612-1.438 1.612m5.316 0c-.788 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.451.73 1.438 1.613 0 .888-.631 1.612-1.438 1.612"/>
+            </svg>
+          </button>
+        </div>
 
         <div class="auth-footer">
           <div class="auth-footer-text">
@@ -335,24 +343,34 @@ watch(
   font-size: 0.95rem;
 }
 
-.auth-discord {
-  width: 100%;
-  padding: 10px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(88, 101, 242, 0.9);
-  background: rgba(88, 101, 242, 0.18);
+.auth-discord-row {
+  display: flex;
+  justify-content: center;
+}
+
+.auth-discord-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  border: 1px solid rgba(88, 101, 242, 0.55);
+  background: rgba(88, 101, 242, 0.14);
   color: #dfe3ff;
   cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 800;
-  transition: background 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.05s ease;
 }
 
-.auth-discord:hover:not(:disabled) {
-  background: rgba(88, 101, 242, 0.28);
+.auth-discord-icon:hover:not(:disabled) {
+  background: rgba(88, 101, 242, 0.22);
 }
 
-.auth-discord:disabled {
+.auth-discord-icon:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.auth-discord-icon:disabled {
   opacity: 0.65;
   cursor: default;
 }
