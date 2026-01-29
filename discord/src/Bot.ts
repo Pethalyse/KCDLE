@@ -1,4 +1,7 @@
 import {
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
     Client,
     Events,
     GatewayIntentBits,
@@ -143,6 +146,23 @@ export class Bot {
             this.guildConfigs.setDefaultChannelId(guildId, channelId);
             await interaction.reply({
                 content: 'Les annonces de victoire seront envoyées dans ce salon.',
+                flags: MessageFlags.Ephemeral,
+            });
+            return;
+        }
+
+        if (interaction.commandName === 'link') {
+            const site = computeSiteBaseUrl(env.KCDLE_API_BASE_URL, env.KCDLE_SITE_BASE_URL);
+            const linkUrl = `${site.replace(/\/$/, '')}/discord/link?return_to=%2Fprofile`;
+
+            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder().setLabel('Lier mon compte').setStyle(ButtonStyle.Link).setURL(linkUrl)
+            );
+
+            await interaction.reply({
+                content:
+                    'Clique sur le bouton pour lier ton compte Discord au site. Si tu n\'es pas connecté, tu seras redirigé vers la connexion/inscription puis la liaison se fera automatiquement.',
+                components: [row],
                 flags: MessageFlags.Ephemeral,
             });
             return;
@@ -362,9 +382,11 @@ export class Bot {
             return true;
         }
 
-        return u.startsWith('http://localhost') || u.startsWith('http://127.') || u.startsWith('http://0.0.0.0');
+        if (u.startsWith('http://localhost') || u.startsWith('http://127.') || u.startsWith('http://0.0.0.0')) {
+            return true;
+        }
 
-
+        return false;
     }
 
     private computeSolvedAtForIndex(run: { guesses: { correct: boolean }[]; solvedAt: string | null }, index: number): string | null {
@@ -384,4 +406,24 @@ export class Bot {
 
 function isGameId(value: string): value is GameId {
     return value === 'kcdle' || value === 'lecdle' || value === 'lfldle';
+}
+
+function computeSiteBaseUrl(apiBaseUrl: string, siteBaseUrl?: string): string {
+    if (siteBaseUrl && String(siteBaseUrl).trim().length > 0) {
+        return String(siteBaseUrl).trim();
+    }
+
+    const raw = String(apiBaseUrl).trim();
+    const url = new URL(raw);
+    const path = url.pathname.replace(/\/+$/, '');
+
+    if (path.toLowerCase().endsWith('/api')) {
+        url.pathname = path.slice(0, -4) || '/';
+    }
+
+    url.pathname = url.pathname.replace(/\/+$/, '') || '/';
+    url.search = '';
+    url.hash = '';
+
+    return url.toString().replace(/\/+$/, '');
 }

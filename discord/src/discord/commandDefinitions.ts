@@ -47,4 +47,8 @@ export const commandDefinitions: RESTPostAPIChatInputApplicationCommandsJSONBody
             },
         ],
     },
+    {
+        name: 'link',
+        description: 'Lier ton compte Discord au site KCDLE',
+    },
 ];

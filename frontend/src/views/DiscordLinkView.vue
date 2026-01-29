@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { exchangeDiscordCode } from '@/api/discordAuthApi'
 import { useAuthStore } from '@/stores/auth'
+import { fetchDiscordAuthUrl } from '@/api/discordAuthApi'
 import { handleError } from '@/utils/handleError'
 import { useFlashStore } from '@/stores/flash'
+
+const RETURN_TO_STORAGE_KEY = 'kcdle_discord_return_to'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,57 +14,51 @@ const auth = useAuthStore()
 const flash = useFlashStore()
 
 const loading = ref(true)
-const message = ref('Connexion Discord en cours…')
-const status = ref<'success' | 'error'>('success')
+const error = ref<string | null>(null)
 
-const RETURN_TO_STORAGE_KEY = 'kcdle_discord_return_to'
-
-function getReturnTo(): string {
-  const stored = sessionStorage.getItem(RETURN_TO_STORAGE_KEY)
-  if (stored && stored.trim().length > 0) return stored
-  return auth.isAuthenticated ? '/profile' : '/'
-}
-
-function clearReturnTo(): void {
-  sessionStorage.removeItem(RETURN_TO_STORAGE_KEY)
-}
+const returnTo = computed(() => {
+  const raw = String(route.query.return_to ?? '/profile')
+  if (!raw.startsWith('/')) return '/profile'
+  return raw
+})
 
 onMounted(async () => {
-  const code = typeof route.query.code === 'string' ? route.query.code : null
-  const state = typeof route.query.state === 'string' ? route.query.state : null
-
-  if (!code || !state) {
-    loading.value = false
-    status.value = 'error'
-    message.value = 'Callback Discord invalide.'
-    flash.error('Impossible de finaliser la connexion Discord.', 'Discord')
-    return
-  }
-
   try {
-    const data: any = await exchangeDiscordCode({ code, state })
+    error.value = null
+    loading.value = true
 
-    if (data?.token && data?.user) {
-      auth.setAuth(data.user, data.token)
-      flash.success('Connecté avec Discord.', 'Discord')
-    } else if (data?.user) {
-      auth.updateUser(data.user)
-      flash.success('Compte Discord lié.', 'Discord')
-    } else {
-      flash.error('Réponse Discord inattendue.', 'Discord')
+    if (!auth.isAuthenticated) {
+      await router.replace({
+        name: 'login',
+        query: {
+          redirect: route.fullPath,
+        },
+      })
+      return
     }
 
-    status.value = 'success'
-    message.value = 'Terminé. Redirection…'
-    const returnTo = getReturnTo()
-    clearReturnTo()
-    await router.replace(returnTo)
+    const currentDiscordId = (auth.user as any)?.discord_id
+    if (currentDiscordId) {
+      flash.success('Ton compte est déjà lié à Discord.', 'Discord')
+      await router.replace(returnTo.value)
+      return
+    }
+
+    sessionStorage.setItem(RETURN_TO_STORAGE_KEY, returnTo.value)
+
+    const data = await fetchDiscordAuthUrl('link')
+    if (!data?.url) {
+      error.value = 'URL Discord invalide.'
+      flash.error('Impossible de démarrer la liaison Discord.', 'Discord')
+      return
+    }
+
+    window.location.href = data.url
   } catch (e: any) {
-    handleError(e, 'Impossible de finaliser la connexion Discord.', 'Discord')
+    handleError(e, 'Impossible de démarrer la liaison Discord.', 'Discord')
+    error.value = 'Impossible de démarrer la liaison Discord.'
+  } finally {
     loading.value = false
-    status.value = 'error'
-    message.value = 'Une erreur est survenue.'
-    clearReturnTo()
   }
 })
 </script>
@@ -81,42 +77,47 @@ onMounted(async () => {
           </div>
 
           <div class="discord-auth-titles">
-            <div class="discord-auth-title">Discord</div>
-            <div class="discord-auth-subtitle">Finalisation de la session</div>
-          </div>
-
-          <div class="discord-auth-chip" :class="status === 'error' ? 'discord-auth-chip--error' : 'discord-auth-chip--ok'">
-            {{ status === 'error' ? 'Erreur' : 'OK' }}
+            <div class="discord-auth-title">Liaison Discord</div>
+            <div class="discord-auth-subtitle">Connexion sécurisée • Liaison automatique</div>
           </div>
         </div>
 
         <div class="discord-auth-body">
-          <div class="discord-auth-state" :class="status === 'error' ? 'discord-auth-state--error' : ''">
-            <div v-if="loading" class="discord-auth-spinner" aria-hidden="true"></div>
-            <div v-else class="discord-auth-indicator" aria-hidden="true" :class="status === 'error' ? 'discord-auth-indicator--error' : 'discord-auth-indicator--ok'"></div>
-
+          <div v-if="loading" class="discord-auth-state">
+            <div class="discord-auth-spinner" aria-hidden="true"></div>
             <div class="discord-auth-text">
-              {{ message }}
-              <div class="discord-auth-hint">
-                {{ status === 'error' ? 'Tu peux réessayer ou revenir en arrière.' : 'Redirection automatique…' }}
-              </div>
+              Redirection vers Discord…
+              <div class="discord-auth-hint">Ne ferme pas cette page.</div>
             </div>
           </div>
 
-          <div v-if="!loading && status === 'error'" class="discord-auth-actions">
-            <button v-if="auth.isAuthenticated" type="button" class="discord-auth-btn" @click="router.push({ name: 'profile' })">
-              Retour au profil
-            </button>
-            <button v-else type="button" class="discord-auth-btn" @click="router.push({ name: 'home' })">
-              Retour à l'accueil
-            </button>
+          <div v-else-if="error" class="discord-auth-state discord-auth-state--error">
+            <div class="discord-auth-badge discord-auth-badge--error">Erreur</div>
+            <div class="discord-auth-text">
+              {{ error }}
+              <div class="discord-auth-hint">Tu peux réessayer depuis Discord avec /link.</div>
+            </div>
+
+            <div class="discord-auth-actions">
+              <button class="discord-auth-btn" type="button" @click="router.push({ name: 'profile' })">
+                Retour au profil
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="discord-auth-state">
+            <div class="discord-auth-spinner" aria-hidden="true"></div>
+            <div class="discord-auth-text">
+              Redirection…
+              <div class="discord-auth-hint">Si rien ne se passe, relance /link.</div>
+            </div>
           </div>
         </div>
 
         <div class="discord-auth-foot">
           <div class="discord-auth-footline"></div>
           <div class="discord-auth-foottext">
-            KCDLE • Callback • OAuth Discord
+            KCDLE • OAuth Discord • Session sécurisée
           </div>
         </div>
       </div>
@@ -221,7 +222,6 @@ onMounted(async () => {
   place-items: center;
   position: relative;
   overflow: hidden;
-  flex: 0 0 auto;
 }
 
 .discord-auth-icon::before {
@@ -249,8 +249,6 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  flex: 1;
-  min-width: 0;
 }
 
 .discord-auth-title {
@@ -262,29 +260,6 @@ onMounted(async () => {
 .discord-auth-subtitle {
   font-size: 0.9rem;
   opacity: 0.82;
-}
-
-.discord-auth-chip {
-  padding: 7px 10px;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 900;
-  letter-spacing: 0.2px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.08);
-  flex: 0 0 auto;
-}
-
-.discord-auth-chip--ok {
-  border-color: rgba(88, 101, 242, 0.35);
-  background: rgba(88, 101, 242, 0.12);
-  color: rgba(223, 227, 255, 0.98);
-}
-
-.discord-auth-chip--error {
-  border-color: rgba(255, 90, 90, 0.35);
-  background: rgba(255, 90, 90, 0.10);
-  color: rgba(255, 200, 200, 0.95);
 }
 
 .discord-auth-body {
@@ -320,29 +295,6 @@ onMounted(async () => {
   margin-top: 2px;
 }
 
-.discord-auth-indicator {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.06);
-  flex: 0 0 auto;
-  margin-top: 2px;
-}
-
-.discord-auth-indicator--ok {
-  border-color: rgba(88, 101, 242, 0.35);
-  background: rgba(88, 101, 242, 0.16);
-  box-shadow: 0 0 18px rgba(88, 101, 242, 0.35);
-}
-
-.discord-auth-indicator--error {
-  border-color: rgba(255, 90, 90, 0.35);
-  background: rgba(255, 90, 90, 0.12);
-  box-shadow: 0 0 18px rgba(255, 90, 90, 0.22);
-}
-
 .discord-auth-text {
   font-size: 0.95rem;
   line-height: 1.25rem;
@@ -353,6 +305,26 @@ onMounted(async () => {
   margin-top: 6px;
   font-size: 0.86rem;
   opacity: 0.75;
+}
+
+.discord-auth-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  margin-right: 10px;
+}
+
+.discord-auth-badge--error {
+  border-color: rgba(255, 90, 90, 0.35);
+  background: rgba(255, 90, 90, 0.10);
+  color: rgba(255, 200, 200, 0.95);
 }
 
 .discord-auth-actions {
