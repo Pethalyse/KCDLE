@@ -33,8 +33,9 @@ services:
   discord_bot:
     image: ghcr.io/pethalyse/kcdle-discord-bot:${IMAGE_TAG:-latest}
     container_name: kcdle_discord_bot
+    env_file:
+      - backend/.env
     environment:
-      KCDLE_DISCORD_BOT_SECRET: ${DISCORD_BOT_SECRET}
       BOT_INTERNAL_PORT: 3001
     volumes:
       - discord_data:/app/data
