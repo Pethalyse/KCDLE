@@ -34,7 +34,7 @@ class LegalController extends Controller
     {
         return response()->json([
             'title' => 'Mentions légales',
-            'last_updated' => '2026-01-06',
+            'last_updated' => '2026-01-29',
 
             'editor' => [
                 'title' => '1. Éditeur du site',
@@ -62,6 +62,7 @@ class LegalController extends Controller
                 'paragraphs' => [
                     "KCDLE propose des jeux de devinettes autour de l’esport (dont des modes de jeu quotidiens), ainsi que des fonctionnalités communautaires et compétitives.",
                     "Certaines fonctionnalités nécessitent un compte (profil, statistiques, succès, groupes d’amis, PVP et lobbies privés).",
+                    "Le Site peut proposer un bot Discord lié au service KCDLE (ex. association de compte, votes et interactions). Le traitement des données liées au bot est détaillé dans la Politique de confidentialité.",
                     "Le Site peut utiliser un outil de mesure d’audience, sous réserve de votre consentement via le gestionnaire de cookies/traceurs.",
                     "Le Site peut afficher de la publicité non personnalisée. La personnalisation de la publicité (ex. via Google AdSense) est soumise à votre consentement (« publicités personnalisées »).",
                 ],

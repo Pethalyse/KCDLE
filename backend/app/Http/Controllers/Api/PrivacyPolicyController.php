@@ -36,7 +36,7 @@ class PrivacyPolicyController extends Controller
     {
         return response()->json([
             'title' => 'Politique de confidentialité',
-            'last_updated' => '2026-01-06',
+            'last_updated' => '2026-01-29',
             'sections' => [
                 [
                     'id' => 'intro',
@@ -134,12 +134,27 @@ class PrivacyPolicyController extends Controller
                     ],
                 ],
                 [
+                    'id' => 'discord-bot',
+                    'title' => '3.7 Bot Discord KCDLE',
+                    'paragraphs' => [
+                        "Le Site peut proposer un bot Discord lié au service KCDLE (ci-après « le Bot »), permettant notamment des interactions et fonctionnalités connectées (ex. association de compte, votes, rappels, résultats).",
+                        "Dans ce cadre, le Bot peut traiter des données Discord strictement nécessaires au fonctionnement :",
+                        "- identifiant Discord (user_id) et, le cas échéant, identifiants techniques liés au contexte d’utilisation (ex. guild_id / channel_id),",
+                        "- informations publiques du compte Discord utilisées pour l’affichage et la liaison (ex. nom/pseudo, avatar),",
+                        "- données d’usage du Bot : actions réalisées via le Bot (ex. play/guess), horodatages, résultats et statistiques associées.",
+                        "Le Bot ne traite pas le contenu de vos messages en dehors des commandes et interactions explicitement déclenchées pour utiliser ses fonctionnalités.",
+                        "Les données liées au Bot sont conservées tant que le lien avec votre compte KCDLE est actif ou tant que votre compte existe. Des journaux techniques liés au Bot peuvent être conservés pour une durée limitée (en principe n’excédant pas 90 jours), pour la sécurité et le diagnostic.",
+                        "Vous pouvez dissocier votre compte Discord depuis votre profil KCDLE et demander la suppression des données liées au Bot en nous contactant à : yanhismez@icloud.com.",
+                    ],
+                ],
+                [
                     'id' => 'purposes',
                     'title' => '4. Finalités des traitements',
                     'paragraphs' => [
                         "Les données traitées via le Site ont pour finalités :",
                         "- créer et gérer votre compte (authentification, vérification e-mail, sécurité),",
                         "- fournir les fonctionnalités de jeu (quotidien, statistiques, succès, groupes, PVP, lobbies),",
+                        "- permettre, le cas échéant, l’association et l’usage du Bot Discord KCDLE (liaison de compte, interactions et fonctionnalités connectées),",
                         "- assurer la sécurité et prévenir les abus (anti-spam, anti-fraude, détection d’activités anormales),",
                         "- améliorer le Site via la mesure d’audience (si vous y consentez),",
                         "- diffuser de la publicité non personnalisée (le cas échéant),",
@@ -163,6 +178,7 @@ class PrivacyPolicyController extends Controller
                     'paragraphs' => [
                         "Données de compte : conservées tant que le compte est actif, sauf suppression demandée ou obligation légale.",
                         "Données de jeu (résultats, guesses, succès, groupes, PVP) : conservées pour fournir l’historique et les statistiques, et supprimées en cas de suppression du compte lorsque cela est techniquement applicable.",
+                        "Données liées au Bot Discord KCDLE : conservées tant que le lien Discord ↔ compte KCDLE est actif ou tant que le compte existe, puis supprimées selon les modalités applicables (dissociation/suppression).",
                         "Logs serveur : conservés pour une durée limitée (en principe n’excédant pas 90 jours), sauf nécessité de sécurité spécifique.",
                         "Stockage local (navigateur) : conservé sur votre appareil tant que vous ne le supprimez pas (paramètres du navigateur).",
                     ],
