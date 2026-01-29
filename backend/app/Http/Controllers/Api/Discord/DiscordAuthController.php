@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
 use Random\RandomException;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * Discord OAuth controller.
@@ -114,6 +115,7 @@ class DiscordAuthController extends Controller
      * @return JsonResponse
      * @throws RandomException
      * @throws ConnectionException
+     * @throws Throwable
      */
     public function exchange(Request $request): JsonResponse
     {
@@ -192,6 +194,8 @@ class DiscordAuthController extends Controller
             }
 
             $this->syncDiscordIdentity($currentUser, $discordId, $discordAvatarHash);
+
+            $this->pendingGuesses->importDiscord($currentUser, $discordId);
 
             $fresh = $currentUser->fresh();
             if (!$fresh instanceof User) {
@@ -349,6 +353,7 @@ class DiscordAuthController extends Controller
      * @param int $status HTTP response status code.
      *
      * @return JsonResponse
+     * @throws Throwable
      */
     protected function respondLogin(User $user, Request $request, int $status = Response::HTTP_OK): JsonResponse
     {
@@ -364,10 +369,15 @@ class DiscordAuthController extends Controller
         $token = $user->createToken('kcdle-app')->plainTextToken;
         $unlocked = $this->pendingGuesses->import($user, $request);
 
+        $discordId = $user->getAttribute('discord_id');
+        if (is_string($discordId) && $discordId !== '') {
+            $unlocked = $unlocked->merge($this->pendingGuesses->importDiscord($user, $discordId));
+        }
+
         return response()->json([
             'user' => $this->formatUser($user),
             'token' => $token,
-            'unlocked_achievements' => $unlocked->values(),
+            'unlocked_achievements' => $unlocked->unique('id')->values(),
         ], $status);
     }
 

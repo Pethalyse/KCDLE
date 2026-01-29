@@ -11,6 +11,7 @@ use App\Models\UserGameResult;
 use App\Models\UserGuess;
 use App\Services\AnonKeyService;
 use App\Services\Dle\PlayerComparisonService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -96,21 +97,113 @@ class DiscordBotTodayController extends Controller
                 ->where('daily_game_id', $daily->getAttribute('id'))
                 ->first();
 
-            if ($result instanceof UserGameResult) {
-                $solved = $result->getAttribute('won_at') !== null;
+            $existingWonAt = null;
+            if ($result instanceof UserGameResult && $result->getAttribute('won_at') !== null) {
+                $solved = true;
+                $existingWonAt = Carbon::parse($result->getAttribute('won_at'));
+            }
 
+            /** @var array<int, array{player_id:int, at:Carbon, source:int, order:int}> $items */
+            $items = [];
+
+            if ($result instanceof UserGameResult) {
                 $rows = UserGuess::query()
                     ->where('user_game_result_id', $result->getAttribute('id'))
+                    ->orderBy('created_at')
                     ->orderBy('guess_order')
-                    ->get();
+                    ->get(['player_id', 'guess_order', 'created_at']);
 
                 foreach ($rows as $row) {
-                    $guesses[] = [
-                        'guess_order' => (int) $row->getAttribute('guess_order'),
+                    $items[] = [
                         'player_id' => (int) $row->getAttribute('player_id'),
-                        'correct' => null,
+                        'at' => Carbon::parse($row->getAttribute('created_at')),
+                        'source' => 0,
+                        'order' => (int) $row->getAttribute('guess_order'),
                     ];
                 }
+            }
+
+            $anonKey = $this->anonKeys->fromValue('discord:' . $discordId);
+            $pendingRows = PendingGuess::query()
+                ->where('anon_key', $anonKey)
+                ->where('daily_game_id', $daily->getAttribute('id'))
+                ->orderBy('created_at')
+                ->orderBy('guess_order')
+                ->get(['player_id', 'guess_order', 'created_at']);
+
+            foreach ($pendingRows as $row) {
+                $items[] = [
+                    'player_id' => (int) $row->getAttribute('player_id'),
+                    'at' => Carbon::parse($row->getAttribute('created_at')),
+                    'source' => 1,
+                    'order' => (int) $row->getAttribute('guess_order'),
+                ];
+            }
+
+            usort($items, function (array $a, array $b): int {
+                $ta = $a['at']->getTimestamp();
+                $tb = $b['at']->getTimestamp();
+
+                if ($ta !== $tb) {
+                    return $ta <=> $tb;
+                }
+
+                if ((int) $a['source'] !== (int) $b['source']) {
+                    return ((int) $a['source']) <=> ((int) $b['source']);
+                }
+
+                return ((int) $a['order']) <=> ((int) $b['order']);
+            });
+
+            $seen = [];
+            $sequence = [];
+
+            foreach ($items as $it) {
+                $pid = (int) $it['player_id'];
+                if (isset($seen[$pid])) {
+                    continue;
+                }
+                $seen[$pid] = true;
+                $sequence[] = $it;
+            }
+
+            $secretId = (int) $daily->getAttribute('player_id');
+            $secretAt = null;
+            foreach ($sequence as $it) {
+                if ((int) $it['player_id'] === $secretId) {
+                    $secretAt = $it['at'];
+                    break;
+                }
+            }
+
+            $cutoff = $existingWonAt;
+            if ($secretAt instanceof Carbon) {
+                $cutoff = $cutoff instanceof Carbon ? ($secretAt->lessThan($cutoff) ? $secretAt : $cutoff) : $secretAt;
+                $solved = true;
+            }
+
+            if ($cutoff instanceof Carbon) {
+                $sequence = array_values(array_filter($sequence, fn (array $it) => $it['at']->lessThanOrEqualTo($cutoff)));
+
+                $secretIndex = null;
+                foreach ($sequence as $idx => $it) {
+                    if ((int) $it['player_id'] === $secretId) {
+                        $secretIndex = (int) $idx;
+                        break;
+                    }
+                }
+
+                if ($secretIndex !== null) {
+                    $sequence = array_slice($sequence, 0, $secretIndex + 1);
+                }
+            }
+
+            foreach ($sequence as $idx => $it) {
+                $guesses[] = [
+                    'guess_order' => $idx + 1,
+                    'player_id' => (int) $it['player_id'],
+                    'correct' => null,
+                ];
             }
         } else {
             $anonKey = $this->anonKeys->fromValue('discord:' . $discordId);
