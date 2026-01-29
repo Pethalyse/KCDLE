@@ -115,10 +115,65 @@ jobs:
           docker push ${{ steps.meta.outputs.image }}:${{ github.sha }}
           docker push ${{ steps.meta.outputs.image }}:latest
 
+  build_and_push_discord_bot:
+    name: Build & Push Discord bot image
+    runs-on: ubuntu-latest
+    needs: tests
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create discord env for production build
+        run: |
+          cat > discord/.env <<EOF
+          DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_APPLICATION_ID=${{ secrets.DISCORD_APPLICATION_ID }}
+          DISCORD_DEV_GUILD_ID=
+          KCDLE_API_BASE_URL=${{ secrets.VPS_DOMAIN }}/api
+          KCDLE_SITE_BASE_URL=${{ secrets.VPS_DOMAIN }}
+          KCDLE_DISCORD_BOT_SECRET=${{ secrets.KCDLE_DISCORD_BOT_SECRET }}
+          BOT_SQLITE_PATH=./data/bot.sqlite
+          BOT_LOG_LEVEL=info
+          EOF
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image name
+        id: meta
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          IMAGE="ghcr.io/${OWNER}/kcdle-discord-bot"
+          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
+
+      - name: Build Discord bot Docker image
+        run: |
+          docker build \
+            -f docker/discord/Dockerfile.prod \
+            -t ${{ steps.meta.outputs.image }}:${{ github.sha }} \
+            -t ${{ steps.meta.outputs.image }}:latest \
+            .
+
+      - name: Push Discord bot Docker image
+        run: |
+          docker push ${{ steps.meta.outputs.image }}:${{ github.sha }}
+          docker push ${{ steps.meta.outputs.image }}:latest
+
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
-    needs: build_and_push_image
+    needs:
+      - build_and_push_image
+      - build_and_push_discord_bot
 
     steps:
       - name: Deploy over SSH
@@ -130,6 +185,6 @@ jobs:
           script: |
             cd ${{ secrets.VPS_PROJECT_PATH }}
             git pull origin main
-            IMAGE_TAG=${GITHUB_SHA} docker compose -f docker-compose.prod.yml pull app scheduler
-            IMAGE_TAG=${GITHUB_SHA} docker compose -f docker-compose.prod.yml up -d --build app scheduler nginx      
+            IMAGE_TAG=${GITHUB_SHA} docker compose -f docker-compose.prod.yml pull app scheduler discord_bot
+            IMAGE_TAG=${GITHUB_SHA} docker compose -f docker-compose.prod.yml up -d --build app scheduler nginx discord_bot
             docker image prune -f --filter "until=168h"

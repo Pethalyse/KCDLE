@@ -1,0 +1,28 @@
+FROM node:20-bookworm AS builder
+
+WORKDIR /app
+
+COPY discord/package.json discord/package-lock.json ./
+RUN npm ci
+
+COPY discord ./
+RUN npm run build
+
+
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=builder /app/package.json /app/package-lock.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+
+COPY discord/.env ./.env
+
+COPY docker/discord/entrypoint.sh /usr/local/bin/entrypoint
+
+RUN chmod +x /usr/local/bin/entrypoint \
+    && mkdir -p /app/data
+
+CMD ["entrypoint"]

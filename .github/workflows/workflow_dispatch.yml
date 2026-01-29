@@ -22,5 +22,5 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd ${{ secrets.VPS_PROJECT_PATH }}
-            IMAGE_TAG=${{ github.event.inputs.image_tag }} docker compose -f docker-compose.prod.yml pull app scheduler
-            IMAGE_TAG=${{ github.event.inputs.image_tag }} docker compose -f docker-compose.prod.yml up -d --build app scheduler nginx
+            IMAGE_TAG=${{ github.event.inputs.image_tag }} docker compose -f docker-compose.prod.yml pull app scheduler discord_bot
+            IMAGE_TAG=${{ github.event.inputs.image_tag }} docker compose -f docker-compose.prod.yml up -d --build app scheduler nginx discord_bot

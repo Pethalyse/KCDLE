@@ -30,6 +30,13 @@ services:
       - db
     restart: unless-stopped
 
+  discord_bot:
+    image: ghcr.io/pethalyse/kcdle-discord-bot:${IMAGE_TAG:-latest}
+    container_name: kcdle_discord_bot
+    volumes:
+      - discord_data:/app/data
+    restart: unless-stopped
+
   nginx:
     build:
       context: .
@@ -74,5 +81,6 @@ services:
 volumes:
   db_data:
   storage_data:
+  discord_data:
   caddy_data:
   caddy_config:
