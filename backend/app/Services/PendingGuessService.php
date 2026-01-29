@@ -119,7 +119,10 @@ class PendingGuessService
                 );
 
                 $wasWonBefore = $result->getAttribute('won_at') !== null;
-                $existingWonAt = $wasWonBefore ? Carbon::parse($result->getAttribute('won_at')) : null;
+
+                if ($wasWonBefore) {
+                    return;
+                }
 
                 $existing = UserGuess::query()
                     ->where('user_game_result_id', $result->getAttribute('id'))
@@ -187,10 +190,6 @@ class PendingGuessService
                 }
 
                 $cutoff = null;
-                if ($existingWonAt instanceof Carbon) {
-                    $cutoff = $existingWonAt;
-                }
-
                 if ($secretAt instanceof Carbon) {
                     $cutoff = $cutoff instanceof Carbon ? ($secretAt->lessThan($cutoff) ? $secretAt : $cutoff) : $secretAt;
                 }
@@ -248,7 +247,7 @@ class PendingGuessService
                     DB::table('user_guesses')->insert($rows);
                 }
 
-                if (!$wasWonBefore && $solvedNow) {
+                if ($solvedNow) {
                     $newUnlocked = $this->achievements->handleGameWin($user, $result);
                     $unlocked = $unlocked->merge(collect($newUnlocked));
                 }
