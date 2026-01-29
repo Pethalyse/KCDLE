@@ -9,6 +9,7 @@ use App\Models\Player;
 use App\Models\User;
 use App\Models\UserGameResult;
 use App\Models\UserGuess;
+use App\Services\Discord\DiscordBotAnnouncementService;
 use App\Services\Dle\PlayerComparisonService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -37,7 +38,8 @@ class GameGuessService
     public function __construct(
         protected AchievementService $achievements,
         protected AnonKeyService $anonKeys,
-        protected PlayerComparisonService $comparison
+        protected PlayerComparisonService $comparison,
+        protected DiscordBotAnnouncementService $discordAnnouncements
     ) {}
 
     /**
@@ -50,6 +52,7 @@ class GameGuessService
      * @param User|null   $forcedUser           If provided, this user is used as the authenticated identity.
      * @param string|null $forcedAnonKey        If provided (and no user), this anonymous key is used instead of IP-based key.
      * @param bool        $preventReplayAfterWin If true, rejects guesses once the user/anon has already won today.
+     * @param bool        $announceDiscordOnWin  If true, triggers a Discord bot broadcast when a Discord-linked user solves on the website.
      *
      * @return array{status:int,payload:array<string,mixed>}
      */
@@ -60,7 +63,8 @@ class GameGuessService
         int $guessOrder,
         ?User $forcedUser = null,
         ?string $forcedAnonKey = null,
-        bool $preventReplayAfterWin = false
+        bool $preventReplayAfterWin = false,
+        bool $announceDiscordOnWin = true
     ): array {
         if (!in_array($game, ['kcdle', 'lfldle', 'lecdle'], true)) {
             return [
@@ -147,7 +151,8 @@ class GameGuessService
                 $daily,
                 $playerId,
                 $guessOrder,
-                $correct
+                $correct,
+                $announceDiscordOnWin
             );
         } else {
             PendingGuess::updateOrCreate(
@@ -226,10 +231,11 @@ class GameGuessService
      * @param int       $playerId     Identifier of the guessed player.
      * @param int       $guessesCount Position of this guess within today's guesses.
      * @param bool      $correct      Whether the guess matches the secret player.
+     * @param bool      $announceDiscordOnWin Whether to broadcast a site-side win to the Discord bot.
      *
      * @return Collection<int, Achievement> Collection of achievements unlocked by this guess.
      */
-    protected function persistUserGuess(User $user, DailyGame $daily, int $playerId, int $guessesCount, bool $correct): Collection
+    protected function persistUserGuess(User $user, DailyGame $daily, int $playerId, int $guessesCount, bool $correct, bool $announceDiscordOnWin): Collection
     {
         $result = UserGameResult::firstOrCreate(
             [
@@ -268,6 +274,15 @@ class GameGuessService
 
         if ($correct && !$wasWonBefore && $result->getAttribute('won_at') !== null) {
             $unlocked = $this->achievements->handleGameWin($user, $result);
+
+            if ($announceDiscordOnWin) {
+                $discordId = (string) ($user->getAttribute('discord_id') ?? '');
+                $discordId = trim($discordId);
+
+                if ($discordId !== '') {
+                    $this->discordAnnouncements->announceSolved($discordId, (string) $daily->getAttribute('game'), $guessesCount);
+                }
+            }
         }
 
         return $unlocked;

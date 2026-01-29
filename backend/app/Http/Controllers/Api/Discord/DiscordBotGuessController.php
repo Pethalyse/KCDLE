@@ -66,7 +66,8 @@ class DiscordBotGuessController extends Controller
             $guessOrder,
             $user,
             $anonKey,
-            true
+            true,
+            false
         );
 
         return response()->json($result['payload'], (int) $result['status']);

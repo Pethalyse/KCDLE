@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * Third-party service configuration.
+ *
+ * This file centralizes credentials and endpoints for external integrations
+ * used by the application.
+ */
+
 return [
 
     /*
@@ -43,6 +50,7 @@ return [
         'base_uri' => env('DISCORD_BASE_URI', 'https://discord.com'),
         'api_base_uri' => env('DISCORD_API_BASE_URI', 'https://discord.com/api'),
         'bot_secret' => env('DISCORD_BOT_SECRET'),
+        'bot_internal_base_url' => env('DISCORD_BOT_INTERNAL_BASE_URL'),
     ],
 
 ];

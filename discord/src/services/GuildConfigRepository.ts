@@ -39,6 +39,19 @@ export class GuildConfigRepository {
             .run(guildId, channelId, createdAt, now);
     }
 
+    public listDefaultChannels(): Array<{ guildId: string; channelId: string }> {
+        const rows = this.db
+            .prepare('SELECT guild_id, default_channel_id FROM guild_configs WHERE default_channel_id IS NOT NULL')
+            .all() as Array<{ guild_id: string; default_channel_id: string }>;
+
+        return rows
+            .map((r) => ({
+                guildId: String(r.guild_id),
+                channelId: String(r.default_channel_id),
+            }))
+            .filter((r) => r.guildId.trim().length > 0 && r.channelId.trim().length > 0);
+    }
+
     private getCreatedAt(guildId: string): string {
         const row = this.db
             .prepare('SELECT created_at FROM guild_configs WHERE guild_id = ?')

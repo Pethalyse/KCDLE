@@ -139,6 +139,7 @@ jobs:
           KCDLE_DISCORD_BOT_SECRET=${{ secrets.KCDLE_DISCORD_BOT_SECRET }}
           BOT_SQLITE_PATH=./data/bot.sqlite
           BOT_LOG_LEVEL=info
+          BOT_INTERNAL_PORT=3001
           EOF
 
       - name: Log in to GitHub Container Registry
