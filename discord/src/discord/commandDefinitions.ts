@@ -1,5 +1,6 @@
 import {
     ApplicationCommandOptionType,
+    PermissionFlagsBits,
     type RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from 'discord.js';
 
@@ -13,6 +14,11 @@ export const commandDefinitions: RESTPostAPIChatInputApplicationCommandsJSONBody
     {
         name: 'init',
         description: "Initialiser le bot dans ce salon (les annonces de victoire seront envoyées ici)",
+        default_member_permissions: PermissionFlagsBits.Administrator.toString(),
+    },
+    {
+        name: 'link',
+        description: 'Lier ton compte KCDLE à ton Discord (donne le lien vers le site)',
     },
     {
         name: 'play',
@@ -46,9 +52,5 @@ export const commandDefinitions: RESTPostAPIChatInputApplicationCommandsJSONBody
                 autocomplete: true,
             },
         ],
-    },
-    {
-        name: 'link',
-        description: 'Lier ton compte Discord au site KCDLE',
     },
 ];
