@@ -11,6 +11,10 @@ const gameChoices = [
 
 export const commandDefinitions: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [
     {
+        name: 'init',
+        description: "Initialiser le bot dans ce salon (les annonces de victoire seront envoyées ici)",
+    },
+    {
         name: 'play',
         description: 'Jouer au daily (affiche ton tableau en éphémère)',
         options: [
@@ -32,7 +36,7 @@ export const commandDefinitions: RESTPostAPIChatInputApplicationCommandsJSONBody
                 description: 'Quel jeu ?',
                 type: ApplicationCommandOptionType.String,
                 required: true,
-                choices: gameChoices,
+                autocomplete: true,
             },
             {
                 name: 'player',

@@ -7,14 +7,21 @@ import {
     type ChatInputCommandInteraction,
     type Interaction,
 } from 'discord.js';
+import { Buffer } from 'buffer';
 import { env } from './config/env.js';
 import { BotDatabase } from './storage/Database.js';
 import { migrate } from './storage/migrations.js';
 import { KcdleApiClient } from './services/KcdleApiClient.js';
-import { GameSessionRepository, type GameId } from './services/GameSessionRepository.js';
+import { type GameId } from './services/GameSessionRepository.js';
 import { PlayerCache } from './services/PlayerCache.js';
 import { GameSessionService } from './services/GameSessionService.js';
 import { GuessRenderer } from './services/GuessRenderer.js';
+import { GuildConfigRepository } from './services/GuildConfigRepository.js';
+
+type AutocompleteChoice = {
+    name: string;
+    value: string;
+};
 
 export class Bot {
     private readonly client: Client;
@@ -23,6 +30,7 @@ export class Bot {
     private readonly players: PlayerCache;
     private readonly sessions: GameSessionService;
     private readonly renderer: GuessRenderer;
+    private readonly guildConfigs: GuildConfigRepository;
 
     public constructor() {
         this.client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -31,9 +39,10 @@ export class Bot {
         migrate(this.db.connection);
 
         this.api = new KcdleApiClient(env.KCDLE_API_BASE_URL, env.KCDLE_DISCORD_BOT_SECRET);
-        const repo = new GameSessionRepository(this.db.connection);
+        this.guildConfigs = new GuildConfigRepository(this.db.connection);
+
         this.players = new PlayerCache(this.api);
-        this.sessions = new GameSessionService(this.api, repo, this.players);
+        this.sessions = new GameSessionService(this.api, this.players);
         this.renderer = new GuessRenderer();
 
         this.client.on(Events.ClientReady, () => {
@@ -78,21 +87,46 @@ export class Bot {
             return;
         }
 
-        const game = interaction.options.getString('game', true) as GameId;
+        if (!interaction.guildId) {
+            await interaction.respond([]).catch(() => undefined);
+            return;
+        }
+
         const focused = interaction.options.getFocused(true);
+
+        if (focused.name === 'game') {
+            const query = String(focused.value ?? '');
+            const items = await this.buildGameAutocompleteChoices(interaction.user.id, interaction.guildId, interaction.channelId, query);
+            await interaction.respond(items).catch(() => undefined);
+            return;
+        }
 
         if (focused.name !== 'player') {
             return;
         }
 
-        const items = this.players.search(game, String(focused.value ?? ''), 20);
+        const gameRaw = interaction.options.getString('game');
+        if (!gameRaw || !isGameId(gameRaw)) {
+            await interaction.respond([]).catch(() => undefined);
+            return;
+        }
 
-        await interaction.respond(
-            items.map((p) => ({
-                name: p.playerName,
-                value: String(p.id),
-            }))
-        );
+        const run = await this.sessions.getTodayRun(interaction.user.id, interaction.guildId, interaction.channelId, gameRaw);
+        const alreadyGuessed = new Set<number>((run.guesses ?? []).map((g) => g.playerId));
+
+        const items = this.players
+            .search(gameRaw, String(focused.value ?? ''), 50)
+            .filter((p) => !alreadyGuessed.has(p.id))
+            .slice(0, 20);
+
+        await interaction
+            .respond(
+                items.map((p) => ({
+                    name: p.playerName,
+                    value: String(p.id),
+                }))
+            )
+            .catch(() => undefined);
     }
 
     private async handleCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -105,17 +139,63 @@ export class Bot {
             return;
         }
 
+        if (interaction.commandName === 'init') {
+            this.guildConfigs.setDefaultChannelId(guildId, channelId);
+            await interaction.reply({
+                content: 'Les annonces de victoire seront envoyées dans ce salon.',
+                flags: MessageFlags.Ephemeral,
+            });
+            return;
+        }
+
         if (interaction.commandName === 'play') {
             const game = interaction.options.getString('game', true) as GameId;
-            const run = await this.sessions.getOrCreateRun(discordUserId, guildId, channelId, game);
-            const board = this.renderer.renderBoard(run);
+            const run = await this.sessions.getTodayRun(discordUserId, guildId, channelId, game);
 
-            await interaction.reply({ content: board, flags: MessageFlags.Ephemeral });
+            if (run.guesses.length === 0) {
+                const board = this.renderer.renderBoard(run, { includeHistory: false });
+                await interaction.reply({ content: board.content, flags: MessageFlags.Ephemeral });
+                return;
+            }
+
+            for (let i = 0; i < run.guesses.length; i++) {
+                const partialRun = {
+                    ...run,
+                    guesses: run.guesses.slice(0, i + 1),
+                    solvedAt: this.computeSolvedAtForIndex(run, i),
+                };
+
+                const board = this.renderer.renderBoard(partialRun, { includeHistory: false });
+                const payload = await this.prepareEmbeds(board.embeds);
+
+                if (i === 0) {
+                    await interaction.reply({
+                        content: board.content,
+                        embeds: payload.embeds,
+                        files: payload.files,
+                        flags: MessageFlags.Ephemeral,
+                    });
+                } else {
+                    await interaction.followUp({
+                        content: board.content,
+                        embeds: payload.embeds,
+                        files: payload.files,
+                        flags: MessageFlags.Ephemeral,
+                    });
+                }
+            }
+
             return;
         }
 
         if (interaction.commandName === 'guess') {
-            const game = interaction.options.getString('game', true) as GameId;
+            const gameRaw = interaction.options.getString('game', true);
+            if (!isGameId(gameRaw)) {
+                await interaction.reply({ content: 'Game invalide.', flags: MessageFlags.Ephemeral });
+                return;
+            }
+
+            const game = gameRaw;
             const playerRaw = interaction.options.getString('player', true);
             const playerId = Number.parseInt(playerRaw, 10);
 
@@ -127,9 +207,8 @@ export class Bot {
             const result = await this.sessions.submitGuess(discordUserId, guildId, channelId, game, playerId);
 
             if (result.alreadySolved) {
-                const board = this.renderer.renderBoard(result.run);
                 await interaction.reply({
-                    content: `${result.message ?? "Déjà terminé pour aujourd'hui."}\n\n${board}`,
+                    content: result.message ?? "Déjà terminé pour aujourd'hui.",
                     flags: MessageFlags.Ephemeral,
                 });
                 return;
@@ -140,15 +219,23 @@ export class Bot {
                 return;
             }
 
-            const board = this.renderer.renderBoard(result.run);
+            const board = this.renderer.renderBoard(result.run, { includeHistory: false });
+            const payload = await this.prepareEmbeds(board.embeds);
 
-            await interaction.reply({ content: board, flags: MessageFlags.Ephemeral });
+            await interaction.reply({
+                content: board.content,
+                embeds: payload.embeds,
+                files: payload.files,
+                flags: MessageFlags.Ephemeral,
+            });
 
             if (result.correct) {
                 const publicMsg = this.buildPublicSolvedMessage(interaction.user.id, result.run);
 
-                const ch = await interaction.client.channels.fetch(channelId).catch(() => null);
-                if (ch && ch.isSendable()) {
+                const targetChannelId = this.guildConfigs.getDefaultChannelId(guildId) ?? channelId;
+
+                const ch = await this.fetchSendableChannel(interaction, targetChannelId, channelId);
+                if (ch) {
                     await ch.send({ content: publicMsg }).catch(() => undefined);
                 }
             }
@@ -159,15 +246,142 @@ export class Bot {
         await interaction.reply({ content: 'Commande inconnue.', flags: MessageFlags.Ephemeral });
     }
 
-    private buildPublicSolvedMessage(
+    private async fetchSendableChannel(
+        interaction: ChatInputCommandInteraction,
+        preferredChannelId: string,
+        fallbackChannelId: string
+    ): Promise<{ send: (options: { content: string }) => Promise<unknown> } | null> {
+        const preferred = await interaction.client.channels.fetch(preferredChannelId).catch(() => null);
+        if (preferred && preferred.isSendable()) {
+            return preferred;
+        }
+
+        if (preferredChannelId === fallbackChannelId) {
+            return null;
+        }
+
+        const fallback = await interaction.client.channels.fetch(fallbackChannelId).catch(() => null);
+        if (fallback && fallback.isSendable()) {
+            return fallback;
+        }
+
+        return null;
+    }
+
+    private async buildGameAutocompleteChoices(
         discordUserId: string,
-        run: { game: GameId; date: string; guesses: { playerName: string }[] }
-    ): string {
+        guildId: string,
+        channelId: string,
+        query: string
+    ): Promise<AutocompleteChoice[]> {
+        const q = query.trim().toLowerCase();
+
+        const all: Array<{ name: string; value: GameId }> = [
+            { name: 'KCDLE', value: 'kcdle' },
+            { name: 'LECDLE', value: 'lecdle' },
+            { name: 'LFLDLE', value: 'lfldle' },
+        ];
+
+        const candidates = all.filter((g) => {
+            if (!q.length) {
+                return true;
+            }
+
+            return g.name.toLowerCase().includes(q) || g.value.toLowerCase().includes(q);
+        });
+
+        const resolved = await Promise.all(
+            candidates.map(async (g) => {
+                try {
+                    const today = await this.api.getDiscordTodayRun(g.value, discordUserId);
+                    if (today.solved) {
+                        return null;
+                    }
+                } catch {
+                    // If API is temporarily unavailable, keep showing the game.
+                }
+
+                return {
+                    name: g.name,
+                    value: g.value,
+                } as AutocompleteChoice;
+            })
+        );
+
+        return resolved.filter((x): x is AutocompleteChoice => x !== null).slice(0, 20);
+    }
+
+    private async prepareEmbeds(embeds: any[]): Promise<{ embeds: any[]; files?: any[] }> {
+        const cloned = embeds.map((e) => ({
+            ...e,
+            fields: Array.isArray(e.fields) ? e.fields.map((f: any) => ({ ...f })) : undefined,
+            thumbnail: e.thumbnail ? { ...e.thumbnail } : undefined,
+        }));
+
+        const target = cloned.find((e) => e?.thumbnail?.url);
+        const thumbUrl = target?.thumbnail?.url ? String(target.thumbnail.url) : '';
+
+        if (!thumbUrl || !this.shouldAttachThumbnail(thumbUrl)) {
+            return { embeds: cloned };
+        }
+
+        try {
+            const res = await fetch(thumbUrl);
+            if (!res.ok) {
+                return { embeds: cloned };
+            }
+
+            const buf = Buffer.from(await res.arrayBuffer());
+            const name = 'player.png';
+
+            if (target?.thumbnail) {
+                target.thumbnail.url = `attachment://${name}`;
+            }
+
+            return { embeds: cloned, files: [{ attachment: buf, name }] };
+        } catch {
+            return { embeds: cloned };
+        }
+    }
+
+    private shouldAttachThumbnail(url: string): boolean {
+        const u = String(url).trim();
+        if (!u) {
+            return false;
+        }
+
+        if (u.startsWith('attachment://')) {
+            return false;
+        }
+
+        if (u.startsWith('http://')) {
+            return true;
+        }
+
+        if (u.startsWith('https://localhost') || u.startsWith('https://127.') || u.startsWith('https://0.0.0.0')) {
+            return true;
+        }
+
+        return u.startsWith('http://localhost') || u.startsWith('http://127.') || u.startsWith('http://0.0.0.0');
+
+
+    }
+
+    private computeSolvedAtForIndex(run: { guesses: { correct: boolean }[]; solvedAt: string | null }, index: number): string | null {
+        const slice = run.guesses.slice(0, index + 1);
+        const solved = slice.some((g) => Boolean(g.correct));
+        return solved ? run.solvedAt : null;
+    }
+
+    private buildPublicSolvedMessage(discordUserId: string, run: { game: GameId; guesses: unknown[] }): string {
         const mention = `<@${discordUserId}>`;
         const gameLabel = run.game === 'kcdle' ? 'KCDLE' : run.game === 'lecdle' ? 'LECDLE' : 'LFLDLE';
-        const count = run.guesses.length;
-        const guesses = run.guesses.map((g, i) => `${i + 1}. ${g.playerName}`).join('\n');
+        const count = Array.isArray(run.guesses) ? run.guesses.length : 0;
 
-        return `${mention} a trouvé le ${gameLabel} du ${run.date} en ${count} guess${count > 1 ? 'es' : ''} !\n\n${guesses}`;
+        return `${mention} a trouvé le ${gameLabel} en ${count} guess${count > 1 ? 'es' : ''} !`;
     }
+}
+
+function isGameId(value: string): value is GameId {
+    return value === 'kcdle' || value === 'lecdle' || value === 'lfldle';
 }

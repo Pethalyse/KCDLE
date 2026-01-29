@@ -2,11 +2,32 @@ import type Database from 'better-sqlite3';
 
 export type GameId = 'kcdle' | 'lecdle' | 'lfldle';
 
+export type GuessDisplay = {
+    playerImageUrl: string | null;
+
+    countryCode: string | null;
+    countryName: string | null;
+
+    age: number | null;
+    gameName: string | null;
+
+    firstOfficialYear: number | null;
+    trophies: number | null;
+
+    previousTeamName: string | null;
+    currentTeamName: string | null;
+    roleLabel: string | null;
+
+    teamName: string | null;
+    lolRole: string | null;
+};
+
 export type GuessRow = {
     playerId: number;
     playerName: string;
     fields: Record<string, number | null>;
     correct: boolean;
+    display?: GuessDisplay;
 };
 
 export type DailyRun = {

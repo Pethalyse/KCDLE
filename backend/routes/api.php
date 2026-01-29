@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\UserAchievementController;
 use App\Http\Controllers\Api\UserGameStatsController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\Api\Discord\DiscordBotGuessController;
+use App\Http\Controllers\Api\Discord\DiscordBotTodayController;
 use App\Http\Middleware\EnsureDiscordBotSecret;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -48,6 +49,8 @@ Route::prefix('discord/bot')
     ->group(function () {
         Route::post('games/{game}/guess', [DiscordBotGuessController::class, 'guess'])
             ->middleware(['throttle:discord-bot-guess']);
+
+        Route::get('games/{game}/today', [DiscordBotTodayController::class, 'show']);
     });
 
 Route::prefix('games/kcdle/trophies-higher-lower')
