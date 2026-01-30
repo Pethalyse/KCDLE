@@ -15,8 +15,22 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
+/**
+ * API controller responsible for submitting and retrieving daily game guesses.
+ *
+ * This controller exposes endpoints to:
+ * - submit a guess for today's daily game,
+ * - retrieve today's guesses for the authenticated user,
+ * - retrieve a win history and the detailed guesses for a past date.
+ */
 class GameGuessController extends Controller
 {
+    /**
+     * Create a new controller instance.
+     *
+     * @param GameGuessService        $guessService Service handling guess submission and persistence.
+     * @param PlayerComparisonService $comparison   Service used to compare the guess with the secret player.
+     */
     public function __construct(
         protected GameGuessService $guessService,
         protected PlayerComparisonService $comparison

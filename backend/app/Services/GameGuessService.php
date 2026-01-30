@@ -45,12 +45,12 @@ class GameGuessService
     /**
      * Submit a guess for today's daily game.
      *
-     * @param string      $game                 Game identifier ('kcdle', 'lfldle', 'lecdle').
-     * @param Request     $request              Incoming request (used for bearer token resolution and logging).
-     * @param int         $playerId             Guessed player ID.
-     * @param int         $guessOrder           Guess order (1..n).
-     * @param User|null   $forcedUser           If provided, this user is used as the authenticated identity.
-     * @param string|null $forcedAnonKey        If provided (and no user), this anonymous key is used instead of IP-based key.
+     * @param string      $game                  Game identifier ('kcdle', 'lfldle', 'lecdle').
+     * @param Request     $request               Incoming request (used for bearer token resolution and logging).
+     * @param int         $playerId              Guessed player ID.
+     * @param int         $guessOrder            Guess order (1..n). This value is treated as untrusted and recomputed server-side.
+     * @param User|null   $forcedUser            If provided, this user is used as the authenticated identity.
+     * @param string|null $forcedAnonKey         If provided (and no user), this anonymous key is used instead of IP-based key.
      * @param bool        $preventReplayAfterWin If true, rejects guesses once the user/anon has already won today.
      * @param bool        $announceDiscordOnWin  If true, triggers a Discord bot broadcast when a Discord-linked user solves on the website.
      *
@@ -104,6 +104,21 @@ class GameGuessService
             $anonKey = $forcedAnonKey !== null ? $forcedAnonKey : $this->anonKeys->fromRequest($request);
         }
 
+        $computedGuessOrder = $this->computeNextGuessOrder($daily, $user, $anonKey);
+        if ($computedGuessOrder !== $guessOrder) {
+            Log::channel('guess')->warning('Client guess order mismatch, using server computed order', [
+                'ip' => $request->ip(),
+                'game' => $game,
+                'daily_id' => $daily->getAttribute('id'),
+                'user_id' => $user instanceof User ? $user->getAttribute('id') : null,
+                'anon_key' => $anonKey,
+                'client_guess_order' => $guessOrder,
+                'server_guess_order' => $computedGuessOrder,
+            ]);
+        }
+
+        $guessOrder = $computedGuessOrder;
+
         if ($preventReplayAfterWin) {
             if ($user instanceof User) {
                 $existing = UserGameResult::query()
@@ -144,9 +159,10 @@ class GameGuessService
         ]);
 
         $unlockedAchievements = collect();
+        $firstWin = false;
 
         if ($user instanceof User) {
-            $unlockedAchievements = $this->persistUserGuess(
+            $persisted = $this->persistUserGuess(
                 $user,
                 $daily,
                 $playerId,
@@ -154,7 +170,19 @@ class GameGuessService
                 $correct,
                 $announceDiscordOnWin
             );
+
+            $unlockedAchievements = $persisted['unlocked'];
+            $firstWin = $persisted['first_win'];
         } else {
+            $alreadyWon = false;
+            if (is_string($anonKey)) {
+                $alreadyWon = PendingGuess::query()
+                    ->where('anon_key', $anonKey)
+                    ->where('daily_game_id', $daily->getAttribute('id'))
+                    ->where('correct', true)
+                    ->exists();
+            }
+
             PendingGuess::updateOrCreate(
                 [
                     'anon_key' => (string) $anonKey,
@@ -167,9 +195,11 @@ class GameGuessService
                     'correct' => $correct,
                 ]
             );
+
+            $firstWin = $correct && !$alreadyWon;
         }
 
-        if ($correct) {
+        if ($correct && $firstWin) {
             Log::channel('guess')->info('Correct guess', [
                 'ip' => $request->ip(),
                 'game' => $game,
@@ -226,16 +256,16 @@ class GameGuessService
     /**
      * Persist a guess for an authenticated user and update related stats.
      *
-     * @param User      $user         Authenticated user submitting the guess.
-     * @param DailyGame $daily        Daily game for which the guess is submitted.
-     * @param int       $playerId     Identifier of the guessed player.
-     * @param int       $guessesCount Position of this guess within today's guesses.
-     * @param bool      $correct      Whether the guess matches the secret player.
-     * @param bool      $announceDiscordOnWin Whether to broadcast a site-side win to the Discord bot.
+     * @param User      $user                  Authenticated user submitting the guess.
+     * @param DailyGame $daily                 Daily game for which the guess is submitted.
+     * @param int       $playerId              Identifier of the guessed player.
+     * @param int       $guessesCount          Position of this guess within today's guesses.
+     * @param bool      $correct               Whether the guess matches the secret player.
+     * @param bool      $announceDiscordOnWin  Whether to broadcast a site-side win to the Discord bot.
      *
-     * @return Collection<int, Achievement> Collection of achievements unlocked by this guess.
+     * @return array{unlocked:Collection<int,Achievement>,first_win:bool} Persist result.
      */
-    protected function persistUserGuess(User $user, DailyGame $daily, int $playerId, int $guessesCount, bool $correct, bool $announceDiscordOnWin): Collection
+    protected function persistUserGuess(User $user, DailyGame $daily, int $playerId, int $guessesCount, bool $correct, bool $announceDiscordOnWin): array
     {
         $result = UserGameResult::firstOrCreate(
             [
@@ -271,9 +301,11 @@ class GameGuessService
         );
 
         $unlocked = collect();
+        $firstWin = false;
 
         if ($correct && !$wasWonBefore && $result->getAttribute('won_at') !== null) {
             $unlocked = $this->achievements->handleGameWin($user, $result);
+            $firstWin = true;
 
             if ($announceDiscordOnWin) {
                 $discordId = (string) ($user->getAttribute('discord_id') ?? '');
@@ -285,6 +317,51 @@ class GameGuessService
             }
         }
 
-        return $unlocked;
+        return [
+            'unlocked' => $unlocked,
+            'first_win' => $firstWin,
+        ];
+    }
+
+    /**
+     * Compute the next guess order for the given identity (authenticated user or anonymous key).
+     *
+     * This prevents client-side tampering and guarantees monotonic guess ordering.
+     *
+     * @param DailyGame    $daily   Target daily game.
+     * @param User|null    $user    Authenticated user if available.
+     * @param string|null  $anonKey Anonymous key if the user is not authenticated.
+     *
+     * @return int Next guess order starting from 1.
+     */
+    protected function computeNextGuessOrder(DailyGame $daily, ?User $user, ?string $anonKey): int
+    {
+        if ($user instanceof User) {
+            $result = UserGameResult::query()
+                ->where('user_id', $user->getAttribute('id'))
+                ->where('daily_game_id', $daily->getAttribute('id'))
+                ->first();
+
+            if (!$result) {
+                return 1;
+            }
+
+            $max = UserGuess::query()
+                ->where('user_game_result_id', $result->getAttribute('id'))
+                ->max('guess_order');
+
+            return ((int) ($max ?? 0)) + 1;
+        }
+
+        if (is_string($anonKey) && trim($anonKey) !== '') {
+            $max = PendingGuess::query()
+                ->where('anon_key', $anonKey)
+                ->where('daily_game_id', $daily->getAttribute('id'))
+                ->max('guess_order');
+
+            return ((int) ($max ?? 0)) + 1;
+        }
+
+        return 1;
     }
 }
