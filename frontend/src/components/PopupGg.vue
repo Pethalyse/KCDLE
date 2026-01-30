@@ -28,7 +28,12 @@ const headerText = computed(
   () => `J'ai joué au ${props.dleCode} sur https://kcdle.com/ et voici mes résultats :\n`,
 )
 
-const hashtagText = '#KCORP'
+let hashtagText = '#KCORP'
+
+switch (props.dleCode) {
+  case "LECDLE": hashtagText += " #LEC"; break;
+  case "LFLDLE": hashtagText += " #LFL"; break;
+}
 
 const resultLines = computed(() => {
   return props.guesses.map((g) => {
