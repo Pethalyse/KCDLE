@@ -21,6 +21,7 @@ import { PlayerCache } from './services/PlayerCache.js';
 import { GameSessionService } from './services/GameSessionService.js';
 import { GuessRenderer } from './services/GuessRenderer.js';
 import { GuildConfigRepository } from './services/GuildConfigRepository.js';
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
 type AutocompleteChoice = {
     name: string;
@@ -35,6 +36,7 @@ export class Bot {
     private readonly sessions: GameSessionService;
     private readonly renderer: GuessRenderer;
     private readonly guildConfigs: GuildConfigRepository;
+    private internalServerStarted: boolean;
 
     public constructor() {
         this.client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -44,6 +46,8 @@ export class Bot {
 
         this.api = new KcdleApiClient(env.KCDLE_API_BASE_URL, env.KCDLE_DISCORD_BOT_SECRET);
         this.guildConfigs = new GuildConfigRepository(this.db.connection);
+
+        this.internalServerStarted = false;
 
         this.players = new PlayerCache(this.api);
         this.sessions = new GameSessionService(this.api, this.players);
@@ -59,6 +63,8 @@ export class Bot {
     public async start(): Promise<void> {
         await this.players.warmup();
         await this.client.login(env.DISCORD_BOT_TOKEN);
+
+        this.startInternalServer();
     }
 
     private async onInteraction(interaction: Interaction): Promise<void> {
@@ -405,6 +411,102 @@ export class Bot {
         const count = Array.isArray(run.guesses) ? run.guesses.length : 0;
 
         return `${mention} a trouvé le ${gameLabel} en ${count} guess${count > 1 ? 'es' : ''} !`;
+    }
+
+    private startInternalServer(): void {
+        if (this.internalServerStarted) {
+            return;
+        }
+
+        this.internalServerStarted = true;
+
+        const server = createServer(async (req, res) => {
+            await this.handleInternalRequest(req, res).catch(() => {
+                try {
+                    res.statusCode = 500;
+                    res.end();
+                } catch {
+                }
+            });
+        });
+
+        server.listen(env.BOT_INTERNAL_PORT, '0.0.0.0', () => {
+            console.log(`Internal server listening on 0.0.0.0:${env.BOT_INTERNAL_PORT}`);
+        });
+    }
+
+    private async handleInternalRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+        const url = String(req.url ?? '');
+
+        if (req.method !== 'POST' || url !== '/internal/announce-solved') {
+            res.statusCode = 404;
+            res.end();
+            return;
+        }
+
+        const secret = String(req.headers['x-kcdle-bot-secret'] ?? '').trim();
+        if (!secret || secret !== env.KCDLE_DISCORD_BOT_SECRET) {
+            res.statusCode = 401;
+            res.end();
+            return;
+        }
+
+        const body = await this.readJsonBody(req);
+        const discordId = typeof body?.discord_id === 'string' ? body.discord_id.trim() : '';
+        const game = typeof body?.game === 'string' ? body.game.trim() : '';
+        const guessesCount = Number.parseInt(String(body?.guesses_count ?? ''), 10);
+
+        if (!discordId || !isGameId(game) || !Number.isFinite(guessesCount) || guessesCount <= 0) {
+            res.statusCode = 422;
+            res.end();
+            return;
+        }
+
+        const message = this.buildPublicSolvedMessage(discordId, { game, guesses: new Array(guessesCount) });
+
+        const targets = this.guildConfigs.listDefaultChannels();
+        await Promise.all(
+            targets.map(async (t) => {
+                const ch = await this.client.channels.fetch(t.channelId).catch(() => null);
+                if (!ch || !ch.isSendable()) {
+                    return;
+                }
+
+                await ch.send({ content: message }).catch(() => undefined);
+            })
+        );
+
+        res.statusCode = 204;
+        res.end();
+    }
+
+    private async readJsonBody(req: IncomingMessage): Promise<any> {
+        const chunks: Buffer[] = [];
+
+        return await new Promise((resolve) => {
+            req.on('data', (chunk) => {
+                try {
+                    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+                } catch {
+                }
+            });
+
+            req.on('end', () => {
+                const raw = Buffer.concat(chunks).toString('utf8').trim();
+                if (!raw.length) {
+                    resolve(null);
+                    return;
+                }
+
+                try {
+                    resolve(JSON.parse(raw));
+                } catch {
+                    resolve(null);
+                }
+            });
+
+            req.on('error', () => resolve(null));
+        });
     }
 
     private getPublicWebsiteBaseUrl(): string {
