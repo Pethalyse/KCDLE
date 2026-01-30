@@ -14,6 +14,8 @@ use Illuminate\Http\Request;
  *
  * This endpoint is meant to be called by the bot backend, not by browsers.
  * It reuses the same guess logic as the public API through GameGuessService.
+ *
+ * The server computes the guess order, and replay-after-win is enforced for bot usage.
  */
 class DiscordBotGuessController extends Controller
 {
@@ -31,7 +33,7 @@ class DiscordBotGuessController extends Controller
      * Otherwise, guesses are persisted under an anonymous key derived from
      * the discord_id, to prevent replay.
      *
-     * This endpoint also enforces "no replay after win" (409) for bot usage.
+     * This endpoint enforces "no replay after win" (409) for bot usage.
      *
      * @param string  $game    Game identifier ('kcdle', 'lfldle', 'lecdle').
      * @param Request $request Request payload.
@@ -43,12 +45,10 @@ class DiscordBotGuessController extends Controller
         $data = $request->validate([
             'discord_id' => ['required', 'string', 'max:32'],
             'player_id' => ['required', 'integer'],
-            'guesses' => ['required', 'integer', 'min:1'],
         ]);
 
         $discordId = (string) $data['discord_id'];
         $playerId = (int) $data['player_id'];
-        $guessOrder = (int) $data['guesses'];
 
         $user = User::query()
             ->where('discord_id', $discordId)
@@ -63,7 +63,6 @@ class DiscordBotGuessController extends Controller
             $game,
             $request,
             $playerId,
-            $guessOrder,
             $user,
             $anonKey,
             true,

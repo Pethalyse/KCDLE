@@ -66,7 +66,6 @@ class GameGuessApiTest extends TestCase
     {
         $response = $this->postJson('/api/games/unknown/guess', [
             'player_id' => 1,
-            'guesses'   => 1,
         ]);
 
         $response->assertStatus(Response::HTTP_NOT_FOUND)
@@ -77,7 +76,6 @@ class GameGuessApiTest extends TestCase
     {
         $response = $this->postJson('/api/games/kcdle/guess', [
             'player_id' => 1,
-            'guesses'   => 1,
         ]);
 
         $response->assertStatus(Response::HTTP_NOT_FOUND)
@@ -98,7 +96,6 @@ class GameGuessApiTest extends TestCase
 
         $response = $this->postJson('/api/games/kcdle/guess', [
             'player_id' => 9999,
-            'guesses'   => 1,
         ]);
 
         $response->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
@@ -117,9 +114,17 @@ class GameGuessApiTest extends TestCase
             'total_guesses'    => 0,
         ]);
 
+        for ($i = 0; $i < 4; $i++) {
+            $wrong = $this->postJson('/api/games/kcdle/guess', [
+                'player_id' => $setup['guessKcdle']->getAttribute('id'),
+            ]);
+
+            $wrong->assertOk();
+            $this->assertFalse($wrong->json('correct'));
+        }
+
         $response = $this->postJson('/api/games/kcdle/guess', [
             'player_id' => $setup['secretKcdle']->getAttribute('id'),
-            'guesses'   => 5,
         ]);
 
         $response->assertOk();
@@ -144,7 +149,6 @@ class GameGuessApiTest extends TestCase
 
         $response = $this->postJson('/api/games/kcdle/guess', [
             'player_id' => $setup['guessKcdle']->getAttribute('id'),
-            'guesses'   => 2,
         ]);
 
         $response->assertOk();

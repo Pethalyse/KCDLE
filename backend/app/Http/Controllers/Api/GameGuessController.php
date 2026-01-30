@@ -48,14 +48,12 @@ class GameGuessController extends Controller
     {
         $data = $request->validate([
             'player_id' => ['required', 'integer'],
-            'guesses' => ['required', 'integer', 'min:1'],
         ]);
 
         $result = $this->guessService->submitGuess(
             $game,
             $request,
-            (int) $data['player_id'],
-            (int) $data['guesses']
+            (int) $data['player_id']
         );
 
         return response()->json($result['payload'], (int) $result['status']);

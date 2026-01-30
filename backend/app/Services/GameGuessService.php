@@ -30,8 +30,11 @@ use Symfony\Component\HttpFoundation\Response;
  * - building the comparison payload
  * - persisting guesses (authenticated users or anonymous key)
  * - unlocking achievements (authenticated)
- * - updating daily statistics when solved
+ * - updating daily statistics when solved (first win only)
  * - optionally preventing replay after a win (Discord bot use-case)
+ *
+ * Security note:
+ * The number of guesses is computed server-side and never trusted from the client.
  */
 class GameGuessService
 {
@@ -45,10 +48,11 @@ class GameGuessService
     /**
      * Submit a guess for today's daily game.
      *
+     * The guess order is computed server-side for both authenticated and anonymous users.
+     *
      * @param string      $game                  Game identifier ('kcdle', 'lfldle', 'lecdle').
      * @param Request     $request               Incoming request (used for bearer token resolution and logging).
      * @param int         $playerId              Guessed player ID.
-     * @param int         $guessOrder            Guess order (1..n). This value is treated as untrusted and recomputed server-side.
      * @param User|null   $forcedUser            If provided, this user is used as the authenticated identity.
      * @param string|null $forcedAnonKey         If provided (and no user), this anonymous key is used instead of IP-based key.
      * @param bool        $preventReplayAfterWin If true, rejects guesses once the user/anon has already won today.
@@ -60,7 +64,6 @@ class GameGuessService
         string $game,
         Request $request,
         int $playerId,
-        int $guessOrder,
         ?User $forcedUser = null,
         ?string $forcedAnonKey = null,
         bool $preventReplayAfterWin = false,
@@ -104,20 +107,7 @@ class GameGuessService
             $anonKey = $forcedAnonKey !== null ? $forcedAnonKey : $this->anonKeys->fromRequest($request);
         }
 
-        $computedGuessOrder = $this->computeNextGuessOrder($daily, $user, $anonKey);
-        if ($computedGuessOrder !== $guessOrder) {
-            Log::channel('guess')->warning('Client guess order mismatch, using server computed order', [
-                'ip' => $request->ip(),
-                'game' => $game,
-                'daily_id' => $daily->getAttribute('id'),
-                'user_id' => $user instanceof User ? $user->getAttribute('id') : null,
-                'anon_key' => $anonKey,
-                'client_guess_order' => $guessOrder,
-                'server_guess_order' => $computedGuessOrder,
-            ]);
-        }
-
-        $guessOrder = $computedGuessOrder;
+        $guessOrder = $this->computeNextGuessOrder($daily, $user, $anonKey);
 
         if ($preventReplayAfterWin) {
             if ($user instanceof User) {
@@ -256,12 +246,12 @@ class GameGuessService
     /**
      * Persist a guess for an authenticated user and update related stats.
      *
-     * @param User      $user                  Authenticated user submitting the guess.
-     * @param DailyGame $daily                 Daily game for which the guess is submitted.
-     * @param int       $playerId              Identifier of the guessed player.
-     * @param int       $guessesCount          Position of this guess within today's guesses.
-     * @param bool      $correct               Whether the guess matches the secret player.
-     * @param bool      $announceDiscordOnWin  Whether to broadcast a site-side win to the Discord bot.
+     * @param User      $user                 Authenticated user submitting the guess.
+     * @param DailyGame $daily                Daily game for which the guess is submitted.
+     * @param int       $playerId             Identifier of the guessed player.
+     * @param int       $guessesCount         Position of this guess within today's guesses.
+     * @param bool      $correct              Whether the guess matches the secret player.
+     * @param bool      $announceDiscordOnWin Whether to broadcast a site-side win to the Discord bot.
      *
      * @return array{unlocked:Collection<int,Achievement>,first_win:bool} Persist result.
      */
@@ -328,9 +318,9 @@ class GameGuessService
      *
      * This prevents client-side tampering and guarantees monotonic guess ordering.
      *
-     * @param DailyGame    $daily   Target daily game.
-     * @param User|null    $user    Authenticated user if available.
-     * @param string|null  $anonKey Anonymous key if the user is not authenticated.
+     * @param DailyGame   $daily   Target daily game.
+     * @param User|null   $user    Authenticated user if available.
+     * @param string|null $anonKey Anonymous key if the user is not authenticated.
      *
      * @return int Next guess order starting from 1.
      */
