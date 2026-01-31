@@ -2,6 +2,7 @@
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {usePvpStore} from '@/stores/pvp'
+import {useAuthStore} from '@/stores/auth'
 import {useFlashStore} from '@/stores/flash'
 import {pvpGetMatch, pvpHeartbeat, pvpLeaveMatch, pvpPollEvents, pvpPostAction} from '@/api/pvpApi'
 import PvpClassicRound from '@/components/pvp/rounds/PvpClassicRound.vue'
@@ -15,7 +16,10 @@ import PvpRoundResultOverlay from '@/components/pvp/PvpRoundResultOverlay.vue'
 const route = useRoute()
 const router = useRouter()
 const pvp = usePvpStore()
+const auth = useAuthStore()
 const flash = useFlashStore()
+
+const youUserId = computed<number>(() => Number(auth.user?.id ?? 0))
 
 const matchId = computed(() => {
   const raw = route.params.matchId
@@ -337,31 +341,22 @@ async function poll() {
     const res = await pvpPollEvents(matchId.value, pvp.lastEventId, 50)
     const events = Array.isArray(res.events) ? res.events : []
 
-    if (events.length === 0) {
-      if (roundType.value === 'reveal_race' || roundType.value === 'reveal_face') {
-        revealRaceIdleRefreshTick += 1
-        if (revealRaceIdleRefreshTick % 4 === 0) {
-          match.value = await pvpGetMatch(matchId.value)
-        }
-      }
-      return
+    if (events.length > 0) {
+      pvp.setLastEventId(Number(res.last_id ?? pvp.lastEventId))
     }
 
-    revealRaceIdleRefreshTick = 0
+    if (events.length > 0 && roundType.value === 'whois') {
+      pushWhoisEvents(events)
+    }
 
-    pvp.setLastEventId(res.last_id)
-
-    pushWhoisEvents(events)
-
-    const finishedRoundEvent = events.find((e: any) => e?.type === 'round_finished')
-    if (finishedRoundEvent) {
+    const roundFinished = events.find(ev => ev.type === 'round_finished')
+    if (roundFinished) {
       const before = extractScore(match.value)
-      const m2 = await pvpGetMatch(matchId.value)
-      match.value = m2
-      const after = extractScore(m2)
+      match.value = await pvpGetMatch(matchId.value)
+      const after = extractScore(match.value)
 
-      const wid = Number(finishedRoundEvent?.payload?.winner_user_id ?? 0)
-      const sp = (finishedRoundEvent?.payload?.secret_player ?? null) as any
+      const wid = Number(roundFinished?.payload?.winner_user_id ?? 0)
+      const sp = (roundFinished?.payload?.secret_player ?? null) as any
       const secretPlayer =
         sp && typeof sp === 'object'
           ? { id: Number(sp.id ?? 0), name: String(sp.name ?? ''), image_url: (sp.image_url ?? null) as string | null }
@@ -558,6 +553,7 @@ onBeforeUnmount(() => stopTimers())
             :best-of="match.best_of"
             :current-round="match.current_round"
             :players="match.players || []"
+            :you-user-id="youUserId"
             :show-leave="true"
             @leave="leave"
           />

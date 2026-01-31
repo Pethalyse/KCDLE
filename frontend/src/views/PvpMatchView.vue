@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePvpStore } from '@/stores/pvp'
+import { useAuthStore } from '@/stores/auth'
 import { useFlashStore } from '@/stores/flash'
 import { pvpGetMatch } from '@/api/pvpApi'
 import PvpRoundTransition from '@/components/pvp/PvpRoundTransition.vue'
@@ -10,7 +11,10 @@ import PvpScoreboard from '@/components/pvp/PvpScoreboard.vue'
 const route = useRoute()
 const router = useRouter()
 const pvp = usePvpStore()
+const auth = useAuthStore()
 const flash = useFlashStore()
+
+const youUserId = computed<number>(() => Number(auth.user?.id ?? 0))
 
 const matchId = computed(() => {
   const raw = route.params.matchId
@@ -115,6 +119,7 @@ onMounted(async () => {
           :best-of="match.best_of"
           :current-round="match.current_round"
           :players="match.players || []"
+          :you-user-id="youUserId"
         />
       </div>
 
