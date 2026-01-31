@@ -10,6 +10,8 @@ use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -36,6 +38,8 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'discord_id',
         'discord_avatar_hash',
         'password',
+        'is_admin',
+        'is_streamer',
         'avatar_path',
         'avatar_frame_color',
     ];
@@ -162,6 +166,13 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         $this->notify(new ResetPasswordNotification($token));
     }
 
+    /**
+     * Determine whether the user can access the given Filament panel.
+     *
+     * @param Panel $panel The Filament panel instance.
+     *
+     * @return bool True when the user is authorized to access the panel.
+     */
     public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() === 'admin') {
@@ -171,6 +182,11 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         return false;
     }
 
+    /**
+     * Friend groups the user belongs to.
+     *
+     * @return BelongsToMany
+     */
     public function friendGroups(): BelongsToMany
     {
         return $this->belongsToMany(FriendGroup::class, 'friend_group_users')
@@ -178,10 +194,40 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
             ->withTimestamps();
     }
 
+    /**
+     * Achievements unlocked by the user.
+     *
+     * @return BelongsToMany
+     */
     public function achievements(): BelongsToMany
     {
         return $this->belongsToMany(Achievement::class, 'user_achievements')
             ->withPivot('unlocked_at')
             ->withTimestamps();
+    }
+
+    /**
+     * Daily game results for the user.
+     *
+     * @return HasMany
+     */
+    public function gameResults(): HasMany
+    {
+        return $this->hasMany(UserGameResult::class);
+    }
+
+    /**
+     * All guesses made by the user across all games.
+     *
+     * @return HasManyThrough
+     */
+    public function guesses(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            UserGuess::class,
+            UserGameResult::class,
+            'user_id',
+            'user_game_result_id'
+        );
     }
 }
