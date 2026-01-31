@@ -9,6 +9,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
+/**
+ * Compute global and group leaderboards for the application.
+ *
+ * This service aggregates daily wins per user and computes ranking metrics
+ * such as win count, average guesses and a composite score used for ordering.
+ */
 class UserLeaderboardService
 {
     /**
@@ -151,7 +157,16 @@ class UserLeaderboardService
 
         $users = User::query()
             ->whereIn('id', $userIds)
-            ->get(['id', 'name', 'email', 'is_admin', 'avatar_path', 'avatar_frame_color'])
+            ->get([
+                'id',
+                'name',
+                'email',
+                'is_admin',
+                'avatar_path',
+                'avatar_frame_color',
+                'discord_id',
+                'discord_avatar_hash',
+            ])
             ->keyBy('id');
 
         $scored = $grouped->map(function (Collection $entries, int $userId) use ($users) {
