@@ -8,6 +8,7 @@ import PlayerTab from '@/components/PlayerTab.vue'
 import PopupGg from '@/components/PopupGg.vue'
 import { trackEvent } from '@/analytics.ts'
 import AdSlot from '@/components/AdSlot.vue'
+import RulesModal from '@/components/RulesModal.vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { sendGuess, fetchTodayGuessState } from '@/api/gameGuessApi'
@@ -41,6 +42,16 @@ const wonData = ref<GuessResponse>()
 const wonDataAnimationFinished = ref<boolean>(false)
 
 const ggPopupOpen = ref(false)
+
+const rulesOpen = ref(false)
+
+function openRules() {
+  rulesOpen.value = true
+}
+
+function closeRules() {
+  rulesOpen.value = false
+}
 
 function clearLocalStorageDaily(): boolean {
   const now = new Date()
@@ -256,8 +267,16 @@ const guessedIds = computed<number[]>(() =>
         </div>
       </div>
 
-      <div v-if="hasWon && wonDataAnimationFinished" class="gg-open-wrapper">
-        <button type="button" class="gg-open-btn" @click="ggPopupOpen = true">
+      <div class="dle-header-actions">
+        <button type="button" class="help-open-btn" @click="openRules">
+          Règles
+        </button>
+        <button
+          v-if="hasWon && wonDataAnimationFinished"
+          type="button"
+          class="gg-open-btn"
+          @click="ggPopupOpen = true"
+        >
           Résultats
         </button>
       </div>
@@ -304,6 +323,8 @@ const guessedIds = computed<number[]>(() =>
       </template>
     </div>
   </div>
+
+  <RulesModal :open="rulesOpen" :theme="game" @close="closeRules" />
 </template>
 
 <style scoped>
@@ -321,10 +342,10 @@ const guessedIds = computed<number[]>(() =>
   margin: 12px 0 8px;
 }
 
-.gg-open-wrapper {
+.dle-header-actions {
   display: flex;
   justify-content: center;
-  margin-top: 6px;
+  gap: 10px;
 }
 
 .gg-open-btn {
@@ -341,8 +362,27 @@ const guessedIds = computed<number[]>(() =>
   transition: transform 120ms ease, background 120ms ease;
 }
 
+.help-open-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--dle-accent-pill-border, rgba(255, 255, 255, 0.25));
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
 .gg-open-btn:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.14);
+}
+
+.help-open-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.12);
 }
 </style>
