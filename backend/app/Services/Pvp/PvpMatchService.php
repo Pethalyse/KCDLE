@@ -107,7 +107,7 @@ class PvpMatchService
     {
         $this->assertParticipant($match->id, $userId);
 
-        $players = $match->players()->with('user:id,name,is_admin,avatar_path,avatar_frame_color,discord_id,discord_avatar_hash')->orderBy('seat')->get();
+        $players = $match->players()->with('user:id,name,is_admin,is_streamer,avatar_path,avatar_frame_color,discord_id,discord_avatar_hash')->orderBy('seat')->get();
         $lastEventId = $match->events()->max('id') ?? 0;
 
         $state = is_array($match->state) ? $match->state : [];
@@ -131,6 +131,7 @@ class PvpMatchService
                 'user_id' => $p->user_id,
                 'name' => $p->user?->name,
                 'is_admin' => (bool) ($p->user?->getAttribute('is_admin') ?? false),
+                'is_streamer' => (bool) ($p->user?->getAttribute('is_streamer') ?? false),
                 'avatar_url' => $p->user ? (string) $p->user->getAttribute('avatar_url') : null,
                 'avatar_frame_color' => $p->user ? (string) $p->user->getAttribute('avatar_frame_color') : null,
                 'points' => $p->points,

@@ -5,6 +5,7 @@ export interface LeaderboardUser {
   name: string
   email: string | null
   is_admin: boolean
+  is_streamer: boolean
   avatar_url: string | null
   avatar_frame_color: string | null
 }

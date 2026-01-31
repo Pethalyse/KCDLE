@@ -341,6 +341,7 @@ watch(
                   :size="32"
                   :show-name="true"
                   :admin="row.user.is_admin"
+                  :streamer="row.user.is_streamer"
                 />
                 <span v-else class="user-name">Joueur inconnu</span>
               </div>
