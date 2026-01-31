@@ -9,6 +9,7 @@ use App\Models\PvpMatchPlayer;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Throwable;
 
 /**
  * Handles PvP match read operations for the network layer.
@@ -106,7 +107,7 @@ class PvpMatchService
     {
         $this->assertParticipant($match->id, $userId);
 
-        $players = $match->players()->with('user:id,name,is_admin,avatar_path,avatar_frame_color')->orderBy('seat')->get();
+        $players = $match->players()->with('user:id,name,is_admin,avatar_path,avatar_frame_color,discord_id,discord_avatar_hash')->orderBy('seat')->get();
         $lastEventId = $match->events()->max('id') ?? 0;
 
         $state = is_array($match->state) ? $match->state : [];
@@ -207,7 +208,7 @@ class PvpMatchService
             } elseif (is_string($lastActionAt) && $lastActionAt !== '') {
                 try {
                     $lastAction = Carbon::parse($lastActionAt);
-                } catch (\Throwable) {
+                } catch (Throwable) {
                     $lastAction = null;
                 }
             }
