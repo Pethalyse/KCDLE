@@ -1,9 +1,5 @@
 <?php
 
-/**
- * Sitemap configuration.
- */
-
 return [
-    'cache_ttl_seconds' => env('SITEMAP_CACHE_TTL_SECONDS', 3600),
+    'cache_ttl_seconds' => (int) env('SITEMAP_CACHE_TTL_SECONDS', 3600),
 ];

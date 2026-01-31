@@ -6,23 +6,22 @@ use App\Services\SitemapService;
 use Illuminate\Http\Response;
 
 /**
- * Controller responsible for serving the XML sitemap.
+ * Handles the public sitemap endpoint.
  */
 class SitemapController extends Controller
 {
     /**
-     * Create a new controller instance.
-     *
-     * @param SitemapService $sitemapService Service used to generate the sitemap XML.
+     * @param SitemapService $sitemapService The service used to generate the sitemap.
      */
     public function __construct(
         protected SitemapService $sitemapService
-    ) {}
+    ) {
+    }
 
     /**
-     * Return the sitemap XML.
+     * Return the XML sitemap.
      *
-     * @return Response XML response compliant with the sitemaps.org protocol.
+     * @return Response
      */
     public function index(): Response
     {

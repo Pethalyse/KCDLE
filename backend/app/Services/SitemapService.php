@@ -4,18 +4,19 @@ namespace App\Services;
 
 use App\Models\DailyGame;
 use Illuminate\Support\Facades\Cache;
-use Throwable;
 use XMLWriter;
 
 /**
- * Service responsible for generating the front-end XML sitemap.
+ * Generates a public XML sitemap for the front-end website.
  */
 class SitemapService
 {
     /**
-     * Build the XML sitemap and return it as a string.
+     * Build the sitemap XML.
      *
-     * @return string Sitemap XML content.
+     * The result is cached to avoid generating XML on every request.
+     *
+     * @return string
      */
     public function buildXml(): string
     {
@@ -30,27 +31,22 @@ class SitemapService
     /**
      * Generate the sitemap XML without using cache.
      *
-     * @return string Sitemap XML content.
+     * @return string
      */
     protected function generateXml(): string
     {
         $baseUrl = $this->getBaseUrl();
-        try {
-            $latestDaily = $this->getLatestDailyDates(['kcdle', 'lecdle', 'lfldle']);
-        } catch (Throwable) {
-            $latestDaily = [];
-        }
+        $lastMods = $this->getLatestDailyDates(['kcdle', 'lecdle', 'lfldle']);
 
-        $kcdleLastMod = $latestDaily['kcdle'] ?? null;
-        $lecdleLastMod = $latestDaily['lecdle'] ?? null;
-        $lfldleLastMod = $latestDaily['lfldle'] ?? null;
+        $kcdleLastMod = $lastMods['kcdle'] ?? null;
+        $lecdleLastMod = $lastMods['lecdle'] ?? null;
+        $lfldleLastMod = $lastMods['lfldle'] ?? null;
         $globalLastMod = $this->maxDate([$kcdleLastMod, $lecdleLastMod, $lfldleLastMod]);
 
         $entries = [
             $this->makeEntry($this->url($baseUrl, '/'), $globalLastMod, 'daily', 1.0),
 
             $this->makeEntry($this->url($baseUrl, '/kcdle'), $kcdleLastMod, 'daily', 0.9),
-            $this->makeEntry($this->url($baseUrl, '/kcdle/higher-or-lower'), $kcdleLastMod, 'weekly', 0.6),
             $this->makeEntry($this->url($baseUrl, '/lecdle'), $lecdleLastMod, 'daily', 0.9),
             $this->makeEntry($this->url($baseUrl, '/lfldle'), $lfldleLastMod, 'daily', 0.9),
 
@@ -67,26 +63,26 @@ class SitemapService
     }
 
     /**
-     * Get the sitemap base URL (front-end URL preferred).
+     * Determine the front-end base URL.
      *
-     * @return string Base URL without trailing slash.
+     * @return string
      */
     protected function getBaseUrl(): string
     {
-        $frontend = (string) config('app.frontend_url');
+        $frontendUrl = (string) config('app.frontend_url');
         $appUrl = (string) config('app.url');
 
-        $base = $frontend !== '' ? $frontend : $appUrl;
+        $base = $frontendUrl !== '' ? $frontendUrl : $appUrl;
 
         return rtrim($base, '/');
     }
 
     /**
-     * Build a full absolute URL from a base URL and a path.
+     * Build an absolute URL from a base URL and a path.
      *
-     * @param string $baseUrl Base URL without trailing slash.
-     * @param string $path URL path (with or without leading slash).
-     * @return string Fully qualified URL.
+     * @param string $baseUrl
+     * @param string $path
+     * @return string
      */
     protected function url(string $baseUrl, string $path): string
     {
@@ -99,15 +95,16 @@ class SitemapService
     }
 
     /**
-     * Retrieve the latest daily dates for a set of DLE game keys.
+     * Retrieve the latest daily dates for the given games.
      *
-     * @param array<int, string> $games List of DLE game identifiers.
-     * @return array<string, string> Map of game => YYYY-MM-DD.
+     * @param array<int, string> $games
+     * @return array<string, string>
      */
     protected function getLatestDailyDates(array $games): array
     {
         $rows = DailyGame::query()
             ->whereIn('game', $games)
+            ->whereDate('selected_for_date', '<=', now()->toDateString())
             ->select('game')
             ->selectRaw('MAX(selected_for_date) as last_date')
             ->groupBy('game')
@@ -127,13 +124,13 @@ class SitemapService
     }
 
     /**
-     * Create a sitemap entry array.
+     * Create a sitemap entry.
      *
-     * @param string $loc Absolute URL.
-     * @param string|null $lastmod Date in YYYY-MM-DD.
-     * @param string|null $changefreq Change frequency.
-     * @param float|null $priority Priority between 0.0 and 1.0.
-     * @return array<string, mixed> Entry data.
+     * @param string $loc
+     * @param string|null $lastmod
+     * @param string|null $changefreq
+     * @param float|null $priority
+     * @return array<string, mixed>
      */
     protected function makeEntry(string $loc, ?string $lastmod, ?string $changefreq, ?float $priority): array
     {
@@ -146,15 +143,15 @@ class SitemapService
     }
 
     /**
-     * Compute the maximum date among the provided values.
+     * Return the most recent date among the provided values.
      *
-     * @param array<int, string|null> $dates Dates in YYYY-MM-DD.
-     * @return string|null The most recent date.
+     * @param array<int, string|null> $dates
+     * @return string|null
      */
     protected function maxDate(array $dates): ?string
     {
-        $filtered = array_values(array_filter($dates, fn ($d) => is_string($d) && $d !== ''));
-        if (count($filtered) === 0) {
+        $filtered = array_values(array_filter($dates, static fn ($d) => is_string($d) && $d !== ''));
+        if ($filtered === []) {
             return null;
         }
 
@@ -164,10 +161,10 @@ class SitemapService
     }
 
     /**
-     * Write the sitemap XML from a list of entries.
+     * Write the sitemap XML.
      *
-     * @param array<int, array<string, mixed>> $entries Sitemap entries.
-     * @return string XML content.
+     * @param array<int, array<string, mixed>> $entries
+     * @return string
      */
     protected function writeXml(array $entries): string
     {
@@ -199,7 +196,7 @@ class SitemapService
             $priority = $entry['priority'] ?? null;
             if (is_float($priority) || is_int($priority)) {
                 $p = max(0.0, min(1.0, (float) $priority));
-                $w->writeElement('priority', rtrim(rtrim(number_format($p, 1, '.', ''), '0'), '.'));
+                $w->writeElement('priority', number_format($p, 1, '.', ''));
             }
 
             $w->endElement();
@@ -212,9 +209,9 @@ class SitemapService
     }
 
     /**
-     * Get the cache key for the generated sitemap.
+     * Build the cache key for the sitemap.
      *
-     * @return string Cache key.
+     * @return string
      */
     protected function getCacheKey(): string
     {
