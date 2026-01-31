@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -107,9 +108,13 @@ class AuthController extends Controller
      * If the provided credentials are invalid, a validation error is returned.
      * If the email is not verified, a 403 response is returned.
      *
+     * Tokens are not globally revoked on login. This allows the same account
+     * to stay authenticated across multiple devices and browsers.
+     *
      * @param Request $request Incoming HTTP request with login credentials.
      *
      * @return JsonResponse JSON response containing the user, token and unlocked achievements.
+     * @throws Throwable
      */
     public function login(Request $request): JsonResponse
     {
@@ -144,8 +149,6 @@ class AuthController extends Controller
                 'code' => 'email_not_verified',
             ], Response::HTTP_FORBIDDEN);
         }
-
-        $user->tokens()->delete();
 
         $token = $user->createToken('kcdle-app')->plainTextToken;
         $unlocked = $this->pendingGuesses->import($user, $request);
@@ -242,6 +245,7 @@ class AuthController extends Controller
             'email' => $user->getAttribute('email'),
             'email_verified' => $user->hasVerifiedEmail(),
             'is_admin' => (bool) $user->getAttribute('is_admin'),
+            'is_streamer' => (bool) $user->getAttribute('is_streamer'),
             'avatar_url' => (string) $user->getAttribute('avatar_url'),
             'avatar_frame_color' => (string) $user->getAttribute('avatar_frame_color'),
             'discord_id' => $user->getAttribute('discord_id'),

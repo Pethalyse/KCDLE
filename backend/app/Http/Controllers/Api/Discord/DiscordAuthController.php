@@ -364,8 +364,6 @@ class DiscordAuthController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
-        $user->tokens()->delete();
-
         $token = $user->createToken('kcdle-app')->plainTextToken;
         $unlocked = $this->pendingGuesses->import($user, $request);
 
@@ -396,6 +394,7 @@ class DiscordAuthController extends Controller
             'email' => $user->getAttribute('email'),
             'email_verified' => $user->hasVerifiedEmail(),
             'is_admin' => (bool)$user->getAttribute('is_admin'),
+            'is_streamer' => (bool)$user->getAttribute('is_streamer'),
             'avatar_url' => (string)$user->getAttribute('avatar_url'),
             'avatar_frame_color' => (string)$user->getAttribute('avatar_frame_color'),
             'discord_id' => $user->getAttribute('discord_id'),

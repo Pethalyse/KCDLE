@@ -46,8 +46,6 @@ class EmailVerificationController extends Controller
             event(new Verified($user));
         }
 
-        $user->tokens()->delete();
-
         $token = $user->createToken('kcdle-app')->plainTextToken;
 
         return redirect()->to($frontend . '/login?verified=1&token=' . urlencode($token), Response::HTTP_FOUND);
