@@ -39,7 +39,7 @@ export class Bot {
     private internalServerStarted: boolean;
 
     public constructor() {
-        this.client = new Client({ intents: [GatewayIntentBits.Guilds] });
+        this.client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
 
         this.db = new BotDatabase(env.BOT_SQLITE_PATH);
         migrate(this.db.connection);
@@ -467,8 +467,22 @@ export class Bot {
         const targets = this.guildConfigs.listDefaultChannels();
         await Promise.all(
             targets.map(async (t) => {
+                const guild = this.client.guilds.cache.get(t.guildId) ?? (await this.client.guilds.fetch(t.guildId).catch(() => null));
+                if (!guild) {
+                    return;
+                }
+
+                const isMember = await guild.members.fetch(discordId).then(() => true).catch(() => false);
+                if (!isMember) {
+                    return;
+                }
+
                 const ch = await this.client.channels.fetch(t.channelId).catch(() => null);
                 if (!ch || !ch.isSendable()) {
+                    return;
+                }
+
+                if ('guildId' in ch && String((ch as any).guildId) !== String(t.guildId)) {
                     return;
                 }
 
