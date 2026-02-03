@@ -134,7 +134,7 @@ onMounted(load)
 }
 .achievements-page {
   min-height: 100vh;
-  padding: 20px 12px 28px;
+  padding: 20px 12px 100px;
   display: flex;
   flex-direction: column;
   align-items: center;

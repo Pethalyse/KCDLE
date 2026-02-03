@@ -565,7 +565,7 @@ onMounted(async () => {
 
 <style scoped>
 .profile-page {
-  padding: 20px;
+  padding: 20px 20px 100px;
   color: #f0f0f0;
   background: radial-gradient(circle at top, #20263a 0, #05060a 75%);
   font-size: 0.95rem;
